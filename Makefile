@@ -12,33 +12,33 @@ help:
 
 # Setup environment
 setup:
-	@echo "Setting up Collabst development environment..."
+	@echo "Setting up Framily development environment..."
 	@sh ./scripts/setup.sh
 
 # Start development environment
 start:
-	@echo "Starting Collabst..."
+	@echo "Starting Framily..."
 	@docker-compose -f docker-compose.dev.yml up
 
 # Detached start
 startd:
-	@echo "Starting Collabst in detached mode..."
+	@echo "Starting Framily in detached mode..."
 	@docker-compose -f docker-compose.dev.yml up -d
 
 # Stop development environment
 stop:
-	@echo "Stopping Collabst..."
+	@echo "Stopping Framily..."
 	@docker-compose -f docker-compose.dev.yml down
 
 # Restart services
 restart:
-	@echo "Restarting Collabst..."
+	@echo "Restarting Framily..."
 	@docker-compose -f docker-compose.dev.yml restart
 
 # Clean up
 clean:
-	@echo "Cleaning up Collabst..."
-	@echo "This will remove all containers, networks, images, and volumes associated with Collabst."
+	@echo "Cleaning up Framily..."
+	@echo "This will remove all containers, networks, images, and volumes associated with Framily."
 	@echo "Are you sure? (y/N)"
 	@read ans; \
 	if [ "$$ans" = "y" ] || [ "$$ans" = "Y" ]; then \
