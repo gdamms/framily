@@ -29,28 +29,204 @@ async function request<T>(
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new ApiError(response.status, error);
+    const error = await response.json().catch(() => ({ detail: "Request failed" }));
+    throw new ApiError(response.status, error.detail || error.message || "Request failed");
   }
 
   return response.json();
 }
 
+async function requestFormData<T>(
+  endpoint: string,
+  formData: FormData,
+  token?: string
+): Promise<T> {
+  const headers: HeadersInit = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: "Request failed" }));
+    throw new ApiError(response.status, error.detail || "Request failed");
+  }
+
+  return response.json();
+}
+
+export interface TokenResponse {
+  token: string;
+}
+
+export interface UserInfo {
+  id: number;
+  username: string;
+  email?: string;
+  display_name?: string;
+}
+
+export interface FramilyListItem {
+  id: number;
+  code: string;
+  name: string | null;
+  role: number;
+  member_count: number;
+  created_at: string;
+}
+
+export interface FramilyMember {
+  user_id: number;
+  username: string;
+  display_name: string | null;
+  role: number;
+  joined_date: string;
+}
+
+export interface FramilySettings {
+  picture_duration: number;
+  shuffle_mode: string;
+  transition_effect: string;
+  overlays: Array<{ type: string; position: string }>;
+}
+
+export interface FramilyInfo {
+  id: number;
+  code: string;
+  name: string | null;
+  created_at: string;
+  settings?: FramilySettings;
+  members?: FramilyMember[];
+  member_count?: number;
+}
+
+export interface PictureInfo {
+  id: string;
+  framily_id: number;
+  url: string;
+  uploaded_by: number | null;
+  uploader_name?: string;
+  upload_date: string;
+  metadata: Record<string, unknown>;
+}
+
 export const api = {
   auth: {
     register: (username: string, email: string, password: string) =>
-      request("/auth/register", {
+      request<TokenResponse>("/auth/register", {
         method: "POST",
         body: JSON.stringify({ username, email, password }),
       }),
-    login: (email: string, password: string) =>
-      request("/auth/login", {
+    login: (username: string, password: string) =>
+      request<TokenResponse>("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       }),
-    logout: (token: string) =>
-      request("/auth/logout", {
+    me: (token: string) =>
+      request<UserInfo>("/auth/me", { token }),
+  },
+
+  user: {
+    getInfo: (username: string, token: string) =>
+      request<{ user: UserInfo }>(`/user/info?username=${encodeURIComponent(username)}`, { token }),
+    updateProfile: (data: { display_name?: string; email?: string }, token: string) =>
+      request<{ user: UserInfo }>("/user/profile", {
+        method: "PUT",
+        body: JSON.stringify(data),
+        token,
+      }),
+  },
+
+  framily: {
+    list: (token: string) =>
+      request<{ framilies: FramilyListItem[] }>("/framily/list", { token }),
+    
+    create: (name?: string, token?: string) =>
+      request<{ framily_code: string; frame_token: string }>("/framily/create", {
         method: "POST",
+        body: JSON.stringify({ name }),
+        token,
+      }),
+    
+    connect: (framily_code: string, token: string) =>
+      request<{ message: string }>("/framily/connect", {
+        method: "POST",
+        body: JSON.stringify({ framily_code }),
+        token,
+      }),
+    
+    info: (framily_code: string, token: string) =>
+      request<{ framily: FramilyInfo }>(`/framily/info?framily_code=${framily_code}`, { token }),
+    
+    invite: (framily_code: string, username: string, token: string) =>
+      request<{ message: string }>("/framily/invite", {
+        method: "POST",
+        body: JSON.stringify({ framily_code, username }),
+        token,
+      }),
+    
+    join: (framily_code: string, accepted: boolean, token: string) =>
+      request<{ message: string }>("/framily/join", {
+        method: "POST",
+        body: JSON.stringify({ framily_code, accepted }),
+        token,
+      }),
+    
+    leave: (framily_code: string, token: string) =>
+      request<{ message: string }>("/framily/leave", {
+        method: "POST",
+        body: JSON.stringify({ framily_code }),
+        token,
+      }),
+    
+    kick: (framily_code: string, username: string, token: string) =>
+      request<{ message: string }>("/framily/kick", {
+        method: "POST",
+        body: JSON.stringify({ framily_code, username }),
+        token,
+      }),
+    
+    promote: (framily_code: string, username: string, new_role: number, token: string) =>
+      request<{ message: string }>("/framily/promote", {
+        method: "POST",
+        body: JSON.stringify({ framily_code, username, new_role }),
+        token,
+      }),
+    
+    updateSettings: (framily_code: string, settings: Partial<FramilySettings>, token: string) =>
+      request<{ message: string }>("/framily/settings", {
+        method: "POST",
+        body: JSON.stringify({ framily_code, settings }),
+        token,
+      }),
+    
+    delete: (framily_code: string, token: string) =>
+      request<{ message: string }>("/framily/delete", {
+        method: "POST",
+        body: JSON.stringify({ framily_code }),
+        token,
+      }),
+  },
+
+  pictures: {
+    list: (framily_code: string, token: string) =>
+      request<{ pictures: PictureInfo[] }>(`/pictures/list?framily_code=${framily_code}`, { token }),
+    
+    upload: (framily_code: string, file: File, token: string) => {
+      const formData = new FormData();
+      formData.append("framily_code", framily_code);
+      formData.append("file", file);
+      return requestFormData<{ picture: PictureInfo }>("/pictures/upload", formData, token);
+    },
+    
+    delete: (picture_id: string, token: string) =>
+      request<{ message: string }>(`/pictures/${picture_id}`, {
+        method: "DELETE",
         token,
       }),
   },

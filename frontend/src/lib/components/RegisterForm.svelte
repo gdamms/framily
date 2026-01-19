@@ -30,8 +30,18 @@
       return;
     }
 
-    if (password.length < 6) {
-      errorMessage = "Password must be at least 6 characters";
+    if (password.length < 8) {
+      errorMessage = "Password must be at least 8 characters";
+      return;
+    }
+
+    if (username.length < 3 || username.length > 32) {
+      errorMessage = "Username must be 3-32 characters";
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      errorMessage = "Username can only contain letters, numbers, and underscores";
       return;
     }
 
@@ -39,7 +49,7 @@
 
     try {
       const response = await api.auth.register(username, email, password);
-      authStore.setToken(response.access_token);
+      await authStore.setToken(response.token);
       await goto("/");
     } catch (error: any) {
       errorMessage = error.message || "Registration failed";
@@ -55,4 +65,13 @@
   <PasswordField bind:value={password} />
   <ConfirmPasswordField bind:value={confirmPassword} />
   <RegisterButton />
+  <p class="login-link">Already have an account? <a href="/login">Login</a></p>
 </Form>
+
+<style>
+  .login-link {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+  }
+</style>
