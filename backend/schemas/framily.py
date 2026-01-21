@@ -65,7 +65,6 @@ class FramilyCreateResponse(BaseModel):
 
 
 class MemberInfo(BaseModel):
-    user_id: int
     username: str
     display_name: Optional[str] = None
     role: int

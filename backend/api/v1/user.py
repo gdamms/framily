@@ -25,47 +25,46 @@ def get_user_info(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
     # Check if requesting own info
     is_self = current_user.id == target_user.id
-    
-    # Check if in same framily
-    is_framily_member = False
-    if not is_self:
-        # Get all framilies current user is in
-        current_user_framilies = {m.framily_id for m in current_user.memberships if m.role >= 1}
-        # Check if target user shares any framily
-        for m in target_user.memberships:
-            if m.framily_id in current_user_framilies and m.role >= 1:
-                is_framily_member = True
-                break
-    
+
     if is_self:
         # Full info for self
         return {
             "user": {
-                "id": target_user.id,
                 "username": target_user.username,
                 "email": target_user.email,
                 "display_name": target_user.display_name,
-                "created_at": target_user.created_at.isoformat() if target_user.created_at else None
+                "created_at": target_user.created_at.isoformat() if target_user.created_at else None,
             }
         }
-    elif is_framily_member:
+
+    # Get all framilies current user is in
+    current_user_framilies = {m.framily_id for m in current_user.memberships if m.role >= 1}
+
+    # Check if target user shares any framily
+    is_framily_member = False
+    for m in target_user.memberships:
+        if m.framily_id in current_user_framilies and m.role >= 1:
+            is_framily_member = True
+            break
+
+    if is_framily_member:
         # Partial info for framily members
         return {
             "user": {
-                "id": target_user.id,
                 "username": target_user.username,
-                "display_name": target_user.display_name
+                "email": target_user.email,
+                "display_name": target_user.display_name,
             }
         }
     else:
         # Basic info for external users
         return {
             "user": {
-                "id": target_user.id,
-                "username": target_user.username
+                "username": target_user.username,
+                "display_name": target_user.display_name,
             }
         }
 
@@ -82,13 +81,12 @@ def update_profile(
         current_user.display_name = display_name
     if email is not None:
         current_user.email = email
-    
+
     db.commit()
     db.refresh(current_user)
-    
+
     return {
         "user": {
-            "id": current_user.id,
             "username": current_user.username,
             "email": current_user.email,
             "display_name": current_user.display_name

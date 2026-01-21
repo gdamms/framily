@@ -1,0 +1,25 @@
+import requests
+import os
+
+
+API_BASE_URL="http://localhost:8000/api/v1"
+CREATE_ENDPOINT="/framily/create"
+
+
+def create_framily(name: str | None = None):
+    payload = {"name": name} if name else {}
+    response = requests.post(API_BASE_URL + CREATE_ENDPOINT, json=payload)
+
+    if response.status_code == 201:
+        with open("framily_code.txt", "w") as f:
+            f.write(response.json().get("framily_code"))
+        with open("frame_token.txt", "w") as f:
+            f.write(response.json().get("frame_token"))
+        print("Framily created successfully.")
+    else:
+        print(f"Failed to create framily: {response.text}")
+
+if os.path.exists("framily_code.txt") and os.path.exists("frame_token.txt"):
+    print("Framily already exists. Exiting.")
+else:
+    create_framily("My Framily")

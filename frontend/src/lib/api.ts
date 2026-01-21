@@ -2,7 +2,10 @@ const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
     super(message);
     this.name = "ApiError";
   }
@@ -10,7 +13,7 @@ export class ApiError extends Error {
 
 async function request<T>(
   endpoint: string,
-  options?: RequestInit & { token?: string }
+  options?: RequestInit & { token?: string },
 ): Promise<T> {
   const { token, ...fetchOptions } = options || {};
 
@@ -29,8 +32,13 @@ async function request<T>(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: "Request failed" }));
-    throw new ApiError(response.status, error.detail || error.message || "Request failed");
+    const error = await response
+      .json()
+      .catch(() => ({ detail: "Request failed" }));
+    throw new ApiError(
+      response.status,
+      error.detail || error.message || "Request failed",
+    );
   }
 
   return response.json();
@@ -39,7 +47,7 @@ async function request<T>(
 async function requestFormData<T>(
   endpoint: string,
   formData: FormData,
-  token?: string
+  token?: string,
 ): Promise<T> {
   const headers: HeadersInit = {};
   if (token) {
@@ -53,7 +61,9 @@ async function requestFormData<T>(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: "Request failed" }));
+    const error = await response
+      .json()
+      .catch(() => ({ detail: "Request failed" }));
     throw new ApiError(response.status, error.detail || "Request failed");
   }
 
@@ -127,14 +137,19 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ username, password }),
       }),
-    me: (token: string) =>
-      request<UserInfo>("/auth/me", { token }),
+    me: (token: string) => request<UserInfo>("/auth/me", { token }),
   },
 
   user: {
     getInfo: (username: string, token: string) =>
-      request<{ user: UserInfo }>(`/user/info?username=${encodeURIComponent(username)}`, { token }),
-    updateProfile: (data: { display_name?: string; email?: string }, token: string) =>
+      request<{ user: UserInfo }>(
+        `/user/info?username=${encodeURIComponent(username)}`,
+        { token },
+      ),
+    updateProfile: (
+      data: { display_name?: string; email?: string },
+      token: string,
+    ) =>
       request<{ user: UserInfo }>("/user/profile", {
         method: "PUT",
         body: JSON.stringify(data),
@@ -145,66 +160,71 @@ export const api = {
   framily: {
     list: (token: string) =>
       request<{ framilies: FramilyListItem[] }>("/framily/list", { token }),
-    
-    create: (name?: string, token?: string) =>
-      request<{ framily_code: string; frame_token: string }>("/framily/create", {
-        method: "POST",
-        body: JSON.stringify({ name }),
-        token,
-      }),
-    
+
     connect: (framily_code: string, token: string) =>
       request<{ message: string }>("/framily/connect", {
         method: "POST",
         body: JSON.stringify({ framily_code }),
         token,
       }),
-    
+
     info: (framily_code: string, token: string) =>
-      request<{ framily: FramilyInfo }>(`/framily/info?framily_code=${framily_code}`, { token }),
-    
+      request<{ framily: FramilyInfo }>(
+        `/framily/info?framily_code=${framily_code}`,
+        { token },
+      ),
+
     invite: (framily_code: string, username: string, token: string) =>
       request<{ message: string }>("/framily/invite", {
         method: "POST",
         body: JSON.stringify({ framily_code, username }),
         token,
       }),
-    
+
     join: (framily_code: string, accepted: boolean, token: string) =>
       request<{ message: string }>("/framily/join", {
         method: "POST",
         body: JSON.stringify({ framily_code, accepted }),
         token,
       }),
-    
+
     leave: (framily_code: string, token: string) =>
       request<{ message: string }>("/framily/leave", {
         method: "POST",
         body: JSON.stringify({ framily_code }),
         token,
       }),
-    
+
     kick: (framily_code: string, username: string, token: string) =>
       request<{ message: string }>("/framily/kick", {
         method: "POST",
         body: JSON.stringify({ framily_code, username }),
         token,
       }),
-    
-    promote: (framily_code: string, username: string, new_role: number, token: string) =>
+
+    promote: (
+      framily_code: string,
+      username: string,
+      new_role: number,
+      token: string,
+    ) =>
       request<{ message: string }>("/framily/promote", {
         method: "POST",
         body: JSON.stringify({ framily_code, username, new_role }),
         token,
       }),
-    
-    updateSettings: (framily_code: string, settings: Partial<FramilySettings>, token: string) =>
+
+    updateSettings: (
+      framily_code: string,
+      settings: Partial<FramilySettings>,
+      token: string,
+    ) =>
       request<{ message: string }>("/framily/settings", {
         method: "POST",
         body: JSON.stringify({ framily_code, settings }),
         token,
       }),
-    
+
     delete: (framily_code: string, token: string) =>
       request<{ message: string }>("/framily/delete", {
         method: "POST",
@@ -215,15 +235,22 @@ export const api = {
 
   pictures: {
     list: (framily_code: string, token: string) =>
-      request<{ pictures: PictureInfo[] }>(`/pictures/list?framily_code=${framily_code}`, { token }),
-    
+      request<{ pictures: PictureInfo[] }>(
+        `/pictures/list?framily_code=${framily_code}`,
+        { token },
+      ),
+
     upload: (framily_code: string, file: File, token: string) => {
       const formData = new FormData();
       formData.append("framily_code", framily_code);
       formData.append("file", file);
-      return requestFormData<{ picture: PictureInfo }>("/pictures/upload", formData, token);
+      return requestFormData<{ picture: PictureInfo }>(
+        "/pictures/upload",
+        formData,
+        token,
+      );
     },
-    
+
     delete: (picture_id: string, token: string) =>
       request<{ message: string }>(`/pictures/${picture_id}`, {
         method: "DELETE",

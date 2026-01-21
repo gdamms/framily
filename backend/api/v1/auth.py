@@ -30,12 +30,12 @@ def get_current_user(
     )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        user_id: str = payload.get("sub")
+        user_id: str = payload.get("sub", "")
         if user_id is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    
+
     user = db.query(User).filter(User.id == int(user_id)).first()
     if user is None:
         raise credentials_exception
@@ -58,7 +58,8 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     db_user = User(
         username=user.username,
         email=user.email,
-        hashed_password=hashed_password
+        hashed_password=hashed_password,
+        display_name=user.username  # Default display name is username
     )
     db.add(db_user)
     db.commit()
@@ -90,7 +91,6 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
 def get_me(current_user: User = Depends(get_current_user)):
     """Get current user info."""
     return UserInfo(
-        id=current_user.id,
         username=current_user.username,
         email=current_user.email,
         display_name=current_user.display_name

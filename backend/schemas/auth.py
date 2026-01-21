@@ -17,10 +17,9 @@ class Token(BaseModel):
 
 
 class UserInfo(BaseModel):
-    id: int
     username: str
     email: str | None = None
-    display_name: str | None = None
+    display_name: str
 
     class Config:
         from_attributes = True
