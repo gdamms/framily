@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Header
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 import uuid
@@ -106,7 +107,6 @@ async def upload_picture(
         "picture": {
             "id": picture.id,
             "framily_id": picture.framily_id,
-            "url": picture.url,
             "uploaded_by": picture.uploaded_by,
             "upload_date": picture.upload_date.isoformat(),
             "metadata": picture.metadata_
@@ -145,7 +145,6 @@ def fetch_picture(
         uploader_name = picture.uploader.display_name or picture.uploader.username
 
     return {
-        "url": picture.url,
         "metadata": {
             "uploaded_by": uploader_name,
             "upload_date": picture.upload_date.isoformat()
@@ -183,10 +182,8 @@ def list_pictures(
         "pictures": [
             {
                 "id": p.id,
-                "framily_id": p.framily_id,
-                "url": p.url,
-                "uploaded_by": p.uploaded_by,
-                "uploader_name": p.uploader.display_name or p.uploader.username if p.uploader else None,
+                "uploader_username": p.uploader.username,
+                "uploader_display_name": p.uploader.display_name,
                 "upload_date": p.upload_date.isoformat(),
                 "metadata": p.metadata_
             }
@@ -240,3 +237,61 @@ def delete_picture(
     db.commit()
 
     return {"message": "Picture deleted"}
+
+
+@router.get("/{picture_id}")
+def get_picture_image(
+    picture_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Serve a picture image from MinIO. Public endpoint (authentication handled by knowing picture ID)."""
+    # Get picture from database
+    picture = db.query(Picture).filter(Picture.id == picture_id).first()
+    if not picture:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Picture not found"
+        )
+
+    # Get the framily code from the framily
+    framily = db.query(Framily).filter(Framily.id == picture.framily_id).first()
+    if not framily:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Framily not found"
+        )
+
+    # Get membership to check access
+    membership = get_membership(db, current_user.id, framily.id)
+    if not is_member(membership):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this framily"
+        )
+
+    # Determine file extension from metadata or URL
+    file_format = picture.metadata_.get("format", "jpg") if picture.metadata_ else "jpg"
+    object_name = f"{framily.code}/{picture_id}.{file_format}"
+
+    # Get object from MinIO
+    response = minio_client.get_object(settings.MINIO_BUCKET, object_name)
+
+    # Determine content type
+    content_type_map = {
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "png": "image/png",
+        "webp": "image/webp",
+        "gif": "image/gif"
+    }
+    content_type = content_type_map.get(file_format.lower(), "image/jpeg")
+
+    return StreamingResponse(
+        response.stream(32*1024),
+        media_type=content_type,
+        headers={
+            "Cache-Control": "public, max-age=31536000",  # Cache for 1 year
+            "Content-Disposition": f"inline; filename={picture_id}.{file_format}"
+        }
+    )

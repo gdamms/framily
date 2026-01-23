@@ -32,10 +32,10 @@
   let settingsError = "";
   let settingsSuccess = "";
 
-  $: framilyCode = $page.params.code;
+  $: framilyCode = $page.params.code || "";
   $: userRole =
-    framily?.members?.find((m) => m.user_id === $authStore.user?.id)?.role ??
-    -1;
+    framily?.members?.find((m) => m.username === $authStore.user?.username)
+      ?.role ?? -1;
   $: isAdmin = userRole === 2;
 
   onMount(async () => {
@@ -221,7 +221,24 @@
   }
 
   function canDeletePicture(picture: PictureInfo): boolean {
-    return isAdmin || picture.uploaded_by === $authStore.user?.id;
+    return isAdmin || picture.uploader_username === $authStore.user?.username;
+  }
+
+  function fetchImageOnError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    img.onerror = null; // Prevent infinite loop
+
+    const src = img.src;
+    const options = {
+      headers: {
+        Authorization: `Bearer ${authStore.getToken()}`,
+      },
+    };
+    fetch(src, options)
+      .then((response) => response.blob())
+      .then((blob) => {
+        img.src = URL.createObjectURL(blob);
+      });
   }
 </script>
 
@@ -291,12 +308,13 @@
             {#each pictures as picture}
               <div class="picture-card">
                 <img
-                  src={picture.url}
-                  alt="Uploaded by {picture.uploader_name || 'Unknown'}"
+                  src={api.pictures.getImageUrl(picture)}
+                  alt="Uploaded by {picture.uploader_display_name}"
+                  onerror={fetchImageOnError}
                 />
                 <div class="picture-info">
                   <span class="uploader"
-                    >{picture.uploader_name || "Unknown"}</span
+                    >{picture.uploader_display_name || "Unknown"}</span
                   >
                   <span class="date"
                     >{new Date(picture.upload_date).toLocaleDateString()}</span
@@ -332,11 +350,23 @@
         <div class="members-list">
           {#each framily.members || [] as member}
             <div class="member-card">
+              <div class="member-avatar">
+                <img
+                  src={api.user.getProfilePictureUrl(member)}
+                  alt="{member.display_name}'s avatar"
+                  class="avatar-img"
+                />
+                <div class="avatar-placeholder">
+                  {(member.display_name)
+                    .charAt(0)
+                    .toUpperCase()}
+                </div>
+              </div>
               <div class="member-info">
-                <strong>{member.display_name || member.username}</strong>
-                {#if member.display_name}
-                  <span class="username">@{member.username}</span>
-                {/if}
+                <a href="/profile/{member.username}" class="member-name-link">
+                  <strong>{member.display_name}</strong>
+                </a>
+                <span class="username">@{member.username}</span>
                 <span class="role-badge role-{member.role}"
                   >{getRoleName(member.role)}</span
                 >
@@ -344,7 +374,7 @@
               <div class="member-meta">
                 Joined: {new Date(member.joined_date).toLocaleDateString()}
               </div>
-              {#if isAdmin && member.user_id !== $authStore.user?.id && member.role >= 1}
+              {#if isAdmin && member.username !== $authStore.user?.username && member.role >= 1}
                 <div class="member-actions">
                   {#if member.role === 1}
                     <button onclick={() => promoteMember(member.username, 2)}>
@@ -641,6 +671,44 @@
     padding: 1rem;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .member-avatar {
+    flex-shrink: 0;
+  }
+
+  .avatar-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .avatar-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: #007bff;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .member-name-link {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .member-name-link:hover {
+    text-decoration: underline;
+    color: #007bff;
   }
 
   .member-info {
@@ -648,6 +716,7 @@
     align-items: center;
     gap: 0.5rem;
     flex-wrap: wrap;
+    flex: 1;
   }
 
   .member-info .username {

@@ -82,6 +82,9 @@ function createAuthStore() {
         }
       }
     },
+    updateUser: (user: UserInfo) => {
+      update((state) => ({ ...state, user }));
+    },
   };
 }
 

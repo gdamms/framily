@@ -9,3 +9,4 @@ from .picture import (
     PictureInfo, PictureMetadata, PictureUploadResponse,
     PictureFetchResponse, PictureListResponse
 )
+from .user import ProfileUpdate

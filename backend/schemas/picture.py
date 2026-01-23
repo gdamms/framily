@@ -13,8 +13,8 @@ class PictureMetadata(BaseModel):
 class PictureInfo(BaseModel):
     id: str
     framily_id: int
-    url: str
-    uploaded_by: Optional[int] = None
+    uploader_username: str
+    uploader_display_name: str
     upload_date: datetime
     metadata: Optional[PictureMetadata] = None
 
@@ -27,7 +27,6 @@ class PictureUploadResponse(BaseModel):
 
 
 class PictureFetchResponse(BaseModel):
-    url: str
     metadata: dict
 
 

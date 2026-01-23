@@ -85,7 +85,6 @@ class SettingsInfo(BaseModel):
 
 
 class FramilyInfo(BaseModel):
-    id: int
     code: str
     name: Optional[str]
     created_at: datetime

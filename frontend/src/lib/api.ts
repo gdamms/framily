@@ -75,10 +75,10 @@ export interface TokenResponse {
 }
 
 export interface UserInfo {
-  id: number;
   username: string;
   email?: string;
   display_name?: string;
+  created_at?: string;
 }
 
 export interface FramilyListItem {
@@ -91,9 +91,8 @@ export interface FramilyListItem {
 }
 
 export interface FramilyMember {
-  user_id: number;
   username: string;
-  display_name: string | null;
+  display_name: string;
   role: number;
   joined_date: string;
 }
@@ -106,7 +105,6 @@ export interface FramilySettings {
 }
 
 export interface FramilyInfo {
-  id: number;
   code: string;
   name: string | null;
   created_at: string;
@@ -117,10 +115,8 @@ export interface FramilyInfo {
 
 export interface PictureInfo {
   id: string;
-  framily_id: number;
-  url: string;
-  uploaded_by: number | null;
-  uploader_name?: string;
+  uploader_username: string;
+  uploader_display_name: string;
   upload_date: string;
   metadata: Record<string, unknown>;
 }
@@ -146,6 +142,7 @@ export const api = {
         `/user/info?username=${encodeURIComponent(username)}`,
         { token },
       ),
+
     updateProfile: (
       data: { display_name?: string; email?: string },
       token: string,
@@ -155,6 +152,27 @@ export const api = {
         body: JSON.stringify(data),
         token,
       }),
+
+    uploadProfilePicture: (file: File, token: string) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      return requestFormData<{ message: string; profile_picture_url: string }>(
+        "/user/profile-picture",
+        formData,
+        token,
+      );
+    },
+
+    deleteProfilePicture: (token: string) =>
+      request<{ message: string }>("/user/profile-picture", {
+        method: "DELETE",
+        token,
+      }),
+
+    // Helper to get full profile picture URL
+    getProfilePictureUrl: (user: UserInfo | FramilyMember): string => {
+      return `${API_BASE_URL}/user/profile-picture?username=${user.username}&t=${new Date().getTime()}`; // Cache buster
+    },
   },
 
   framily: {
@@ -256,5 +274,10 @@ export const api = {
         method: "DELETE",
         token,
       }),
+
+    // Helper to get picture full URL
+    getImageUrl: (picture: PictureInfo): string => {
+      return `${API_BASE_URL}/pictures/${picture.id}`;
+    },
   },
 };
