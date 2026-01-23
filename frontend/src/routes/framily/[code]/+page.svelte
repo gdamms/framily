@@ -4,6 +4,7 @@
   import { page } from "$app/stores";
   import { authStore } from "$lib/stores/auth";
   import { api, type FramilyInfo, type PictureInfo } from "$lib/api";
+  import ProfilePicture from "$lib/components/ProfilePicture.svelte";
 
   let framily: FramilyInfo | null = null;
   let pictures: PictureInfo[] = [];
@@ -351,16 +352,7 @@
           {#each framily.members || [] as member}
             <div class="member-card">
               <div class="member-avatar">
-                <img
-                  src={api.user.getProfilePictureUrl(member)}
-                  alt="{member.display_name}'s avatar"
-                  class="avatar-img"
-                />
-                <div class="avatar-placeholder">
-                  {(member.display_name)
-                    .charAt(0)
-                    .toUpperCase()}
-                </div>
+                <ProfilePicture user={member} />
               </div>
               <div class="member-info">
                 <a href="/profile/{member.username}" class="member-name-link">
@@ -678,27 +670,9 @@
   }
 
   .member-avatar {
+    width: 48px;
+    height: 48px;
     flex-shrink: 0;
-  }
-
-  .avatar-img {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    object-fit: cover;
-  }
-
-  .avatar-placeholder {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background-color: #007bff;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.25rem;
-    font-weight: 600;
   }
 
   .member-name-link {

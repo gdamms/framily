@@ -77,7 +77,7 @@ export interface TokenResponse {
 export interface UserInfo {
   username: string;
   email?: string;
-  display_name?: string;
+  display_name: string;
   created_at?: string;
 }
 

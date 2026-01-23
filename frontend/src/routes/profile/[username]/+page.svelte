@@ -4,6 +4,7 @@
   import { page } from "$app/stores";
   import { authStore } from "$lib/stores/auth";
   import { api, type UserInfo } from "$lib/api";
+  import ProfilePicture from "$lib/components/ProfilePicture.svelte";
 
   let user: UserInfo | null = null;
   let loading = true;
@@ -156,13 +157,8 @@
   {:else if user}
     <div class="profile-header">
       <div class="profile-avatar">
-        <img
-          src={api.user.getProfilePictureUrl(user)}
-          alt="{user.display_name || user.username}'s avatar"
-          class="avatar-large"
-        />
-        <div class="avatar-placeholder-large">
-          {(user.display_name || user.username).charAt(0).toUpperCase()}
+        <div class="avatar-large">
+          <ProfilePicture user={user} />
         </div>
 
         {#if isOwnProfile}
@@ -318,23 +314,6 @@
   .avatar-large {
     width: 150px;
     height: 150px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 4px solid #e0e0e0;
-  }
-
-  .avatar-placeholder-large {
-    width: 150px;
-    height: 150px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 4rem;
-    font-weight: 600;
-    border: 4px solid #e0e0e0;
   }
 
   .avatar-actions {
@@ -465,17 +444,5 @@
 
   .back-link a:hover {
     text-decoration: underline;
-  }
-
-  @media (max-width: 600px) {
-    .profile-header {
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-    }
-
-    .profile-info h1 {
-      font-size: 1.5rem;
-    }
   }
 </style>
