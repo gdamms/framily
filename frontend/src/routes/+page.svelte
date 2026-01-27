@@ -2,10 +2,11 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { authStore } from "$lib/stores/auth";
-  import { api, type FramilyListItem } from "$lib/api";
+  import { api, type FramilyListItem, type PictureInfo } from "$lib/api";
 
   let framilies: FramilyListItem[] = [];
   let pendingInvitations: FramilyListItem[] = [];
+  let allPictures: PictureInfo[] = [];
   let loading = true;
   let error = "";
 
@@ -20,21 +21,26 @@
       await goto("/login");
       return;
     }
-    await loadFramilies();
+    await loadData();
   });
 
-  async function loadFramilies() {
+  async function loadData() {
     loading = true;
     error = "";
     try {
       const token = authStore.getToken();
       if (!token) return;
 
-      const response = await api.framily.list(token);
-      framilies = response.framilies.filter((f) => f.role >= 1);
-      pendingInvitations = response.framilies.filter((f) => f.role === 0);
+      const [framilyResponse, picturesResponse] = await Promise.all([
+        api.framily.list(token),
+        api.pictures.listAll(token),
+      ]);
+      
+      framilies = framilyResponse.framilies.filter((f) => f.role >= 1);
+      pendingInvitations = framilyResponse.framilies.filter((f) => f.role === 0);
+      allPictures = picturesResponse.pictures;
     } catch (e: any) {
-      error = e.message || "Failed to load framilies";
+      error = e.message || "Failed to load data";
     } finally {
       loading = false;
     }
@@ -50,7 +56,7 @@
       await api.framily.connect(connectCode, token);
       showConnectForm = false;
       connectCode = "";
-      await loadFramilies();
+      await loadData();
     } catch (e: any) {
       formError = e.message || "Failed to connect";
     } finally {
@@ -64,7 +70,7 @@
       if (!token) return;
 
       await api.framily.join(code, accepted, token);
-      await loadFramilies();
+      await loadData();
     } catch (e: any) {
       error = e.message || "Failed to respond to invitation";
     }
@@ -81,6 +87,31 @@
       default:
         return "Unknown";
     }
+  }
+
+  function fetchImageOnError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    img.onerror = null;
+    const src = img.src;
+    const options = {
+      headers: {
+        Authorization: `Bearer ${authStore.getToken()}`,
+      },
+    };
+    fetch(src, options)
+      .then((response) => response.blob())
+      .then((blob) => {
+        img.src = URL.createObjectURL(blob);
+      });
+  }
+
+  function getFramilyNames(picture: PictureInfo): string {
+    return picture.framily_codes
+      .map((code) => {
+        const f = framilies.find((f) => f.code === code);
+        return f?.name || code;
+      })
+      .join(", ");
   }
 </script>
 
@@ -195,6 +226,36 @@
             </a>
           {/each}
         </div>
+      {/if}
+    </section>
+
+    <!-- All Photos Section -->
+    <section class="all-photos">
+      <h2>Recent Photos from All Framilies</h2>
+      {#if allPictures.length === 0}
+        <p class="no-photos">No photos yet. Upload some in your framilies!</p>
+      {:else}
+        <div class="photos-grid">
+          {#each allPictures.slice(0, 12) as picture}
+            <div class="photo-card">
+              <img
+                src={api.pictures.getImageUrl(picture)}
+                alt="Uploaded by {picture.uploader_display_name}"
+                onerror={fetchImageOnError}
+              />
+              <div class="photo-info">
+                <span class="uploader">{picture.uploader_display_name}</span>
+                <span class="date">{new Date(picture.upload_date).toLocaleDateString()}</span>
+                <span class="framilies" title={getFramilyNames(picture)}>
+                  📁 {picture.framily_codes.length}
+                </span>
+              </div>
+            </div>
+          {/each}
+        </div>
+        {#if allPictures.length > 12}
+          <p class="more-photos">And {allPictures.length - 12} more photos in your framilies...</p>
+        {/if}
       {/if}
     </section>
   {/if}
@@ -395,5 +456,80 @@
   .modal-actions button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  /* All Photos Section */
+  .all-photos {
+    margin-top: 2rem;
+  }
+
+  .all-photos h2 {
+    margin-bottom: 1rem;
+  }
+
+  .photos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+  }
+
+  .photo-card {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .photo-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .photo-card img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+  }
+
+  .photo-info {
+    padding: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: #666;
+  }
+
+  .photo-info .uploader {
+    font-weight: 500;
+    flex: 1 0 100%;
+  }
+
+  .photo-info .date {
+    color: #888;
+  }
+
+  .photo-info .framilies {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    padding: 0.15rem 0.4rem;
+    border-radius: 10px;
+    cursor: help;
+  }
+
+  .no-photos {
+    text-align: center;
+    color: #666;
+    padding: 2rem;
+    background: white;
+    border-radius: 8px;
+  }
+
+  .more-photos {
+    text-align: center;
+    color: #666;
+    margin-top: 1rem;
+    font-style: italic;
   }
 </style>

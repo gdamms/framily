@@ -17,7 +17,12 @@ class Framily(Base):
     # Relationships
     settings = relationship("FramilySettings", back_populates="framily", uselist=False, cascade="all, delete-orphan")
     memberships = relationship("Membership", back_populates="framily", cascade="all, delete-orphan")
-    pictures = relationship("Picture", back_populates="framily", cascade="all, delete-orphan")
+    picture_visibility = relationship("PictureVisibility", back_populates="framily", cascade="all, delete-orphan")
+
+    @property
+    def pictures(self):
+        """Return all pictures visible to this framily."""
+        return [v.picture for v in self.picture_visibility]
 
 
 class FramilySettings(Base):

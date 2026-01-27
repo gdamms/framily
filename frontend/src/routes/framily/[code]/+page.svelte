@@ -88,7 +88,7 @@
       const token = authStore.getToken();
       if (!token) return;
 
-      await api.pictures.upload(framilyCode, file, token);
+      await api.pictures.upload([framilyCode], file, token);
       await loadFramilyData();
     } catch (e: any) {
       uploadError = e.message || "Failed to upload";
@@ -98,14 +98,24 @@
     }
   }
 
-  async function deletePicture(pictureId: string) {
-    if (!confirm("Are you sure you want to delete this picture?")) return;
+  async function deletePicture(pictureId: string, isUploaderOfPicture: boolean) {
+    const isUploaderAction = isUploaderOfPicture;
+    const confirmMsg = isUploaderAction
+      ? "Are you sure you want to delete this picture from all framilies?"
+      : "Are you sure you want to remove this picture from this framily?";
+    
+    if (!confirm(confirmMsg)) return;
 
     try {
       const token = authStore.getToken();
       if (!token) return;
 
-      await api.pictures.delete(pictureId, token);
+      // Uploader can fully delete, admin can only remove from current framily
+      if (isUploaderAction) {
+        await api.pictures.delete(pictureId, token);
+      } else {
+        await api.pictures.delete(pictureId, token, framilyCode);
+      }
       await loadFramilyData();
     } catch (e: any) {
       alert(e.message || "Failed to delete picture");
@@ -225,6 +235,14 @@
     return isAdmin || picture.uploader_username === $authStore.user?.username;
   }
 
+  function isUploaderOfPicture(picture: PictureInfo): boolean {
+    return picture.uploader_username === $authStore.user?.username;
+  }
+
+  function getDeleteButtonLabel(picture: PictureInfo): string {
+    return isUploaderOfPicture(picture) ? "Delete" : "Remove";
+  }
+
   function fetchImageOnError(event: Event): void {
     const img = event.target as HTMLImageElement;
     img.onerror = null; // Prevent infinite loop
@@ -320,12 +338,17 @@
                   <span class="date"
                     >{new Date(picture.upload_date).toLocaleDateString()}</span
                   >
+                  {#if picture.framily_codes && picture.framily_codes.length > 1}
+                    <span class="shared-badge" title="Shared with: {picture.framily_codes.join(', ')}">
+                      📁 {picture.framily_codes.length}
+                    </span>
+                  {/if}
                   {#if canDeletePicture(picture)}
                     <button
                       class="delete-btn"
-                      onclick={() => deletePicture(picture.id)}
+                      onclick={() => deletePicture(picture.id, isUploaderOfPicture(picture))}
                     >
-                      Delete
+                      {getDeleteButtonLabel(picture)}
                     </button>
                   {/if}
                 </div>
@@ -831,6 +854,16 @@
     margin: 2rem 0;
     border: none;
     border-top: 1px solid #e0e0e0;
+  }
+
+  .shared-badge {
+    display: inline-block;
+    background-color: #e3f2fd;
+    color: #1976d2;
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    cursor: help;
   }
 
   /* Modal Styles */

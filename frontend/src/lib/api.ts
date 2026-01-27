@@ -115,6 +115,8 @@ export interface FramilyInfo {
 
 export interface PictureInfo {
   id: string;
+  framily_ids: number[];
+  framily_codes: string[];
   uploader_username: string;
   uploader_display_name: string;
   upload_date: string;
@@ -258,9 +260,12 @@ export const api = {
         { token },
       ),
 
-    upload: (framily_code: string, file: File, token: string) => {
+    listAll: (token: string) =>
+      request<{ pictures: PictureInfo[] }>("/pictures/list-all", { token }),
+
+    upload: (framily_codes: string[], file: File, token: string) => {
       const formData = new FormData();
-      formData.append("framily_code", framily_code);
+      formData.append("framily_codes", framily_codes.join(","));
       formData.append("file", file);
       return requestFormData<{ picture: PictureInfo }>(
         "/pictures/upload",
@@ -269,11 +274,43 @@ export const api = {
       );
     },
 
-    delete: (picture_id: string, token: string) =>
-      request<{ message: string }>(`/pictures/${picture_id}`, {
+    addVisibility: (
+      picture_id: string,
+      framily_codes: string[],
+      token: string,
+    ) =>
+      request<{ message: string; picture: PictureInfo }>(
+        "/pictures/add-visibility",
+        {
+          method: "POST",
+          body: JSON.stringify({ picture_id, framily_codes }),
+          token,
+        },
+      ),
+
+    removeVisibility: (
+      picture_id: string,
+      framily_codes: string[],
+      token: string,
+    ) =>
+      request<{ message: string; picture: PictureInfo; warning?: string }>(
+        "/pictures/remove-visibility",
+        {
+          method: "POST",
+          body: JSON.stringify({ picture_id, framily_codes }),
+          token,
+        },
+      ),
+
+    delete: (picture_id: string, token: string, framily_code?: string) => {
+      const url = framily_code
+        ? `/pictures/${picture_id}?framily_code=${framily_code}`
+        : `/pictures/${picture_id}`;
+      return request<{ message: string }>(url, {
         method: "DELETE",
         token,
-      }),
+      });
+    },
 
     // Helper to get picture full URL
     getImageUrl: (picture: PictureInfo): string => {

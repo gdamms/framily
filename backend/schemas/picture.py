@@ -12,7 +12,8 @@ class PictureMetadata(BaseModel):
 
 class PictureInfo(BaseModel):
     id: str
-    framily_id: int
+    framily_ids: list[int]
+    framily_codes: list[str]
     uploader_username: str
     uploader_display_name: str
     upload_date: datetime
@@ -36,3 +37,13 @@ class PictureListResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class AddVisibilityRequest(BaseModel):
+    picture_id: str
+    framily_codes: list[str]
+
+
+class RemoveVisibilityRequest(BaseModel):
+    picture_id: str
+    framily_codes: list[str]
