@@ -1,5 +1,7 @@
 <script lang="ts">
-  import TextButton from "$lib/components/TextButton.svelte";
+  import Button from "$lib/components/Button.svelte";
 </script>
 
-<TextButton type="submit" text="Login" />
+<Button type="submit">
+  Login
+</Button>

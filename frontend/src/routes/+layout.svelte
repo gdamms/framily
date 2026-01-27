@@ -46,53 +46,12 @@
   }
 
   nav {
-    display: flex;
+    display: none;
     justify-content: space-between;
     align-items: center;
     padding: 1rem 2rem;
     background-color: #333;
     color: white;
-  }
-
-  .nav-brand a {
-    color: white;
-    text-decoration: none;
-    font-size: 1.5rem;
-    font-weight: bold;
-  }
-
-  .nav-links {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-  }
-
-  .nav-links a {
-    color: white;
-    text-decoration: none;
-    padding: 0.5rem 1rem;
-  }
-
-  .nav-links a:hover {
-    background-color: #555;
-    border-radius: 4px;
-  }
-
-  .user-info {
-    color: #aaa;
-  }
-
-  .logout-btn {
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-
-  .logout-btn:hover {
-    background-color: #c82333;
   }
 
   main {

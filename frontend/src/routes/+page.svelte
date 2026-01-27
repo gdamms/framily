@@ -3,6 +3,9 @@
   import { goto } from "$app/navigation";
   import { authStore } from "$lib/stores/auth";
   import { api, type FramilyListItem, type PictureInfo } from "$lib/api";
+  import Tag from "$lib/components/Tag.svelte";
+  import Button from "$lib/components/Button.svelte";
+  import Galery from "$lib/components/Galery.svelte";
 
   let framilies: FramilyListItem[] = [];
   let pendingInvitations: FramilyListItem[] = [];
@@ -89,22 +92,6 @@
     }
   }
 
-  function fetchImageOnError(event: Event): void {
-    const img = event.target as HTMLImageElement;
-    img.onerror = null;
-    const src = img.src;
-    const options = {
-      headers: {
-        Authorization: `Bearer ${authStore.getToken()}`,
-      },
-    };
-    fetch(src, options)
-      .then((response) => response.blob())
-      .then((blob) => {
-        img.src = URL.createObjectURL(blob);
-      });
-  }
-
   function getFramilyNames(picture: PictureInfo): string {
     return picture.framily_codes
       .map((code) => {
@@ -114,6 +101,10 @@
       .join(", ");
   }
 </script>
+
+<div class="container">
+  <Galery pictures={allPictures} />
+</div>
 
 <div class="dashboard">
   <h1>Welcome, {$authStore.user?.display_name}!</h1>
@@ -160,10 +151,10 @@
       <div class="section-header">
         <h2>My Framilies</h2>
         <div class="actions">
-          <button
+          <Button
             onclick={() => {
               showConnectForm = true;
-            }}>Connect to Framily</button
+            }}>Connect to Framily</Button
           >
         </div>
       </div>
@@ -246,9 +237,7 @@
               <div class="photo-info">
                 <span class="uploader">{picture.uploader_display_name}</span>
                 <span class="date">{new Date(picture.upload_date).toLocaleDateString()}</span>
-                <span class="framilies" title={getFramilyNames(picture)}>
-                  📁 {picture.framily_codes.length}
-                </span>
+                <Tag href="/profile/{picture.uploader_username}">{picture.uploader_display_name}</Tag>
               </div>
             </div>
           {/each}
@@ -263,273 +252,6 @@
 
 <style>
   .dashboard {
-    max-width: 900px;
-    margin: 0 auto;
-  }
-
-  h1 {
-    margin-bottom: 2rem;
-  }
-
-  .loading,
-  .error {
-    padding: 1rem;
-    text-align: center;
-  }
-
-  .error {
-    color: #dc3545;
-    background-color: #f8d7da;
-    border-radius: 4px;
-  }
-
-  section {
-    margin-bottom: 2rem;
-  }
-
-  .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-  }
-
-  .actions {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  .actions button {
-    padding: 0.5rem 1rem;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-
-  .actions button:hover {
-    background-color: #0056b3;
-  }
-
-  .framily-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1rem;
-  }
-
-  .framily-card {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    text-decoration: none;
-    color: inherit;
-    transition:
-      transform 0.2s,
-      box-shadow 0.2s;
-  }
-
-  .framily-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  }
-
-  .framily-card h3 {
-    margin: 0 0 0.5rem 0;
-    color: #333;
-  }
-
-  .framily-card .code {
-    font-family: monospace;
-    color: #666;
-    font-size: 0.9rem;
-  }
-
-  .framily-card .members {
-    color: #888;
-    font-size: 0.9rem;
-  }
-
-  .framily-card .role {
-    display: inline-block;
-    margin-top: 0.5rem;
-    padding: 0.25rem 0.5rem;
-    background-color: #e9ecef;
-    border-radius: 4px;
-    font-size: 0.8rem;
-  }
-
-  .invitation {
-    border: 2px solid #ffc107;
-  }
-
-  .invitation-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 1rem;
-  }
-
-  .accept-btn,
-  .decline-btn {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-
-  .accept-btn {
-    background-color: #28a745;
-    color: white;
-  }
-
-  .decline-btn {
-    background-color: #dc3545;
-    color: white;
-  }
-
-  .no-framilies {
-    text-align: center;
-    color: #666;
-    padding: 2rem;
-    background: white;
-    border-radius: 8px;
-  }
-
-  .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-  }
-
-  .modal {
-    background: white;
-    padding: 2rem;
-    border-radius: 8px;
-    min-width: 300px;
-    max-width: 400px;
-  }
-
-  .modal h3 {
-    margin: 0 0 1rem 0;
-  }
-
-  .modal input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    margin-bottom: 1rem;
-    box-sizing: border-box;
-  }
-
-  .modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-  }
-
-  .modal-actions button {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-
-  .modal-actions button[type="button"] {
-    background-color: #6c757d;
-    color: white;
-  }
-
-  .modal-actions button[type="submit"] {
-    background-color: #007bff;
-    color: white;
-  }
-
-  .modal-actions button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  /* All Photos Section */
-  .all-photos {
-    margin-top: 2rem;
-  }
-
-  .all-photos h2 {
-    margin-bottom: 1rem;
-  }
-
-  .photos-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 1rem;
-  }
-
-  .photo-card {
-    background: white;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-
-  .photo-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  }
-
-  .photo-card img {
-    width: 100%;
-    height: 150px;
-    object-fit: cover;
-  }
-
-  .photo-info {
-    padding: 0.75rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    font-size: 0.8rem;
-    color: #666;
-  }
-
-  .photo-info .uploader {
-    font-weight: 500;
-    flex: 1 0 100%;
-  }
-
-  .photo-info .date {
-    color: #888;
-  }
-
-  .photo-info .framilies {
-    background-color: #e3f2fd;
-    color: #1976d2;
-    padding: 0.15rem 0.4rem;
-    border-radius: 10px;
-    cursor: help;
-  }
-
-  .no-photos {
-    text-align: center;
-    color: #666;
-    padding: 2rem;
-    background: white;
-    border-radius: 8px;
-  }
-
-  .more-photos {
-    text-align: center;
-    color: #666;
-    margin-top: 1rem;
-    font-style: italic;
+    display: none;
   }
 </style>

@@ -25,18 +25,18 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 def get_picture_info(picture: Picture, db: Session) -> dict:
     """Helper to build picture info dict with framily information."""
-    framily_codes = []
-    framily_ids = []
+    framilies = []
     for v in picture.visibility_records:
         framily = db.query(Framily).filter(Framily.id == v.framily_id).first()
         if framily:
-            framily_codes.append(framily.code)
-            framily_ids.append(framily.id)
-    
+            framilies.append({
+                "code": framily.code,
+                "name": framily.name
+            })
+
     return {
         "id": picture.id,
-        "framily_ids": framily_ids,
-        "framily_codes": framily_codes,
+        "framilies": framilies,
         "uploader_username": picture.uploader.username if picture.uploader else "unknown",
         "uploader_display_name": picture.uploader.display_name if picture.uploader else "Unknown",
         "upload_date": picture.upload_date.isoformat(),
@@ -338,8 +338,10 @@ def list_pictures(
         if picture:
             pictures.append({
                 "id": picture.id,
-                "framily_ids": picture.framily_ids,
-                "framily_codes": [f.code for f in picture.framilies],
+                "framilies": [{
+                    "code": f.code,
+                    "name": f.name
+                } for f in picture.framilies],
                 "uploader_username": picture.uploader.username if picture.uploader else "unknown",
                 "uploader_display_name": picture.uploader.display_name if picture.uploader else "Unknown",
                 "upload_date": picture.upload_date.isoformat(),
@@ -383,8 +385,10 @@ def list_all_pictures(
         if picture and picture.id not in seen_pictures:
             seen_pictures[picture.id] = {
                 "id": picture.id,
-                "framily_ids": picture.framily_ids,
-                "framily_codes": [f.code for f in picture.framilies],
+                "framilies": [{
+                    "code": f.code,
+                    "name": f.name
+                } for f in picture.framilies],
                 "uploader_username": picture.uploader.username if picture.uploader else "unknown",
                 "uploader_display_name": picture.uploader.display_name if picture.uploader else "Unknown",
                 "upload_date": picture.upload_date.isoformat(),

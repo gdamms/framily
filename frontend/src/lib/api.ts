@@ -1,3 +1,5 @@
+import type { Pi } from "@lucide/svelte";
+
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
@@ -115,12 +117,16 @@ export interface FramilyInfo {
 
 export interface PictureInfo {
   id: string;
-  framily_ids: number[];
-  framily_codes: string[];
+  framilies: PictureFramilyInfo[];
   uploader_username: string;
   uploader_display_name: string;
   upload_date: string;
   metadata: Record<string, unknown>;
+}
+
+export interface PictureFramilyInfo {
+  code: string;
+  name: string;
 }
 
 export const api = {
