@@ -302,10 +302,8 @@ export const api = {
         },
       ),
 
-    delete: (picture_id: string, token: string, framily_code?: string) => {
-      const url = framily_code
-        ? `/pictures/${picture_id}?framily_code=${framily_code}`
-        : `/pictures/${picture_id}`;
+    delete: (picture_id: string, token: string) => {
+      const url = `/pictures/${picture_id}`;
       return request<{ message: string }>(url, {
         method: "DELETE",
         token,

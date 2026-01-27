@@ -405,19 +405,7 @@ def delete_picture(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Delete a picture or remove visibility.
-    
-    - Uploader: Can fully delete the picture and all visibility records, or remove visibility from specific framily.
-    - Admin: Can only remove visibility from their framily (not delete the picture entirely).
-    
-    If framily_code is provided:
-    - Uploader: Removes visibility from that framily only
-    - Admin: Removes visibility from that framily only (must be admin of that framily)
-    
-    If framily_code is not provided:
-    - Uploader only: Deletes the picture entirely (file + all visibility records)
-    """
+    """Delete a picture and remove its visibility."""
     picture = db.query(Picture).filter(Picture.id == picture_id).first()
     if not picture:
         raise HTTPException(
@@ -426,43 +414,6 @@ def delete_picture(
         )
 
     is_uploader = picture.uploaded_by == current_user.id
-
-    # If framily_code is provided, only remove visibility from that framily
-    if framily_code:
-        framily = db.query(Framily).filter(Framily.code == framily_code).first()
-        if not framily:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Framily not found"
-            )
-
-        # Check permissions
-        membership = get_membership(db, current_user.id, framily.id)
-        if not is_member(membership):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not a member of this framily"
-            )
-
-        # Must be uploader or admin of this framily
-        if not is_uploader and not is_admin(membership):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Can only remove visibility as uploader or admin"
-            )
-
-        # Remove visibility record
-        visibility = db.query(PictureVisibility).filter(
-            PictureVisibility.picture_id == picture.id,
-            PictureVisibility.framily_id == framily.id
-        ).first()
-
-        if visibility:
-            db.delete(visibility)
-            db.commit()
-            return {"message": f"Picture visibility removed from framily: {framily_code}"}
-        else:
-            return {"message": "Picture was not visible to this framily"}
 
     # No framily_code provided - full deletion (uploader only)
     if not is_uploader:

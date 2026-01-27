@@ -98,30 +98,6 @@
     }
   }
 
-  async function deletePicture(pictureId: string, isUploaderOfPicture: boolean) {
-    const isUploaderAction = isUploaderOfPicture;
-    const confirmMsg = isUploaderAction
-      ? "Are you sure you want to delete this picture from all framilies?"
-      : "Are you sure you want to remove this picture from this framily?";
-    
-    if (!confirm(confirmMsg)) return;
-
-    try {
-      const token = authStore.getToken();
-      if (!token) return;
-
-      // Uploader can fully delete, admin can only remove from current framily
-      if (isUploaderAction) {
-        await api.pictures.delete(pictureId, token);
-      } else {
-        await api.pictures.delete(pictureId, token, framilyCode);
-      }
-      await loadFramilyData();
-    } catch (e: any) {
-      alert(e.message || "Failed to delete picture");
-    }
-  }
-
   async function inviteUser() {
     inviteLoading = true;
     inviteError = "";
@@ -231,16 +207,12 @@
     }
   }
 
-  function canDeletePicture(picture: PictureInfo): boolean {
+  function canRemovePicture(picture: PictureInfo): boolean {
     return isAdmin || picture.uploader_username === $authStore.user?.username;
   }
 
-  function isUploaderOfPicture(picture: PictureInfo): boolean {
-    return picture.uploader_username === $authStore.user?.username;
-  }
-
-  function getDeleteButtonLabel(picture: PictureInfo): string {
-    return isUploaderOfPicture(picture) ? "Delete" : "Remove";
+  function removePicture(pictureId: string) {
+    return api.pictures.removeVisibility(pictureId, [framilyCode], authStore.getToken()!);
   }
 
   function fetchImageOnError(event: Event): void {
@@ -343,12 +315,12 @@
                       📁 {picture.framily_codes.length}
                     </span>
                   {/if}
-                  {#if canDeletePicture(picture)}
+                  {#if canRemovePicture(picture)}
                     <button
                       class="delete-btn"
-                      onclick={() => deletePicture(picture.id, isUploaderOfPicture(picture))}
+                      onclick={() => removePicture(picture.id)}
                     >
-                      {getDeleteButtonLabel(picture)}
+                      Remove
                     </button>
                   {/if}
                 </div>
