@@ -3,20 +3,22 @@
 
   interface Props {
     children: Snippet;
-    onclick?: (() => void) | null;
-    type?: "button" | "submit" | "reset" | null | undefined;
+    onclick?: (() => void);
+    type?: "button" | "submit" | "reset";
     color?: string;
+    class?: string;
   }
 
   let {
     children,
-    onclick = null,
-    type = "button",
+    onclick,
+    type,
     color = "#84c8f7",
+    class: _class,
   }: Props = $props();
 </script>
 
-<button class="button" {onclick} style="--color: {color}" {type}>
+<button class={"button" + (_class || "")} {onclick} style="--color: {color}" {type}>
   <div class="button-content">
     {@render children()}
   </div>
