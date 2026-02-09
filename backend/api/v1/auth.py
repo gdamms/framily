@@ -53,6 +53,14 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
             detail="Username already exists"
         )
 
+    # Check if email already exists
+    existing_email = db.query(User).filter(User.email == user.email).first()
+    if existing_email:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already exists"
+        )
+
     # Create new user
     hashed_password = hash_password(user.password)
     db_user = User(
@@ -72,9 +80,11 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(user: UserLogin, db: Session = Depends(get_db)):
-    """Login a user by username."""
-    # Find user by username
-    db_user = db.query(User).filter(User.username == user.username).first()
+    """Login a user by username or email."""
+    # Try to find user by username first, then by email
+    db_user = db.query(User).filter(User.username == user.username_or_email).first()
+    if not db_user:
+        db_user = db.query(User).filter(User.email == user.username_or_email).first()
 
     if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(

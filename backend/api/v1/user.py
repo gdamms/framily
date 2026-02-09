@@ -15,11 +15,6 @@ router = APIRouter(
     tags=["user"],
 )
 
-router = APIRouter(
-    prefix="/user",
-    tags=["user"],
-)
-
 
 ALLOWED_FORMATS = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB for profile pictures
@@ -92,6 +87,16 @@ def update_profile(
     if profile.display_name is not None:
         current_user.display_name = profile.display_name
     if profile.email is not None:
+        # Check email uniqueness
+        existing = db.query(User).filter(
+            User.email == profile.email,
+            User.id != current_user.id
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already in use"
+            )
         current_user.email = profile.email
 
     db.commit()

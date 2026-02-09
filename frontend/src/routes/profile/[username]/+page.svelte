@@ -3,10 +3,18 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { authStore } from "$lib/stores/auth";
-  import { api, type UserInfo } from "$lib/api";
+  import {
+    api,
+    type UserInfo,
+    type FramilyListItem,
+    type PictureInfo,
+  } from "$lib/api";
   import ProfilePicture from "$lib/components/ProfilePicture.svelte";
+  import Galery from "$lib/components/Galery.svelte";
 
   let user: UserInfo | null = null;
+  let framilies: FramilyListItem[] = [];
+  let pictures: PictureInfo[] = [];
   let loading = true;
   let error = "";
   let isOwnProfile = false;
@@ -43,15 +51,25 @@
       const token = authStore.getToken();
       if (!token) return;
 
-      const response = await api.user.getInfo(username, token);
-      user = response.user;
-      isOwnProfile = user.id === $authStore.user?.id;
+      // Step 1: Load user info
+      const userResponse = await api.user.getInfo(username, token);
+      user = userResponse.user;
+      isOwnProfile = user.username === $authStore.user?.username;
 
       // Initialize edit form
       editForm = {
         display_name: user.display_name || "",
         email: user.email || "",
       };
+
+      // Step 2: Load framilies and pictures in parallel
+      const [framilyResponse, picturesResponse] = await Promise.all([
+        api.framily.list(token, username),
+        api.pictures.list(token, { username }),
+      ]);
+
+      framilies = framilyResponse.framilies.filter((f) => f.role >= 1);
+      pictures = picturesResponse.pictures;
     } catch (e: any) {
       error = e.message || "Failed to load profile";
     } finally {
@@ -72,7 +90,7 @@
           display_name: editForm.display_name,
           email: editForm.email,
         },
-        token
+        token,
       );
       user = response.user;
       editing = false;
@@ -146,6 +164,19 @@
       email: user?.email || "",
     };
   }
+
+  function getRoleName(role: number): string {
+    switch (role) {
+      case 0:
+        return "Invited";
+      case 1:
+        return "Member";
+      case 2:
+        return "Admin";
+      default:
+        return "Unknown";
+    }
+  }
 </script>
 
 <div class="profile-page">
@@ -158,7 +189,7 @@
     <div class="profile-header">
       <div class="profile-avatar">
         <div class="avatar-large">
-          <ProfilePicture user={user} />
+          <ProfilePicture {user} />
         </div>
 
         {#if isOwnProfile}
@@ -260,6 +291,43 @@
         {/if}
       </div>
     </div>
+
+    <!-- Framilies Section -->
+    {#if framilies.length > 0}
+      <section class="profile-section">
+        <h2>{isOwnProfile ? "My" : "Shared"} Framilies</h2>
+        <div class="framily-grid">
+          {#each framilies as framily}
+            <a href="/framily/{framily.code}" class="framily-card">
+              <h3>{framily.name}</h3>
+              <p class="code">Code: {framily.code}</p>
+              <p class="members">
+                {framily.member_count} member{framily.member_count !== 1
+                  ? "s"
+                  : ""}
+              </p>
+              <p class="role">{getRoleName(framily.role)}</p>
+            </a>
+          {/each}
+        </div>
+      </section>
+    {/if}
+
+    <!-- Pictures Section -->
+    {#if pictures.length > 0}
+      <section class="profile-section">
+        <h2>
+          {isOwnProfile ? "My" : `${user.display_name}'s`} Photos
+          <span class="photo-count">({pictures.length})</span>
+        </h2>
+        <Galery {pictures} />
+      </section>
+    {:else}
+      <section class="profile-section">
+        <h2>Photos</h2>
+        <p class="no-content">No photos to display.</p>
+      </section>
+    {/if}
 
     <div class="back-link">
       <a href="/">← Back to Dashboard</a>
@@ -379,6 +447,77 @@
     display: flex;
     gap: 0.5rem;
     margin-top: 1rem;
+  }
+
+  /* Profile sections */
+  .profile-section {
+    margin-top: 2rem;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .profile-section h2 {
+    margin: 0 0 1rem 0;
+    font-size: 1.3rem;
+  }
+
+  .photo-count {
+    color: #888;
+    font-weight: normal;
+    font-size: 1rem;
+  }
+
+  .no-content {
+    color: #888;
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .framily-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+
+  .framily-card {
+    display: block;
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid #e0e0e0;
+    transition: box-shadow 0.2s;
+  }
+
+  .framily-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .framily-card h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+  }
+
+  .framily-card .code {
+    color: #888;
+    font-size: 0.85rem;
+    margin: 0 0 0.25rem 0;
+  }
+
+  .framily-card .members {
+    color: #666;
+    font-size: 0.85rem;
+    margin: 0 0 0.25rem 0;
+  }
+
+  .framily-card .role {
+    color: #007bff;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin: 0;
   }
 
   .btn-primary {

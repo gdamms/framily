@@ -17,7 +17,7 @@
 
     // Validation
     if (!username || !password) {
-      errorMessage = "Username and password are required";
+      errorMessage = "Username/email and password are required";
       return;
     }
 
@@ -36,7 +36,7 @@
 </script>
 
 <Form title="Login" {errorMessage} submitHandler={handleSubmit}>
-  <UsernameField bind:value={username} />
+  <UsernameField bind:value={username} placeholder="Username or email" />
   <PasswordField bind:value={password} />
   <LoginButton />
   <p class="register-link">Don't have an account? <a href="/register">Register</a></p>

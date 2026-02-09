@@ -56,7 +56,7 @@
 
       const [framilyResponse, picturesResponse] = await Promise.all([
         api.framily.info(framilyCode, token),
-        api.pictures.list(framilyCode, token),
+        api.pictures.list(token, { framily_code: framilyCode }),
       ]);
 
       framily = framilyResponse.framily;
@@ -310,9 +310,9 @@
                   <span class="date"
                     >{new Date(picture.upload_date).toLocaleDateString()}</span
                   >
-                  {#if picture.framily_codes && picture.framily_codes.length > 1}
-                    <span class="shared-badge" title="Shared with: {picture.framily_codes.join(', ')}">
-                      📁 {picture.framily_codes.length}
+                  {#if picture.framilies && picture.framilies.length > 1}
+                    <span class="shared-badge" title="Shared with: {picture.framilies.map(f => f.name).join(', ')}">
+                      📁 {picture.framilies.length}
                     </span>
                   {/if}
                   {#if canRemovePicture(picture)}

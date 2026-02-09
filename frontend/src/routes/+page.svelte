@@ -3,7 +3,6 @@
   import { goto } from "$app/navigation";
   import { authStore } from "$lib/stores/auth";
   import { api, type FramilyListItem, type PictureInfo } from "$lib/api";
-  import Tag from "$lib/components/Tag.svelte";
   import Button from "$lib/components/Button.svelte";
   import Galery from "$lib/components/Galery.svelte";
 
@@ -38,7 +37,7 @@
         api.framily.list(token),
         api.pictures.listAll(token),
       ]);
-      
+
       framilies = framilyResponse.framilies.filter((f) => f.role >= 1);
       pendingInvitations = framilyResponse.framilies.filter((f) => f.role === 0);
       allPictures = picturesResponse.pictures;
@@ -90,15 +89,6 @@
       default:
         return "Unknown";
     }
-  }
-
-  function getFramilyNames(picture: PictureInfo): string {
-    return picture.framily_codes
-      .map((code) => {
-        const f = framilies.find((f) => f.code === code);
-        return f?.name || code;
-      })
-      .join(", ");
   }
 </script>
 
@@ -226,22 +216,7 @@
       {#if allPictures.length === 0}
         <p class="no-photos">No photos yet. Upload some in your framilies!</p>
       {:else}
-        <div class="photos-grid">
-          {#each allPictures.slice(0, 12) as picture}
-            <div class="photo-card">
-              <img
-                src={api.pictures.getImageUrl(picture)}
-                alt="Uploaded by {picture.uploader_display_name}"
-                onerror={fetchImageOnError}
-              />
-              <div class="photo-info">
-                <span class="uploader">{picture.uploader_display_name}</span>
-                <span class="date">{new Date(picture.upload_date).toLocaleDateString()}</span>
-                <Tag href="/profile/{picture.uploader_username}">{picture.uploader_display_name}</Tag>
-              </div>
-            </div>
-          {/each}
-        </div>
+        <Galery pictures={allPictures.slice(0, 12)} />
         {#if allPictures.length > 12}
           <p class="more-photos">And {allPictures.length - 12} more photos in your framilies...</p>
         {/if}

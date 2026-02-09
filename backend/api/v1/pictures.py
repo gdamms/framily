@@ -11,7 +11,7 @@ from core.config import settings
 from core.minio import minio_client
 from api.v1.auth import get_current_user
 from api.v1.framily import get_membership, is_member, is_admin
-from models import User, Framily, Picture, PictureVisibility
+from models import User, Framily, Picture, PictureVisibility, Membership
 from schemas.picture import AddVisibilityRequest, RemoveVisibilityRequest
 
 router = APIRouter(
@@ -307,51 +307,89 @@ def fetch_picture(
 
 @router.get("/list")
 def list_pictures(
-    framily_code: str,
+    framily_code: Optional[str] = None,
+    username: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """List all pictures visible to a framily."""
-    framily = db.query(Framily).filter(Framily.code == framily_code).first()
-    if not framily:
+    """List pictures. Accepts either framily_code or username (not both).
+    - framily_code: list all pictures visible to that framily (user must be member).
+    - username: list all pictures uploaded by that user that are visible in a
+      framily shared with the current user. If the user is the current user,
+      return all their pictures.
+    """
+    if framily_code and username:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Framily not found"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide either framily_code or username, not both"
         )
 
-    # Check member permission
-    membership = get_membership(db, current_user.id, framily.id)
-    if not is_member(membership):
+    if not framily_code and not username:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Must be a member to view pictures"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide either framily_code or username"
         )
 
-    # Get pictures visible to this framily through the junction table
-    visibilities = db.query(PictureVisibility).filter(
-        PictureVisibility.framily_id == framily.id
-    ).all()
+    if framily_code:
+        # List pictures for a framily
+        framily = db.query(Framily).filter(Framily.code == framily_code).first()
+        if not framily:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Framily not found"
+            )
 
-    pictures = []
-    for v in visibilities:
-        picture = v.picture
-        if picture:
-            pictures.append({
-                "id": picture.id,
-                "framilies": [{
-                    "code": f.code,
-                    "name": f.name
-                } for f in picture.framilies],
-                "uploader_username": picture.uploader.username if picture.uploader else "unknown",
-                "uploader_display_name": picture.uploader.display_name if picture.uploader else "Unknown",
-                "upload_date": picture.upload_date.isoformat(),
-                "metadata": picture.metadata_
-            })
+        membership = get_membership(db, current_user.id, framily.id)
+        if not is_member(membership):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Must be a member to view pictures"
+            )
 
-    # Sort by upload date descending
-    pictures.sort(key=lambda x: x["upload_date"], reverse=True)
+        visibilities = db.query(PictureVisibility).filter(
+            PictureVisibility.framily_id == framily.id
+        ).all()
 
-    return {"pictures": pictures}
+        pictures = []
+        for v in visibilities:
+            picture = v.picture
+            if picture:
+                pictures.append(get_picture_info(picture, db))
+
+        pictures.sort(key=lambda x: x["upload_date"], reverse=True)
+        return {"pictures": pictures}
+
+    else:
+        # List pictures for a user
+        target_user = db.query(User).filter(User.username == username).first()
+        if not target_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        # Get current user's framily IDs
+        current_user_framily_ids = {
+            m.framily_id for m in db.query(Membership).filter(
+                Membership.user_id == current_user.id,
+                Membership.role >= 1
+            ).all()
+        }
+
+        # Get all pictures uploaded by the target user
+        user_pictures = db.query(Picture).filter(
+            Picture.uploaded_by == target_user.id
+        ).all()
+
+        pictures = []
+        for picture in user_pictures:
+            picture_framily_ids = set(picture.framily_ids)
+            # Show picture if current user shares a framily with the picture
+            if current_user.id == target_user.id or picture_framily_ids.intersection(current_user_framily_ids):
+                pictures.append(get_picture_info(picture, db))
+
+        pictures.sort(key=lambda x: x["upload_date"], reverse=True)
+        return {"pictures": pictures}
 
 
 @router.get("/list-all")
@@ -360,8 +398,6 @@ def list_all_pictures(
     db: Session = Depends(get_db)
 ):
     """List all pictures visible to the current user across all their framilies."""
-    from models import Membership
-
     # Get all framilies user is a member of (role >= 1)
     memberships = db.query(Membership).filter(
         Membership.user_id == current_user.id,
@@ -383,17 +419,7 @@ def list_all_pictures(
     for v in visibilities:
         picture = v.picture
         if picture and picture.id not in seen_pictures:
-            seen_pictures[picture.id] = {
-                "id": picture.id,
-                "framilies": [{
-                    "code": f.code,
-                    "name": f.name
-                } for f in picture.framilies],
-                "uploader_username": picture.uploader.username if picture.uploader else "unknown",
-                "uploader_display_name": picture.uploader.display_name if picture.uploader else "Unknown",
-                "upload_date": picture.upload_date.isoformat(),
-                "metadata": picture.metadata_
-            }
+            seen_pictures[picture.id] = get_picture_info(picture, db)
 
     pictures = list(seen_pictures.values())
     # Sort by upload date descending
@@ -462,8 +488,6 @@ def get_picture_image(
         )
 
     # Check if user has access through any framily
-    from models import Membership
-
     # Get user's framily IDs (member role >= 1)
     memberships = db.query(Membership).filter(
         Membership.user_id == current_user.id,

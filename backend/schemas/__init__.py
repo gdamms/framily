@@ -7,6 +7,7 @@ from .framily import (
 )
 from .picture import (
     PictureInfo, PictureMetadata, PictureUploadResponse,
-    PictureFetchResponse, PictureListResponse
+    PictureFetchResponse, PictureListResponse,
+    AddVisibilityRequest, RemoveVisibilityRequest
 )
 from .user import ProfileUpdate

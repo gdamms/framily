@@ -453,7 +453,6 @@ def get_framily_info(
         members = []
         for m in framily.memberships:
             members.append(MemberInfo(
-                user_id=m.user.id,
                 username=m.user.username,
                 display_name=m.user.display_name,
                 role=m.role,
@@ -499,7 +498,6 @@ def get_framily_info(
             )
 
         return FramilyInfoResponse(framily=FramilyInfo(
-            id=framily.id,
             code=framily.code,
             name=framily.name,
             created_at=framily.created_at,
@@ -515,7 +513,6 @@ def get_framily_info(
         ).count()
 
         return FramilyInfoResponse(framily=FramilyInfo(
-            id=framily.id,
             code=framily.code,
             name=framily.name,
             created_at=framily.created_at,
@@ -553,29 +550,76 @@ def delete_framily(
 
 @router.get("/list")
 def list_framilies(
+    username: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """List all framilies the user is part of."""
-    memberships = db.query(Membership).filter(
-        Membership.user_id == current_user.id
-    ).all()
+    """List framilies. If username is provided, list framilies that both the
+    current user and the target user are members of. Otherwise list all
+    framilies the current user is part of."""
+    if username is None:
+        # List current user's framilies
+        memberships = db.query(Membership).filter(
+            Membership.user_id == current_user.id
+        ).all()
 
-    framilies = []
-    for m in memberships:
-        framily = m.framily
-        member_count = db.query(Membership).filter(
-            Membership.framily_id == framily.id,
-            Membership.role >= 1
-        ).count()
+        framilies = []
+        for m in memberships:
+            framily = m.framily
+            member_count = db.query(Membership).filter(
+                Membership.framily_id == framily.id,
+                Membership.role >= 1
+            ).count()
 
-        framilies.append({
-            "id": framily.id,
-            "code": framily.code,
-            "name": framily.name,
-            "role": m.role,
-            "member_count": member_count,
-            "created_at": framily.created_at.isoformat()
-        })
+            framilies.append({
+                "code": framily.code,
+                "name": framily.name,
+                "role": m.role,
+                "member_count": member_count,
+                "created_at": framily.created_at.isoformat()
+            })
 
-    return {"framilies": framilies}
+        return {"framilies": framilies}
+    else:
+        # List framilies shared between current user and target user
+        target_user = db.query(User).filter(User.username == username).first()
+        if not target_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        # Get current user's framily IDs (role >= 1 = active member)
+        current_user_framily_ids = {
+            m.framily_id for m in db.query(Membership).filter(
+                Membership.user_id == current_user.id,
+                Membership.role >= 1
+            ).all()
+        }
+
+        # Get target user's memberships and filter to shared framilies
+        target_memberships = db.query(Membership).filter(
+            Membership.user_id == target_user.id
+        ).all()
+
+        framilies = []
+        for m in target_memberships:
+            # If target is current user, show all. Otherwise only show shared framilies.
+            if target_user.id != current_user.id and m.framily_id not in current_user_framily_ids:
+                continue
+
+            framily = m.framily
+            member_count = db.query(Membership).filter(
+                Membership.framily_id == framily.id,
+                Membership.role >= 1
+            ).count()
+
+            framilies.append({
+                "code": framily.code,
+                "name": framily.name,
+                "role": m.role,
+                "member_count": member_count,
+                "created_at": framily.created_at.isoformat()
+            })
+
+        return {"framilies": framilies}
