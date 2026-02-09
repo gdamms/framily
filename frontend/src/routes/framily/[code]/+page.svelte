@@ -3,7 +3,7 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { authStore } from "$lib/stores/auth";
-  import { api, type FramilyInfo, type PictureInfo } from "$lib/api";
+  import { api, type FramilyInfo, type PictureInfo } from "$lib/api/index";
   import ProfilePicture from "$lib/components/ProfilePicture.svelte";
 
   let framily: FramilyInfo | null = null;

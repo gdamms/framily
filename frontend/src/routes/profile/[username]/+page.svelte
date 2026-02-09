@@ -8,7 +8,7 @@
     type UserInfo,
     type FramilyListItem,
     type PictureInfo,
-  } from "$lib/api";
+  } from "$lib/api/index";
   import ProfilePicture from "$lib/components/ProfilePicture.svelte";
   import Galery from "$lib/components/Galery.svelte";
 

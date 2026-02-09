@@ -1,5 +1,6 @@
 import requests
 import os
+import argparse
 
 
 API_BASE_URL="http://localhost:8000/api/v1"
@@ -11,15 +12,29 @@ def create_framily(name: str | None = None):
     response = requests.post(API_BASE_URL + CREATE_ENDPOINT, json=payload)
 
     if response.status_code == 201:
-        with open("framily_code.txt", "w") as f:
-            f.write(response.json().get("framily_code"))
-        with open("frame_token.txt", "w") as f:
-            f.write(response.json().get("frame_token"))
+        framily_code = response.json().get("framily_code")
+        frame_token = response.json().get("frame_token")
+        with open(f"{framily_code}.token", "w") as f:
+            f.write(frame_token)
         print("Framily created successfully.")
     else:
         print(f"Failed to create framily: {response.text}")
 
-if os.path.exists("framily_code.txt") and os.path.exists("frame_token.txt"):
-    print("Framily already exists. Exiting.")
-else:
-    create_framily("My Framily")
+
+def main(args):
+    if args.command == "create":
+        create_framily(args.name)
+    else:
+        print("No command specified. Use --help for usage information.")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Framily Emulator")
+    subparsers = parser.add_subparsers(dest="command")
+
+    create_parser = subparsers.add_parser("create", help="Create a new framily")
+    create_parser.add_argument("--name", type=str, help="Optional name for the framily")
+
+    args = parser.parse_args()
+
+    main(args)

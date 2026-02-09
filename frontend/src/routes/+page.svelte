@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { authStore } from "$lib/stores/auth";
-  import { api, type FramilyListItem, type PictureInfo } from "$lib/api";
+  import { api, type FramilyListItem, type PictureInfo } from "$lib/api/index";
   import Button from "$lib/components/Button.svelte";
   import Galery from "$lib/components/Galery.svelte";
 
@@ -91,10 +91,6 @@
     }
   }
 </script>
-
-<div class="container">
-  <Galery pictures={allPictures} />
-</div>
 
 <div class="dashboard">
   <h1>Welcome, {$authStore.user?.display_name}!</h1>
@@ -226,7 +222,4 @@
 </div>
 
 <style>
-  .dashboard {
-    display: none;
-  }
 </style>

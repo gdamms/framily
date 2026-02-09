@@ -1,2 +1,5 @@
 # Env file
 .env
+
+# Framily token files
+*.token

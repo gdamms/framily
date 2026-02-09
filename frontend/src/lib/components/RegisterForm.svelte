@@ -6,7 +6,7 @@
   import PasswordField from "$lib/components/PasswordField.svelte";
   import ConfirmPasswordField from "$lib/components/ConfirmPasswordField.svelte";
   import RegisterButton from "$lib/components/RegisterButton.svelte";
-  import { api } from "$lib/api";
+  import { api } from "$lib/api/index";
   import { authStore } from "$lib/stores/auth";
 
   let username: string = "";

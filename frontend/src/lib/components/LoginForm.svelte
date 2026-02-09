@@ -4,7 +4,7 @@
   import UsernameField from "$lib/components/UsernameField.svelte";
   import PasswordField from "$lib/components/PasswordField.svelte";
   import LoginButton from "$lib/components/LoginButton.svelte";
-  import { api } from "$lib/api";
+  import { api } from "$lib/api/index";
   import { authStore } from "$lib/stores/auth";
 
   let username: string = "";

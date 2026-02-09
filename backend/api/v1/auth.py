@@ -84,9 +84,18 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     # Try to find user by username first, then by email
     db_user = db.query(User).filter(User.username == user.username_or_email).first()
     if not db_user:
+        # Try email lookup if username lookup failed
         db_user = db.query(User).filter(User.email == user.username_or_email).first()
 
-    if not db_user or not verify_password(user.password, db_user.hashed_password):
+    if not db_user:
+        # User not found
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
+        )
+
+    if not verify_password(user.password, db_user.hashed_password):
+        # Password does not match
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials"
