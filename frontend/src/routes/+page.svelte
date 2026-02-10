@@ -6,6 +6,7 @@
   import Button from "$lib/components/Button.svelte";
   import Galery from "$lib/components/Galery.svelte";
   import UploadButton from "$lib/components/UploadButton.svelte";
+  import BottomBar from "$lib/components/BottomBar.svelte";
 
   let framilies: FramilyListItem[] = [];
   let pendingInvitations: FramilyListItem[] = [];
@@ -96,7 +97,7 @@
 <div class="dashboard">
   <h1>Welcome, {$authStore.user?.display_name}!</h1>
 
-  <UploadButton onclick={() => console.log("Upload clicked")} />
+  <BottomBar />
 
   {#if loading}
     <p class="loading">Loading...</p>

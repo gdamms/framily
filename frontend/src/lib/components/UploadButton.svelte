@@ -4,11 +4,13 @@
 
   interface Props {
     onclick?: (() => void);
+    class?: string;
   }
 
   let {
     onclick,
+    class: _class,
   }: Props = $props();
 </script>
 
-<IconButton icon={ImageUp} {onclick}/>
+<IconButton class={_class} icon={ImageUp} {onclick}/>

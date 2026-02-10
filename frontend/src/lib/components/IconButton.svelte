@@ -7,6 +7,7 @@
     onclick?: (() => void);
     type?: "button" | "submit" | "reset";
     color?: string;
+    class?: string;
   }
 
   let {
@@ -14,17 +15,18 @@
     onclick,
     type,
     color,
+    class: _class,
   }: Props = $props();
 </script>
 
-<Button class="iconButton" onclick={onclick} type={type} color={color}>
+<Button class={"iconButton " + (_class ?? "")} onclick={onclick} type={type} color={color}>
   {@const Icon = icon}
   <Icon />
 </Button>
 
 <style>
   :global(.iconButton) {
-    width: 10rem;
+    width: 3rem;
     aspect-ratio: 1 / 1;
   }
 </style>

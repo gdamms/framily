@@ -18,7 +18,7 @@
   }: Props = $props();
 </script>
 
-<button class={"button" + (_class || "")} {onclick} style="--color: {color}" {type}>
+<button class={"button " + (_class || "")} {onclick} style="--color: {color}" {type}>
   <div class="button-content">
     {@render children()}
   </div>
@@ -34,12 +34,15 @@
   }
 
   .button-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     box-sizing: border-box;
     width: calc(100% + 2px);
     height: calc(100% + 2px);
     border-radius: 1000px;
     background-color: var(--color);
-    padding: 0.75rem 1.5rem;
+    padding: 0.75rem;
     transform: translate(-1px, 0px);
     transition: transform 0.1s ease;
   }
