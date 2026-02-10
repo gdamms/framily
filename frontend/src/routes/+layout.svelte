@@ -43,6 +43,9 @@
     padding: 0;
     font-family: Arial, sans-serif;
     background-color: #f5f5f5;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
 
   nav {
@@ -55,8 +58,6 @@
   }
 
   main {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem 1rem;
+    flex: 1;
   }
 </style>

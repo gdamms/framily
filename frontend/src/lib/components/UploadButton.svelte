@@ -5,11 +5,13 @@
   interface Props {
     onclick?: (() => void);
     class?: string;
+    framilies?: string[];
   }
 
   let {
     onclick,
     class: _class,
+    framilies = [],
   }: Props = $props();
 </script>
 

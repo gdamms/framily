@@ -2,8 +2,7 @@
   import type { PictureInfo } from "$lib/api";
   import { authStore } from "$lib/stores/auth";
   import { api } from "$lib/api";
-  import FramilyTag from "./FramilyTag.svelte";
-  import UserTag from "./UserTag.svelte";
+  import { goto } from "$app/navigation";
 
   interface Props {
     picture: PictureInfo;
@@ -26,42 +25,43 @@
         img.src = URL.createObjectURL(blob);
       });
   }
+
+  function gotoPictureDetail() {
+    goto(`/picture/${picture.id}`);
+  }
 </script>
 
-<div class="picture-card">
+<button class="picture-card-button" onclick={gotoPictureDetail}>
   <img
-    class="picture-image"
+    class="picture-card"
     src={api.pictures.getImageUrl(picture)}
     alt="Uploaded by {picture.uploader_display_name}"
     onerror={fetchImageOnError}
   />
-  <div class="tags">
-    {#each picture.framilies as framily}
-      <FramilyTag framilyCode={framily.code} framilyName={framily.name} />
-    {/each}
-    <UserTag username={picture.uploader_username} displayName={picture.uploader_display_name} />
-  </div>
-</div>
+</button>
 
 <style>
-  .picture-card {
-    position: relative;
-    width: 100%;
-    height: 100%;
+  .picture-card-button {
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
   }
 
-  .picture-image {
+  .picture-card {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transform-origin: center;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
   }
 
-  .tags {
-    position: absolute;
-    display: flex;
-    direction: row-reverse;
-    flex-wrap: wrap-reverse;
-    bottom: 0;
-    right: 0;
+  .picture-card:hover {
+    transform: scale(1.2);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   }
 </style>

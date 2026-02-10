@@ -5,8 +5,9 @@
   import { api, type FramilyListItem, type PictureInfo } from "$lib/api/index";
   import Button from "$lib/components/Button.svelte";
   import Galery from "$lib/components/Galery.svelte";
-  import UploadButton from "$lib/components/UploadButton.svelte";
   import BottomBar from "$lib/components/BottomBar.svelte";
+  import UploadButton from "$lib/components/UploadButton.svelte";
+  import UploadPopup from "$lib/components/UploadPopup.svelte";
 
   let framilies: FramilyListItem[] = [];
   let pendingInvitations: FramilyListItem[] = [];
@@ -92,9 +93,23 @@
         return "Unknown";
     }
   }
+
+  let uploadPopupOpen = false;
+
+  function uploadPopupToggle() {
+    uploadPopupOpen = !uploadPopupOpen;
+  }
 </script>
 
 <div class="dashboard">
+  <Galery pictures={allPictures} />
+  <UploadButton class="upload-button" onclick={uploadPopupToggle} />
+  {#if uploadPopupOpen}
+    <UploadPopup onClose={uploadPopupToggle} />
+  {/if}
+</div>
+
+<div class="dashboard2">
   <h1>Welcome, {$authStore.user?.display_name}!</h1>
 
   <BottomBar />
@@ -226,4 +241,22 @@
 </div>
 
 <style>
+  .dashboard2 {
+    display: none;
+  }
+
+  .dashboard {
+    position: relative;
+    max-width: 800px;
+    height: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  :global(.upload-button) {
+    position: absolute;
+    bottom: 1.5rem;
+    right: 1.5rem;
+  }
 </style>
