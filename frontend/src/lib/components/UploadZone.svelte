@@ -1,35 +1,49 @@
 <script lang="ts">
-  let text = "Drag and drop your file here or click to select";
+  interface Props {
+    fileInput?: HTMLInputElement;
+  }
 
-  function handleFileUpload(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      const file = input.files[0];
+  let { fileInput = $bindable() }: Props = $props();
+
+  const INITIAL_TEXT = "Drag and drop your file here or click to select";
+
+  let text = $state(INITIAL_TEXT);
+
+  async function handleSelect() {
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+      const file = fileInput.files[0];
       text = `${file.name}`;
+    } else {
+      text = INITIAL_TEXT;
     }
   }
 </script>
 
-<form method="post" action="">
-  <input class="file" type="file" id="file" on:change={handleFileUpload} />
-  <label for="file">
-    <div class="box">
-      <div class="inner">
-         <div class="text">
-            {text}
-         </div>
-         <button class="button" type="submit">Upload</button>
+<input
+  bind:this={fileInput}
+  class="file"
+  type="file"
+  id="file"
+  onchange={handleSelect}
+/>
+<label for="file">
+  <div class="box">
+    <div class="inner">
+      <div class="text">
+        {text}
       </div>
     </div>
-  </label>
-</form>
+  </div>
+</label>
 
 <style>
   .box {
     background-color: #c8dadf;
     padding: 10px;
     border-radius: 10px;
-    transition: padding 0.1s ease, background-color 0.5s ease;
+    transition:
+      padding 0.1s ease,
+      background-color 0.5s ease;
   }
 
   .inner {
@@ -62,15 +76,5 @@
     font-size: 16px;
     color: #333;
     margin-bottom: 10px;
-  }
-
-  .button {
-    margin-top: 10px;
-    padding: 10px 20px;
-    background-color: #4593e7;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
   }
 </style>

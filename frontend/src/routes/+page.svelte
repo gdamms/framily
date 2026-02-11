@@ -105,7 +105,7 @@
   <Galery pictures={allPictures} />
   <UploadButton class="upload-button" onclick={uploadPopupToggle} />
   {#if uploadPopupOpen}
-    <UploadPopup onClose={uploadPopupToggle} />
+    <UploadPopup onClose={uploadPopupToggle} framilies={framilies} framilyCodes={[]} />
   {/if}
 </div>
 
