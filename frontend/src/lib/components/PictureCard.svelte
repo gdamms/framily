@@ -52,7 +52,6 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transform-origin: center;
     transition:
@@ -61,7 +60,7 @@
   }
 
   .picture-card:hover {
-    transform: scale(1.2);
+    transform: scale(1.1);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   }
 </style>

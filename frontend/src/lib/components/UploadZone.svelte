@@ -55,8 +55,8 @@
     border: 2px dashed #92b0b3;
     border-radius: 10px;
     transition: padding 0.1s ease;
-    min-width: 300px;
-    min-height: 150px;
+    min-width: 100px;
+    min-height: 50px;
   }
 
   .box:hover {

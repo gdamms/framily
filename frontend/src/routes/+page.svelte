@@ -6,8 +6,6 @@
   import Button from "$lib/components/Button.svelte";
   import Galery from "$lib/components/Galery.svelte";
   import BottomBar from "$lib/components/BottomBar.svelte";
-  import UploadButton from "$lib/components/UploadButton.svelte";
-  import UploadPopup from "$lib/components/UploadPopup.svelte";
 
   let framilies: FramilyListItem[] = [];
   let pendingInvitations: FramilyListItem[] = [];
@@ -93,20 +91,10 @@
         return "Unknown";
     }
   }
-
-  let uploadPopupOpen = false;
-
-  function uploadPopupToggle() {
-    uploadPopupOpen = !uploadPopupOpen;
-  }
 </script>
 
 <div class="dashboard">
-  <Galery pictures={allPictures} />
-  <UploadButton class="upload-button" onclick={uploadPopupToggle} />
-  {#if uploadPopupOpen}
-    <UploadPopup onClose={uploadPopupToggle} framilies={framilies} framilyCodes={[]} />
-  {/if}
+  <Galery pictures={allPictures} framilies={framilies} />
 </div>
 
 <div class="dashboard2">
@@ -231,7 +219,7 @@
       {#if allPictures.length === 0}
         <p class="no-photos">No photos yet. Upload some in your framilies!</p>
       {:else}
-        <Galery pictures={allPictures.slice(0, 12)} />
+        <Galery pictures={allPictures.slice(0, 12)} framilies={framilies} />
         {#if allPictures.length > 12}
           <p class="more-photos">And {allPictures.length - 12} more photos in your framilies...</p>
         {/if}
@@ -252,11 +240,5 @@
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-  }
-
-  :global(.upload-button) {
-    position: absolute;
-    bottom: 1.5rem;
-    right: 1.5rem;
   }
 </style>

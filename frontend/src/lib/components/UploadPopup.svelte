@@ -21,7 +21,11 @@
 
   let messageTimeout: NodeJS.Timeout | null = null;
 
-  async function showMessage(messageText: string, type: "info" | "error" | "success", timeout: number | null = 3000) {
+  async function showMessage(
+    messageText: string,
+    type: "info" | "error" | "success",
+    timeout: number | null = 3000,
+  ) {
     message = messageText;
     messageType = type;
     if (timeout) {
@@ -90,7 +94,10 @@
         >
       {/each}
     </div>
-    <Button onclick={handleUpload}>Upload</Button>
+    <div class="buttons">
+      <Button onclick={onClose} color="#b8d9f2">Cancel</Button>
+      <Button onclick={handleUpload}>Upload</Button>
+    </div>
   </div>
 </Popup>
 
@@ -147,5 +154,10 @@
   .message.success {
     background-color: #2ecc71;
     color: white;
+  }
+
+  .buttons {
+    display: flex;
+    gap: 10px;
   }
 </style>
