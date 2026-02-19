@@ -4,15 +4,11 @@
 
   interface Props {
     onclick?: (() => void);
-    class?: string;
-    framilies?: string[];
   }
 
   let {
     onclick,
-    class: _class,
-    framilies = [],
   }: Props = $props();
 </script>
 
-<IconButton class={_class} icon={ImageUp} {onclick}/>
+<IconButton icon={ImageUp} {onclick}/>

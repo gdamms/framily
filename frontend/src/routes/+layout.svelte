@@ -1,15 +1,10 @@
 <script lang="ts">
   import favicon from "$lib/assets/favicon.svg";
   import { authStore } from "$lib/stores/auth";
-  import { goto } from "$app/navigation";
   import SideBar from "$lib/components/SideBar.svelte";
+  import Nav from "$lib/components/Nav.svelte";
 
   let { children } = $props();
-
-  const handleLogout = () => {
-    authStore.clearToken();
-    goto("/login");
-  };
 </script>
 
 <svelte:head>
@@ -22,6 +17,7 @@
 
 {#if $authStore.isAuthenticated}
   <SideBar />
+  <Nav />
 {/if}
 
 <style>
@@ -33,15 +29,6 @@
     height: 100vh;
     display: flex;
     flex-direction: column;
-  }
-
-  nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 2rem;
-    background-color: #333;
-    color: white;
   }
 
   main {

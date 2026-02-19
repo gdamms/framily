@@ -22,7 +22,9 @@
   {#each pictures as picture}
     <PictureCard {picture} />
   {/each}
-  <UploadButton class="upload-button" onclick={uploadPopupToggle} />
+  <div class="upload-btn">
+    <UploadButton onclick={uploadPopupToggle} />
+  </div>
   {#if uploadPopupOpen}
     <UploadPopup onClose={uploadPopupToggle} framilies={framilies} framilyCodes={[]} />
   {/if}
@@ -37,9 +39,9 @@
     gap: 0.5rem;
   }
 
-  :global(.upload-button) {
+  .upload-btn {
     position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
+    bottom: 1rem;
+    right: 1rem;
   }
 </style>
