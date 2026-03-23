@@ -1,7 +1,6 @@
 <script lang="ts">
   import favicon from "$lib/assets/favicon.svg";
   import { authStore } from "$lib/stores/auth";
-  import SideBar from "$lib/components/SideBar.svelte";
   import Nav from "$lib/components/Nav.svelte";
 
   let { children } = $props();
@@ -16,7 +15,6 @@
 </main>
 
 {#if $authStore.isAuthenticated}
-  <SideBar />
   <Nav />
 {/if}
 

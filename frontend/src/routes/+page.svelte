@@ -6,6 +6,7 @@
   import Button from "$lib/components/Button.svelte";
   import Galery from "$lib/components/Galery.svelte";
   import BottomBar from "$lib/components/BottomBar.svelte";
+  import TopBar from "$lib/components/TopBar.svelte";
 
   let framilies: FramilyListItem[] = [];
   let pendingInvitations: FramilyListItem[] = [];
@@ -94,6 +95,7 @@
 </script>
 
 <div class="dashboard">
+  <TopBar />
   <Galery pictures={allPictures} framilies={framilies} />
 </div>
 

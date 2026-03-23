@@ -37,6 +37,7 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 0.5rem;
+    overflow-y: scroll;
   }
 
   .upload-btn {
