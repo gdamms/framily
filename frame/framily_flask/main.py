@@ -41,6 +41,7 @@ def main():
     @app.route("/reset", methods=["POST"])
     def reset():
         reset_config()
+        set_wifi("","", start=False)
         return {"status": "success"}, 200
 
     print('starting')

@@ -34,6 +34,9 @@ nmcli connection modify "$HOTSPOT" wifi-sec.psk "raspberry"
 nmcli connection modify "$HOTSPOT" connection.autoconnect yes
 nmcli connection modify "$HOTSPOT" connection.autoconnect-priority 10
 
+echo "Creating dnsmasq configuration..."
+cp /home/framily/dnsmasq/framily.conf /etc/NetworkManager/dnsmasq-shared.d/framily.conf
+
 echo "Creating dispatcher scripts..."
 cp /home/framily/dispatcher/framily.py /etc/NetworkManager/dispatcher.d/framily.py
 chmod +x /etc/NetworkManager/dispatcher.d/framily.py

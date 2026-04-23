@@ -6,7 +6,7 @@ from PIL import Image
 
 
 FLASK_ADDRESS = "0.0.0.0"
-FLASK_PORT = 8000
+FLASK_PORT = 80
 CONFIG_PATH = Path("/home/framily/config.json")
 TEMPLATE_FOLDER = Path("/home/framily/framily_flask/templates")
 EPD_INFO_PATH = Path('/home/framily/epd/epd_info.json')
@@ -14,6 +14,8 @@ EPD_IMAGE_PATH = Path('/home/framily/epd/epd_img.png')
 CON_WIFI = "mywifi"
 CON_HOTSPOT = "myhotspot"
 WLAN_IF = "wlan0"
+HOTSPOT_DOMAIN = "framily.lan"
+DNS_CONFIG_PATH = Path("/etc/dnsmasq.d/framily.conf")
 
 
 DEFAULT_CONFIG = {
@@ -66,12 +68,19 @@ def set_hotspot(ssid: str, password: str, start: bool = True) -> None:
         start_hotspot()
 
 
-def get_hotspot() -> tuple[str, str, str]:
+def get_hotspot() -> tuple[str, str]:
     ssid = run(['nmcli', '-g', '802-11-wireless.ssid', 'connection', 'show', CON_HOTSPOT])
     password = run(['nmcli', '-s', '-g', '802-11-wireless-security.psk', 'connection', 'show', CON_HOTSPOT])
     address = run(['ip', '-br', 'addr', 'show', WLAN_IF])
     address = address.split()[2].split('/')[0]  # Extract the IP address
-    return ssid, password, address
+
+    # Set DNS to resolve the hotspot domain to the local IP address
+    resolv_conf = f"address=/{HOTSPOT_DOMAIN}/{address}\n"
+    DNS_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    DNS_CONFIG_PATH.write_text(resolv_conf)
+    run(['systemctl', 'restart', 'dnsmasq'])
+
+    return ssid, password
 
 
 def start_hotspot():

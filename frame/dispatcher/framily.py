@@ -9,7 +9,7 @@ from urlpath import URL
 import sys
 sys.path.append("/home/framily")
 
-from utils import get_hotspot, EPD_INFO_PATH, EPD_IMAGE_PATH, make_qr, FLASK_PORT, run, CON_HOTSPOT, CON_WIFI, load_config, save_config, save_message, start_hotspot
+from utils import HOTSPOT_DOMAIN, get_hotspot, EPD_INFO_PATH, EPD_IMAGE_PATH, make_qr, FLASK_PORT, run, CON_HOTSPOT, CON_WIFI, load_config, save_config, save_message, start_hotspot
 
 
 FRAMILY_CREATE_PATH = "/api/v1/framily/create"
@@ -18,12 +18,17 @@ PICTURE_FETCH_PATH = "/api/v1/pictures/fetch"
 
 
 def display_hotspot():
-    ssid, password, address = get_hotspot()
+    ssid, password = get_hotspot()
 
     epd_info = json.loads(EPD_INFO_PATH.read_text())
     width, height = epd_info["width"], epd_info["height"]
 
-    server_url = f"http://{address}:{FLASK_PORT}/"
+    if FLASK_PORT == 80:
+        server_url = f"http://{HOTSPOT_DOMAIN}/"
+    elif FLASK_PORT == 443:
+        server_url = f"https://{HOTSPOT_DOMAIN}/"
+    else:
+        server_url = f"http://{HOTSPOT_DOMAIN}:{FLASK_PORT}/"
     wifi_qr_data = f"WIFI:T:WPA;S:{ssid};P:{password};;"
 
     wifi_qr = make_qr(wifi_qr_data)
@@ -52,6 +57,20 @@ def display_hotspot():
 
 def hotspot_up():
     display_hotspot()
+
+
+def display_connecting_wifi():
+    epd_info = json.loads(EPD_INFO_PATH.read_text())
+    width, height = epd_info["width"], epd_info["height"]
+
+    img = Image.new("RGB", (height, width), "white")
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.truetype("DejaVuSans.ttf", 30)
+    margin = 50
+
+    draw.text((margin, 50), "Connecting to Wi-Fi...", font=font, fill="black")
+
+    img.save(EPD_IMAGE_PATH)  # Send image to the e-ink display
 
 
 def display_framily_info():
@@ -194,7 +213,6 @@ def start_framily():
     frame_token = config.get("frame_token", "")
 
     if not framily_code or not frame_token:
-        print("No framily code or token found, creating new framily.")
         create_framily()
         display_framily_info()
 
@@ -208,11 +226,12 @@ def start_framily():
 
 
 def wifi_up():
+    display_connecting_wifi()
+
     config = load_config()
 
     server_url = config.get("server_url", "")
     if not server_url:
-        print("Server URL not configured, restarting hotspot.")
         save_message("Server URL not configured, please set it up.")
         start_hotspot()
         return
