@@ -231,16 +231,16 @@
 </div>
 
 <style>
-  .dashboard2 {
+  .dashboard {
     display: none;
   }
 
-  .dashboard {
+  /* .dashboard {
     position: relative;
     max-width: 800px;
     height: 100%;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-  }
+  } */
 </style>

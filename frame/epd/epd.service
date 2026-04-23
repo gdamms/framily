@@ -1,0 +1,13 @@
+[Unit]
+Description=Framily EPD service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/framily
+ExecStart=/usr/bin/python3 /home/framily/main_epd.py
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,16 @@
+**/.git
+**/.gitignore
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/node_modules
+**/.svelte-kit
+**/dist
+**/build
+.env
+.env.*
+config/env/.env
+config/env/.env.*
+frontend/.npm

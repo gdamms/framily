@@ -46,6 +46,10 @@ class FramilySettingsUpdate(BaseModel):
     framily_code: str = Field(..., min_length=8, max_length=8)
     settings: "SettingsData"
 
+class FramilyCheck(BaseModel):
+    framily_code: str = Field(..., min_length=8, max_length=8)
+    frame_token: str = Field(..., min_length=64, max_length=64)
+
 
 class SettingsData(BaseModel):
     picture_duration: Optional[int] = None
@@ -98,6 +102,10 @@ class FramilyInfo(BaseModel):
 
 class FramilyInfoResponse(BaseModel):
     framily: FramilyInfo
+
+
+class FramilyCheckResponse(BaseModel):
+    initiated: bool
 
 
 class MessageResponse(BaseModel):

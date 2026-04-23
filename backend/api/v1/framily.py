@@ -8,7 +8,7 @@ from core.database import get_db
 from api.v1.auth import get_current_user
 from models import User, Framily, FramilySettings, Membership
 from schemas.framily import (
-    FramilyCreate, FramilyConnect, FramilyInvite, FramilyJoin,
+    FramilyCheck, FramilyCheckResponse, FramilyCreate, FramilyConnect, FramilyInvite, FramilyJoin,
     FramilyLeave, FramilyKick, FramilyPromote, FramilySettingsUpdate,
     FramilyDelete, FramilyCreateResponse, FramilyInfo, FramilyInfoResponse,
     MemberInfo, SettingsInfo, MessageResponse
@@ -429,6 +429,31 @@ def update_settings(
     db.refresh(settings)
 
     return MessageResponse(message="Settings updated")
+
+
+@router.post("/check", response_model=FramilyCheckResponse)
+def check_framily(
+    request: FramilyCheck,
+    db: Session = Depends(get_db)
+):
+    """Check if framily code and frame token are valid. Used by frame device."""
+    framily_code = request.framily_code
+    frame_token = request.frame_token
+
+    framily = db.query(Framily).filter(Framily.code == framily_code and Framily.frame_token == frame_token).first()
+    if not framily:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Framily not found"
+        )
+
+    members = db.query(User).join(Membership).filter(
+        Membership.framily_id == framily.id,
+        Membership.role >= 1
+    ).all()
+
+    initiated = len(members) > 0
+    return FramilyCheckResponse(initiated=initiated)
 
 
 @router.get("/info", response_model=FramilyInfoResponse)

@@ -728,26 +728,130 @@ DELETE /api/v1/pictures/{picture_id}
 
 ### Environment Variables
 
-**Backend (`backend/.env`):**
+Use environment templates from `config/env`:
+
+- `config/env/dev.env.example` for development
+- `config/env/prod.env.example` for production
+- `config/env/base.env.example` as a shared fallback template
+
+`scripts/setup.sh` copies `config/env/dev.env.example` to `config/env/.env` and appends current UID/GID for local Docker volume permissions.
+
+### Key Variables
 
 ```bash
-TODO
+# Runtime mode and security
+ENVIRONMENT=development|production
+SECRET_KEY=...
+CORS_ORIGINS=https://your-frontend.example.com
+
+# Backend static frontend serving
+SERVE_FRONTEND=true|false
+FRONTEND_DIST_DIR=/app/frontend-build
+
+# Backend process model
+BACKEND_WORKERS=2
+
+# Data stores
+POSTGRES_USER=...
+POSTGRES_PASSWORD=...
+POSTGRES_DB=...
+MINIO_ACCESS_KEY=...
+MINIO_SECRET_KEY=...
+MINIO_BUCKET=framily
+MINIO_SECURE=false
 ```
 
-**Frontend (`frontend/.env`):**
+Production guardrails are enforced in backend settings:
 
-```bash
-TODO
-```
+- `SECRET_KEY` must not use the default placeholder value
+- `CORS_ORIGINS` cannot be `*`
 
 ---
 
 ## Development
 
-TODO
+Development stack uses 4 services:
+
+- postgres
+- minio
+- backend (reload enabled)
+- frontend (Vite dev server)
+
+The frontend talks directly to backend via `VITE_API_URL` (defaults to `http://localhost:8000/api/v1` in development).
+
+Commands:
+
+```bash
+make setup
+make start
+```
+
+Dev compose file: `config/compose/docker-compose.dev.yml`
+
+---
+
+## Production (Docker Compose)
+
+Production stack removes nginx and frontend runtime containers. The backend image builds the Svelte frontend and serves static files directly.
+
+Services in production:
+
+- postgres
+- minio
+- backend
+
+### 1. Prepare Environment
+
+```bash
+cp config/env/prod.env.example config/env/.env.prod
+# then edit config/env/.env.prod values
+```
+
+### 2. Start Production Stack
+
+```bash
+make start-prod
+```
+
+Or detached:
+
+```bash
+make start-prodd
+```
+
+Stop:
+
+```bash
+make stop-prod
+```
+
+Production compose file: `config/compose/docker-compose.prod.yml`
+
+### Notes
+
+- TLS/HTTPS is expected to terminate outside compose (cloud load balancer or reverse proxy)
+- Backend keeps API endpoints under `/api/v1`
+- Non-API frontend routes are served with SPA fallback to `index.html`
 
 ---
 
 ## Installation
 
-TODO
+### Local Development
+
+```bash
+git clone <repo>
+cd framily
+make setup
+make start
+```
+
+### Production Host
+
+```bash
+git clone <repo>
+cd framily
+cp config/env/prod.env.example config/env/.env.prod
+# edit config/env/.env.prod
+make start-prod
+```

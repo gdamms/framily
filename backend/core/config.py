@@ -1,8 +1,11 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+
+    ENVIRONMENT: str = "development"
 
     # API Settings
     TITLE: str = "Framily Backend"
@@ -17,6 +20,7 @@ class Settings(BaseSettings):
     MINIO_ACCESS_KEY: str = "minioadmin"
     MINIO_SECRET_KEY: str = "minioadmin"
     MINIO_BUCKET: str = "framily"
+    MINIO_SECURE: bool = False
 
     # Auth
     SECRET_KEY: str = "your-secret-key-change-in-production"
@@ -25,6 +29,23 @@ class Settings(BaseSettings):
 
     # CORS
     CORS_ORIGINS: str = "*"
+
+    # Frontend static serving
+    SERVE_FRONTEND: bool = False
+    FRONTEND_DIST_DIR: str = "/app/frontend-build"
+
+    @model_validator(mode="after")
+    def validate_production_settings(self):
+        if self.ENVIRONMENT.lower() != "production":
+            return self
+
+        if self.SECRET_KEY == "your-secret-key-change-in-production":
+            raise ValueError("SECRET_KEY must be set for production.")
+
+        if self.CORS_ORIGINS == "*":
+            raise ValueError("CORS_ORIGINS cannot be '*' in production.")
+
+        return self
 
 
 settings = Settings()

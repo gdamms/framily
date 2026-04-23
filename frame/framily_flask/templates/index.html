@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Framily Setup</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            background: #f4f7fb;
+            color: #1f2937;
+        }
+
+        main {
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            width: min(92vw, 420px);
+            padding: 1.5rem;
+            border-radius: 16px;
+            background: #ffffff;
+            box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+        }
+
+        h1 {
+            margin: 0 0 0.5rem;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        label {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        input {
+            box-sizing: border-box;
+            width: 100%;
+            padding: 0.8rem 0.9rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font: inherit;
+        }
+
+        .password-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.25rem;
+        }
+
+        .password-row label {
+            font-weight: 500;
+        }
+
+        .checkbox {
+            width: auto;
+            margin: 0;
+        }
+
+        button {
+            margin-top: 0.5rem;
+            padding: 0.9rem 1rem;
+            border: 0;
+            border-radius: 10px;
+            background: #0f172a;
+            color: #ffffff;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1e293b;
+        }
+
+        .message {
+            padding: 0.75rem;
+            border-radius: 10px;
+            background: #fee2e2;
+            font-weight: 500;
+            border: 1px solid #ff9d9d;
+            overflow: scroll;
+        }
+
+        .danger-zone {
+            padding: 1rem;
+            border-radius: 10px;
+            background: #fef2f2;
+            border: 1px solid #ff0000;
+        }
+
+        .danger-zone h2 {
+            color: #b91c1c;
+        }
+
+        .danger-zone button {
+            background: #b91c1c;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>Framily Setup</h1>
+        {% if message %}
+        <div class="message">{{ message }}</div>
+        {% endif %}
+        <form action="/setup" method="post">
+            <label for="ssid">Wi-Fi SSID:</label>
+            <input id="ssid" type="text" name="ssid" placeholder="SSID" value="{{ ssid|e }}" required>
+            <label for="password">Wi-Fi Password:</label>
+            <input id="password" type="password" name="password" placeholder="Password" value="{{ password|e }}"
+                required>
+            <div class="password-row">
+                <input id="show-password" class="checkbox" type="checkbox">
+                <label for="show-password">Show password</label>
+            </div>
+            <label for="url">Server URL:</label>
+            <input id="url" type="text" name="url" placeholder="Server URL" value="{{ url|e }}" required>
+            <button type="submit">Setup Framily</button>
+        </form>
+        <div class="danger-zone">
+            <h2>Danger Zone</h2>
+            <p>Resetting the configuration will erase all saved settings.</p>
+            <form action="/reset" method="post">
+                <button type="submit">Reset Configuration</button>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        const passwordField = document.getElementById('password');
+        const showPasswordCheckbox = document.getElementById('show-password');
+
+        showPasswordCheckbox.addEventListener('change', () => {
+            passwordField.type = showPasswordCheckbox.checked ? 'text' : 'password';
+        });
+    </script>
+</body>
+
+</html>

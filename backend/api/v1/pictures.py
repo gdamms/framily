@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Header
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 import uuid
@@ -12,7 +12,7 @@ from core.minio import minio_client
 from api.v1.auth import get_current_user
 from api.v1.framily import get_membership, is_member, is_admin
 from models import User, Framily, Picture, PictureVisibility, Membership
-from schemas.picture import AddVisibilityRequest, RemoveVisibilityRequest
+from schemas.picture import AddVisibilityRequest, RemoveVisibilityRequest, FramilyCheck
 
 router = APIRouter(
     prefix="/pictures",
@@ -265,18 +265,21 @@ def remove_visibility(
     }
 
 
-@router.get("/fetch")
+@router.post("/fetch")
 def fetch_picture(
-    authorization: str = Header(..., alias="X-Frame-Token"),
+    request: FramilyCheck,
     db: Session = Depends(get_db)
 ):
     """Fetch a random picture for the frame. Uses frame token auth."""
     # Find framily by frame token
-    framily = db.query(Framily).filter(Framily.frame_token == authorization).first()
+    framily_code = request.framily_code
+    frame_token = request.frame_token
+
+    framily = db.query(Framily).filter(Framily.code == framily_code and Framily.frame_token == frame_token).first()
     if not framily:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid frame token"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Framily not found or invalid frame token"
         )
 
     # Get a random picture visible to this framily
@@ -285,10 +288,8 @@ def fetch_picture(
     ).order_by(func.random()).first()
 
     if not visibility:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No pictures available"
-        )
+        # No pictures available for this framily
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     picture = visibility.picture
 
@@ -297,12 +298,18 @@ def fetch_picture(
     if picture.uploader:
         uploader_name = picture.uploader.display_name or picture.uploader.username
 
-    return {
-        "metadata": {
-            "uploaded_by": uploader_name,
-            "upload_date": picture.upload_date.isoformat()
+    return StreamingResponse(
+        minio_client.get_object(
+            settings.MINIO_BUCKET,
+            f"shared/{picture.id}.{picture.metadata_.get('format', 'jpg')}"
+        ).stream(32*1024),
+        media_type=f"image/{picture.metadata_.get('format', 'jpg')}",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Picture-ID": picture.id,
+            "X-Uploader-Name": uploader_name or "Unknown"
         }
-    }
+    )
 
 
 @router.get("/list")

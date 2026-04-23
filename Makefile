@@ -1,14 +1,22 @@
-.PHONY: help setup start stop restart startd clean
+.PHONY: help setup start stop restart startd clean start-prod start-prodd stop-prod
+
+DEV_COMPOSE_FILE=config/compose/docker-compose.dev.yml
+PROD_COMPOSE_FILE=config/compose/docker-compose.prod.yml
+DEV_ENV_FILE=config/env/.env
+PROD_ENV_FILE=config/env/.env.prod
 
 # Default target
 help:
 	@echo "Makefile commands:"
-	@echo "  setup      - Build and start the development environment"
-	@echo "  start      - Start the development environment"
-	@echo "  startd     - Start the environment in detached mode"
-	@echo "  stop       - Stop the development environment"
-	@echo "  restart    - Restart the development environment"
-	@echo "  clean      - Stop and remove all containers, networks, and volumes"
+	@echo "  setup       - Build and start the development environment"
+	@echo "  start       - Start the development environment"
+	@echo "  startd      - Start the environment in detached mode"
+	@echo "  stop        - Stop the development environment"
+	@echo "  restart     - Restart the development environment"
+	@echo "  clean       - Stop and remove all containers, networks, and volumes"
+	@echo "  start-prod  - Start the production compose stack"
+	@echo "  start-prodd - Start production stack in detached mode"
+	@echo "  stop-prod   - Stop the production compose stack"
 
 # Setup environment
 setup:
@@ -18,22 +26,22 @@ setup:
 # Start development environment
 start:
 	@echo "Starting Framily..."
-	@docker-compose -f docker-compose.dev.yml up
+	@docker-compose -f $(DEV_COMPOSE_FILE) --env-file $(DEV_ENV_FILE) up
 
 # Detached start
 startd:
 	@echo "Starting Framily in detached mode..."
-	@docker-compose -f docker-compose.dev.yml up -d
+	@docker-compose -f $(DEV_COMPOSE_FILE) --env-file $(DEV_ENV_FILE) up -d
 
 # Stop development environment
 stop:
 	@echo "Stopping Framily..."
-	@docker-compose -f docker-compose.dev.yml down
+	@docker-compose -f $(DEV_COMPOSE_FILE) --env-file $(DEV_ENV_FILE) down
 
 # Restart services
 restart:
 	@echo "Restarting Framily..."
-	@docker-compose -f docker-compose.dev.yml restart
+	@docker-compose -f $(DEV_COMPOSE_FILE) --env-file $(DEV_ENV_FILE) restart
 
 # Clean up
 clean:
@@ -42,8 +50,23 @@ clean:
 	@echo "Are you sure? (y/N)"
 	@read ans; \
 	if [ "$$ans" = "y" ] || [ "$$ans" = "Y" ]; then \
-		docker-compose -f docker-compose.dev.yml down --rmi all --volumes --remove-orphans; \
+		docker-compose -f $(DEV_COMPOSE_FILE) --env-file $(DEV_ENV_FILE) down --rmi all --volumes --remove-orphans; \
 		echo "Cleanup completed."; \
 	else \
 		echo "Cleanup aborted."; \
 	fi
+
+# Start production environment
+start-prod:
+	@echo "Starting Framily production stack..."
+	@docker-compose -f $(PROD_COMPOSE_FILE) --env-file $(PROD_ENV_FILE) up
+
+# Detached production start
+start-prodd:
+	@echo "Starting Framily production stack in detached mode..."
+	@docker-compose -f $(PROD_COMPOSE_FILE) --env-file $(PROD_ENV_FILE) up -d
+
+# Stop production environment
+stop-prod:
+	@echo "Stopping Framily production stack..."
+	@docker-compose -f $(PROD_COMPOSE_FILE) --env-file $(PROD_ENV_FILE) down

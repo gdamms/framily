@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Get useful paths
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
+SCRIPT_PATH="$(realpath "$0")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 COLLABST_DIR="$(dirname "$SCRIPT_DIR")"
 
@@ -19,8 +19,13 @@ if [ $? -ne 0 ]; then
 fi
 
 # Set up environment variables
-ENV_EXAMPLE_FILE="$COLLABST_DIR/.env.example"
-ENV_FILE="$COLLABST_DIR/.env"
+ENV_EXAMPLE_FILE="$COLLABST_DIR/config/env/dev.env.example"
+if [ ! -f "$ENV_EXAMPLE_FILE" ]; then
+    ENV_EXAMPLE_FILE="$COLLABST_DIR/config/env/base.env.example"
+fi
+ENV_FILE="$COLLABST_DIR/config/env/.env"
+
+mkdir -p "$COLLABST_DIR/config/env"
 
 cp "$ENV_EXAMPLE_FILE" "$ENV_FILE"
 
