@@ -1,9 +1,12 @@
+import hashlib
+
 from PIL import Image, ImageOps
 from pathlib import Path
-from inotify.adapters import Inotify
 import json
-from frame_core.settings import EPD_IMAGE_PATH, EPD_INFO_PATH
 from epd import epd7in3e
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+from utils import EPD_IMAGE_PATH, EPD_INFO_PATH
 
 
 def render_image(epd: epd7in3e.EPD, image_path: Path):
@@ -27,11 +30,27 @@ def write_epd_info(epd: epd7in3e.EPD):
         json.dump(info, f)
 
 
-def drain_events(watcher):
-    while True:
-        event = next(watcher.event_gen(yield_nones=False, timeout_s=0), None)
-        if event is None:
-            break
+def file_hash(path, algo="sha256", chunk_size=8192):
+    h = hashlib.new(algo)
+    with open(path, "rb") as f:
+        while chunk := f.read(chunk_size):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+class EPDImageHandler(FileSystemEventHandler):
+    def __init__(self, epd: epd7in3e.EPD):
+        self.epd = epd
+        self.hash = None
+
+    def on_modified(self, event):
+        new_hash = file_hash(EPD_IMAGE_PATH)
+        if event.src_path == str(EPD_IMAGE_PATH) and new_hash != self.hash:
+            self.hash = new_hash
+            try:
+                render_image(self.epd, EPD_IMAGE_PATH)
+            except Exception as e:
+                print(f"Error occurred while rendering image: {e}")
 
 
 def main():
@@ -47,26 +66,12 @@ def main():
     else:
         print(f"Image file '{EPD_IMAGE_PATH}' not found. Waiting for it to appear...")
 
-    watcher = Inotify()
-    watcher.add_watch(str(EPD_IMAGE_PATH.parent))
-    interested_events = {
-        'IN_CLOSE_WRITE',
-        'IN_CREATE',
-        'IN_MOVED_TO',
-        'IN_DELETE',
-    }
-
-    try:
-        for event in watcher.event_gen(yield_nones=False):
-            if event is None:
-                continue
-
-            _, type_names, _, file_name = event
-            if file_name == EPD_IMAGE_PATH.name and interested_events.intersection(type_names):
-                drain_events(watcher)
-                render_image(epd, EPD_IMAGE_PATH)
-    except KeyboardInterrupt:
-        watcher.remove_watch(str(EPD_IMAGE_PATH.parent))
+    # Watch for changes to the image file and update the display accordingly.
+    observer = Observer()
+    event_handler = EPDImageHandler(epd)
+    observer.schedule(event_handler, path=str(EPD_IMAGE_PATH))
+    observer.start()
+    observer.join()
 
 
 if __name__ == '__main__':

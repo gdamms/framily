@@ -1,255 +1,262 @@
 #!/usr/bin/env python3
-from __future__ import annotations
-
 import argparse
-import sys
 import time
+from PIL import Image, ImageDraw, ImageFont
+import json
+import requests
+from urlpath import URL
+from dotenv import load_dotenv
 
-sys.path.append("/home/framily")
+load_dotenv("/opt/framily/config.env")
 
-from frame_core.api import FetchStatus, FrameApiClient, FrameApiError
-from frame_core.config import ConfigStore, FrameState
-from frame_core.display import (
-    render_connecting_wifi,
-    render_framily_info,
-    render_hotspot,
-    render_waiting_first_image,
-    save_image_bytes,
-)
-from frame_core.lock import LockUnavailableError, hold_lock
-from frame_core.logging import get_logger
-from frame_core.network import (
-    CommandError,
-    configure_hotspot_dns_mapping,
-    generate_hotspot_credentials,
-    get_active_connection_name,
-    set_hotspot_credentials,
-    start_hotspot_connection,
-)
-from frame_core.settings import (
-    CON_HOTSPOT,
-    CON_WIFI,
-    DISPATCHER_LOCK_PATH,
-    FLASK_PORT,
-    FRAME_FETCH_INTERVAL_SECONDS,
-    FRAMILY_MEMBER_CHECK_INTERVAL_SECONDS,
-    HOTSPOT_DOMAIN,
-    REQUEST_RETRY_ATTEMPTS,
-    REQUEST_RETRY_BACKOFF_BASE_SECONDS,
-    REQUEST_RETRY_MAX_BACKOFF_SECONDS,
-    WLAN_IF,
-)
+import sys
+sys.path.append("/opt/framily")
+
+from utils import HOTSPOT_DOMAIN, get_hotspot, EPD_INFO_PATH, EPD_IMAGE_PATH, make_qr, WEB_PORT, run, CON_HOTSPOT, CON_WIFI, load_config, save_config, save_message, start_hotspot
 
 
-logger = get_logger(__name__)
-store = ConfigStore()
+FRAMILY_CREATE_PATH = "/api/v1/framily/create"
+FRAMILY_CHECK_PATH = "/api/v1/framily/check"
+PICTURE_FETCH_PATH = "/api/v1/pictures/fetch"
 
 
-def _setup_url() -> str:
-    if FLASK_PORT == 80:
-        return f"http://{HOTSPOT_DOMAIN}/"
-    if FLASK_PORT == 443:
-        return f"https://{HOTSPOT_DOMAIN}/"
-    return f"http://{HOTSPOT_DOMAIN}:{FLASK_PORT}/"
+def display_hotspot():
+    ssid, password = get_hotspot()
 
+    epd_info = json.loads(EPD_INFO_PATH.read_text())
+    width, height = epd_info["width"], epd_info["height"]
 
-def _retry_delay(attempt_number: int) -> int:
-    delay = REQUEST_RETRY_BACKOFF_BASE_SECONDS ** max(0, attempt_number - 1)
-    return min(delay, REQUEST_RETRY_MAX_BACKOFF_SECONDS)
+    if WEB_PORT == 80:
+        server_url = f"http://{HOTSPOT_DOMAIN}/"
+    elif WEB_PORT == 443:
+        server_url = f"https://{HOTSPOT_DOMAIN}/"
+    else:
+        server_url = f"http://{HOTSPOT_DOMAIN}:{WEB_PORT}/"
+    wifi_qr_data = f"WIFI:T:WPA;S:{ssid};P:{password};;"
 
+    wifi_qr = make_qr(wifi_qr_data)
+    url_qr = make_qr(server_url)
 
-def _run_with_retries(operation, description: str):
-    last_error: FrameApiError | None = None
+    img = Image.new("RGB", (height, width), "white")
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.truetype("DejaVuSans.ttf", 30)
+    margin = 50
 
-    for attempt in range(1, REQUEST_RETRY_ATTEMPTS + 1):
-        try:
-            return operation()
-        except FrameApiError as error:
-            last_error = error
-            if attempt >= REQUEST_RETRY_ATTEMPTS or not error.transient:
-                break
-
-            delay = _retry_delay(attempt)
-            logger.warning(
-                "%s failed (attempt %s/%s): %s. Retrying in %ss",
-                description,
-                attempt,
-                REQUEST_RETRY_ATTEMPTS,
-                error,
-                delay,
-            )
-            time.sleep(delay)
-
-    if last_error is None:
-        raise RuntimeError(f"{description} failed before execution")
-    raise last_error
-
-
-def _enter_hotspot_mode(message: str | None = None, update_failure: bool = False) -> None:
-    if update_failure and message:
-        store.record_failure(message, state=FrameState.ERROR)
-    elif message:
-        store.save_message(message)
-
-    ssid, password = generate_hotspot_credentials()
-    set_hotspot_credentials(ssid, password)
-    store.set_hotspot_credentials(ssid, password)
-
-    start_hotspot_connection()
-    configure_hotspot_dns_mapping(WLAN_IF)
-
-    store.set_state(FrameState.HOTSPOT)
-    render_hotspot(ssid, password, _setup_url())
-    logger.info("Hotspot mode enabled with generated credentials")
-
-
-def _handle_runtime_failure(message: str) -> bool:
-    snapshot = store.record_failure(message, state=FrameState.ERROR)
-    logger.error(
-        "%s (consecutive_failures=%s, failure_duration_s=%s)",
-        message,
-        snapshot.consecutive_failures,
-        snapshot.failure_duration_s,
+    draw.text((margin, 50), "Connect to the Pi", font=font, fill="black")
+    img.paste(wifi_qr, (margin, 100))
+    draw.text(
+        (margin + wifi_qr.width + 40, 100),
+        f"SSID:\n{ssid}\n\nPassword:\n{password}",
+        font=font,
+        fill="black",
     )
 
-    if snapshot.should_enter_hotspot:
-        _enter_hotspot_mode(update_failure=False)
-        return True
+    draw.text((margin, 100 + wifi_qr.height + 40), "Open this URL", font=font, fill="black")
+    draw.text((margin, 100 + wifi_qr.height + 90), server_url, font=font, fill="black")
+    img.paste(url_qr, (margin, 100 + wifi_qr.height + 140))
 
-    return False
+    img.save(EPD_IMAGE_PATH)  # Send image to the e-ink display
 
 
-def _wait_for_framily_membership(client: FrameApiClient, framily_code: str, frame_token: str) -> bool:
-    store.set_state(FrameState.WAITING_FOR_MEMBER)
+def hotspot_up():
+    display_hotspot()
+
+
+def display_connecting_wifi():
+    epd_info = json.loads(EPD_INFO_PATH.read_text())
+    width, height = epd_info["width"], epd_info["height"]
+
+    img = Image.new("RGB", (height, width), "white")
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.truetype("DejaVuSans.ttf", 30)
+    margin = 50
+
+    draw.text((margin, 50), "Connecting to Wi-Fi...", font=font, fill="black")
+
+    img.save(EPD_IMAGE_PATH)  # Send image to the e-ink display
+
+
+def display_framily_info():
+    config = load_config()
+    framily_code = config.get("framily_code", "")
+
+    epd_info = json.loads(EPD_INFO_PATH.read_text())
+    width, height = epd_info["width"], epd_info["height"]
+
+    img = Image.new("RGB", (height, width), "white")
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.truetype("DejaVuSans.ttf", 30)
+    margin = 50
+
+    draw.text((margin, 50), "Framily Code:", font=font, fill="black")
+    draw.text((margin, 100), framily_code, font=font, fill="black")
+
+    img.save(EPD_IMAGE_PATH)  # Send image to the e-ink display
+
+
+def display_upload_first_image():
+    config = load_config()
+    framily_code = config.get("framily_code", "")
+    epd_info = json.loads(EPD_INFO_PATH.read_text())
+    width, height = epd_info["width"], epd_info["height"]
+
+    img = Image.new("RGB", (height, width), "white")
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.truetype("DejaVuSans.ttf", 30)
+    margin = 50
+
+    draw.text((margin, 50), f"Framily {framily_code}:\nWaiting for first image...", font=font, fill="black")
+
+    img.save(EPD_IMAGE_PATH)  # Send image to the e-ink display
+
+
+def create_framily():
+    config = load_config()
+    server_url = config.get("server_url", "")
+    server_url = URL(server_url)
+
+    create_url = server_url / FRAMILY_CREATE_PATH
+
+    try:
+        response = create_url.post(json={'name': 'My Framily'})
+        if not response.ok:
+            print(f"Failed to create framily: {response.text}")
+            save_message(f"Failed to create framily. Please check the server URL and try again. (Status: {response.status_code} - {response.text})")
+            start_hotspot()
+            exit()
+    except requests.exceptions.ConnectionError as e:
+        print(f"Error connecting to the server: {e}")
+        save_message(f"Error connecting to the server: {e}. Please check the server URL and try again.")
+        start_hotspot()
+        exit()
+
+    response_json = response.json()
+    framily_code = response_json.get("framily_code")
+    frame_token = response_json.get("frame_token")
+    if not framily_code or not frame_token:
+        print("Invalid response from server. Missing framily_code or frame_token.")
+        save_message("Invalid response from server. Please check the server URL and try again.")
+        start_hotspot()
+        exit()
+
+    config["framily_code"] = framily_code
+    config["frame_token"] = frame_token
+    save_config(config)
+    print("Framily created successfully.")
+
+
+def check_framily():
+    config = load_config()
+    server_url = config.get("server_url", "")
+    framily_code = config.get("framily_code", "")
+    framily_token = config.get("frame_token", "")
+
+    server_url = URL(server_url)
+    check_url = server_url / FRAMILY_CHECK_PATH
+
+    try:
+        response = check_url.post(json={
+            "framily_code": framily_code,
+            "frame_token": framily_token
+        })
+        if not response.ok:
+            print(f"Framily does not exist or token is invalid: {response.text}")
+            save_message("Framily does not exist or token is invalid. Please check the server URL and try again.")
+            start_hotspot()
+            exit()
+    except requests.exceptions.ConnectionError as e:
+        print(f"Error connecting to the server: {e}")
+        save_message(f"Error connecting to the server: {e}. Please check the server URL and try again.")
+        start_hotspot()
+        exit()
+
+    response_json = response.json()
+    return response_json.get("initiated", False)
+
+
+def fetch_image():
+    config = load_config()
+    server_url = config.get("server_url", "")
+    framily_code = config.get("framily_code", "")
+    framily_token = config.get("frame_token", "")
+
+    server_url = URL(server_url)
+    fetch_url = server_url / PICTURE_FETCH_PATH
+
+    try:
+        response = fetch_url.post(json={
+            "framily_code": framily_code,
+            "frame_token": framily_token
+        }, timeout=10)
+
+        if response.ok:
+            if response.status_code == 204:
+                print("No pictures available for this framily.")
+                display_upload_first_image()
+            elif response.status_code == 200:
+                with open(EPD_IMAGE_PATH, "wb") as f:
+                    f.write(response.content)
+                print("Picture fetched and saved successfully.")
+        else:
+            print(f"Failed to fetch picture: {response.text}")
+            save_message(f"Failed to fetch picture. Please check the server URL and try again. (Status: {response.status_code} - {response.text})")
+            start_hotspot()
+            exit()
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching picture: {e}")
+        save_message(f"Error fetching picture: {e}. Please check the server URL and try again.")
+        start_hotspot()
+        exit()
+
+
+def start_framily():
+    config = load_config()
+
+    framily_code = config.get("framily_code", "")
+    frame_token = config.get("frame_token", "")
+
+    if not framily_code or not frame_token:
+        create_framily()
+        display_framily_info()
+
+    while not check_framily():
+        display_framily_info()
+        time.sleep(5)
 
     while True:
-        render_framily_info(framily_code)
-
-        try:
-            initiated = _run_with_retries(
-                lambda: client.check_framily(framily_code, frame_token),
-                "Framily check",
-            )
-        except FrameApiError as error:
-            if _handle_runtime_failure(f"Framily check failed: {error}"):
-                return False
-
-            time.sleep(FRAMILY_MEMBER_CHECK_INTERVAL_SECONDS)
-            continue
-
-        store.mark_success(state=FrameState.WAITING_FOR_MEMBER)
-        if initiated:
-            return True
-
-        time.sleep(FRAMILY_MEMBER_CHECK_INTERVAL_SECONDS)
+        fetch_image()
+        time.sleep(60)
 
 
-def _fetch_images_loop(client: FrameApiClient, framily_code: str, frame_token: str) -> None:
-    store.set_state(FrameState.FETCHING_IMAGES)
+def wifi_up():
+    display_connecting_wifi()
 
-    while True:
-        try:
-            result = _run_with_retries(
-                lambda: client.fetch_picture(framily_code, frame_token),
-                "Picture fetch",
-            )
-        except FrameApiError as error:
-            if _handle_runtime_failure(f"Picture fetch failed: {error}"):
-                return
+    config = load_config()
 
-            time.sleep(FRAME_FETCH_INTERVAL_SECONDS)
-            continue
-
-        store.mark_success(state=FrameState.FETCHING_IMAGES)
-        if result.status == FetchStatus.NO_CONTENT:
-            render_waiting_first_image(framily_code)
-        elif result.content is not None:
-            save_image_bytes(result.content)
-
-        time.sleep(FRAME_FETCH_INTERVAL_SECONDS)
-
-
-def _ensure_registration(client: FrameApiClient) -> tuple[str, str] | None:
-    config = store.load()
-    framily_code = str(config.get("framily_code", "") or "")
-    frame_token = str(config.get("frame_token", "") or "")
-    if framily_code and frame_token:
-        return framily_code, frame_token
-
-    while True:
-        try:
-            framily_code, frame_token = _run_with_retries(
-                lambda: client.create_framily(),
-                "Framily creation",
-            )
-        except FrameApiError as error:
-            if _handle_runtime_failure(f"Framily creation failed: {error}"):
-                return None
-
-            time.sleep(FRAMILY_MEMBER_CHECK_INTERVAL_SECONDS)
-            continue
-
-        store.update(framily_code=framily_code, frame_token=frame_token)
-        store.mark_success(state=FrameState.WAITING_FOR_MEMBER)
-        render_framily_info(framily_code)
-        return framily_code, frame_token
-
-
-def wifi_up() -> None:
-    render_connecting_wifi()
-    store.set_state(FrameState.CONNECTING_WIFI)
-
-    config = store.load()
-    server_url = str(config.get("server_url", "") or "").strip()
+    server_url = config.get("server_url", "")
     if not server_url:
-        _enter_hotspot_mode("Server URL not configured. Please set it up.")
+        save_message("Server URL not configured, please set it up.")
+        start_hotspot()
         return
 
-    client = FrameApiClient(server_url)
-    registration = _ensure_registration(client)
-    if registration is None:
-        return
-
-    framily_code, frame_token = registration
-    if not _wait_for_framily_membership(client, framily_code, frame_token):
-        return
-
-    _fetch_images_loop(client, framily_code, frame_token)
-
-
-def hotspot_up() -> None:
-    _enter_hotspot_mode()
-
-
-def _handle_dispatch_event(interface: str, action: str) -> None:
-    if action != "up" or interface != WLAN_IF:
-        logger.debug("Ignoring dispatcher event: interface=%s action=%s", interface, action)
-        return
-
-    connection = get_active_connection_name()
-    logger.info("Dispatcher event for %s: active connection=%s", interface, connection)
-
-    if connection == CON_HOTSPOT:
-        hotspot_up()
-        return
-
-    if connection == CON_WIFI:
-        wifi_up()
-        return
-
-    logger.info("No managed active connection detected, skipping")
+    start_framily()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Framily NetworkManager dispatcher")
-    parser.add_argument("interface", type=str, help="Network interface receiving event")
-    parser.add_argument("action", type=str, help="Connection action")
+    parser = argparse.ArgumentParser(description="Framily Dispatcher")
+    parser.add_argument("interface", type=str, help="Network interface to monitor (e.g., wlan0)")
+    parser.add_argument("action", type=str, help="Connection action (e.g., up, down)")
     args = parser.parse_args()
 
-    try:
-        with hold_lock(DISPATCHER_LOCK_PATH, non_blocking=True):
-            _handle_dispatch_event(args.interface, args.action)
-    except LockUnavailableError:
-        logger.info("Skipping dispatcher execution because another instance is already running")
-    except CommandError as error:
-        logger.error("Dispatcher command failed: %s", error)
+    with open("/tmp/dispatcher.log", "a") as f:
+        f.write(f"Interface: {args.interface}, Action: {args.action}\n")
+
+    if args.action != "up" or args.interface != "wlan0":
+        exit(0)
+
+    connection = run("nmcli -t -f NAME connection show --active | head -n1")
+
+    if connection == CON_HOTSPOT:
+        hotspot_up()
+    elif connection == CON_WIFI:
+        wifi_up()

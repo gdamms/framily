@@ -5,9 +5,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=framily
-WorkingDirectory=/home/framily
-ExecStart=/usr/bin/python3 /home/framily/main_epd.py
+WorkingDirectory=/opt/framily
+EnvironmentFile=/opt/framily/config.env
+ExecStart=/usr/bin/python3 -m epd.main
 Restart=on-failure
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1

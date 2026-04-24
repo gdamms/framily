@@ -1,78 +1,125 @@
-from __future__ import annotations
+import subprocess
+from pathlib import Path
+import json
+import qrcode
+from PIL import Image
+import os
 
-from typing import Any
 
-from frame_core.config import DEFAULT_CONFIG, DEFAULT_STORE
-from frame_core.display import make_qr
-from frame_core.network import (
-    configure_hotspot_dns_mapping,
-    get_hotspot_credentials,
-    get_wifi_credentials,
-    run_command_output,
-    set_hotspot_credentials,
-    set_wifi_credentials,
-    start_hotspot_connection,
-    start_wifi_connection,
-)
-from frame_core.settings import (
-    CONFIG_PATH,
-    CON_HOTSPOT,
-    CON_WIFI,
-    DNS_CONFIG_PATH,
-    EPD_IMAGE_PATH,
-    EPD_INFO_PATH,
-    FLASK_ADDRESS,
-    FLASK_PORT,
-    HOTSPOT_DOMAIN,
-    TEMPLATE_FOLDER,
-    WLAN_IF,
-)
+try:
+    WEB_ADDRESS = os.environ["FRAMILY_WEB_ADDRESS"]
+    WEB_PORT = int(os.environ["FRAMILY_WEB_PORT"])
+    CONFIG_PATH = Path(os.environ["FRAMILY_CONFIG_PATH"])
+    TEMPLATE_FOLDER = Path(os.environ["FRAMILY_TEMPLATE_FOLDER"])
+    EPD_INFO_PATH = Path(os.environ["FRAMILY_EPD_INFO_PATH"])
+    EPD_IMAGE_PATH = Path(os.environ["FRAMILY_EPD_IMAGE_PATH"])
+    CON_WIFI = os.environ["FRAMILY_WIFI"]
+    CON_HOTSPOT = os.environ["FRAMILY_HOTSPOT"]
+    WLAN_IF = os.environ["FRAMILY_IFACE"]
+    HOTSPOT_DOMAIN = os.environ["FRAMILY_DOMAIN"]
+    DNS_CONFIG_PATH = Path(os.environ["FRAMILY_DNSMASQ_PATH"])
+except KeyError as e:
+    raise RuntimeError(f"Missing required environment variable: {e}") from e
+
+
+DEFAULT_CONFIG = {
+    "server_url": "",
+    "framily_code": "",
+    "frame_token": "",
+    "message": "",
+}
 
 
 def run(cmd: list[str] | str) -> str:
-    return run_command_output(cmd, check=False)
+    shell = isinstance(cmd, str)
+
+    try:
+        completed = subprocess.run(
+            cmd,
+            shell=shell,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as e:
+        print(e.stderr.strip(), flush=True)
+        return e.stdout.strip()
+
+    return completed.stdout.strip()
 
 
 def set_wifi(ssid: str, password: str, start: bool = True) -> None:
-    set_wifi_credentials(ssid, password)
+    run(['nmcli', 'connection', 'modify', CON_WIFI, 'wifi.ssid', ssid])
+    run(['nmcli', 'connection', 'modify', CON_WIFI, 'wifi-sec.psk', password])
     if start:
         start_wifi()
 
 
 def get_wifi() -> tuple[str, str]:
-    return get_wifi_credentials()
+    ssid = run(['nmcli', '-g', '802-11-wireless.ssid', 'connection', 'show', CON_WIFI])
+    password = run(['nmcli', '-s', '-g', '802-11-wireless-security.psk', 'connection', 'show', CON_WIFI])
+    return ssid, password
 
 
-def start_wifi() -> None:
-    start_wifi_connection()
+def start_wifi():
+    run(['nmcli', 'connection', 'up', CON_WIFI])
 
 
 def set_hotspot(ssid: str, password: str, start: bool = True) -> None:
-    set_hotspot_credentials(ssid, password)
+    run(['nmcli', 'connection', 'modify', CON_HOTSPOT, 'wifi.ssid', ssid])
+    run(['nmcli', 'connection', 'modify', CON_HOTSPOT, 'wifi-sec.psk', password])
     if start:
         start_hotspot()
 
 
 def get_hotspot() -> tuple[str, str]:
-    configure_hotspot_dns_mapping(WLAN_IF)
-    return get_hotspot_credentials()
+    ssid = run(['nmcli', '-g', '802-11-wireless.ssid', 'connection', 'show', CON_HOTSPOT])
+    password = run(['nmcli', '-s', '-g', '802-11-wireless-security.psk', 'connection', 'show', CON_HOTSPOT])
+    address = run(['ip', '-br', 'addr', 'show', WLAN_IF])
+    address = address.split()[2].split('/')[0]  # Extract the IP address
+
+    # Set DNS to resolve the hotspot domain to the local IP address
+    resolv_conf = f"address=/{HOTSPOT_DOMAIN}/{address}\n"
+    DNS_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    DNS_CONFIG_PATH.write_text(resolv_conf)
+
+    return ssid, password
 
 
-def start_hotspot() -> None:
-    start_hotspot_connection()
+def start_hotspot():
+    run(['nmcli', 'connection', 'up', CON_HOTSPOT])
 
 
-def load_config() -> dict[str, Any]:
-    return DEFAULT_STORE.load()
+def load_config() -> dict:
+    if not CONFIG_PATH.exists():
+        return DEFAULT_CONFIG
 
+    try:
+        config = json.loads(CONFIG_PATH.read_text())
+    except (json.JSONDecodeError, OSError):
+        return DEFAULT_CONFIG
 
-def save_config(config: dict[str, Any]) -> None:
-    DEFAULT_STORE.save(config)
+    return {
+        "server_url": config.get("server_url", ""),
+        "framily_code": config.get("framily_code", ""),
+        "frame_token": config.get("frame_token", ""),
+        "message": config.get("message", ""),
+    }
+
+def save_config(config: dict) -> None:
+    with open(CONFIG_PATH, "w") as f:
+        json.dump(config, f, indent=2)
 
 
 def reset_config() -> None:
-    DEFAULT_STORE.reset()
+    save_config(DEFAULT_CONFIG)
 
+
+def make_qr(data: str, size: int = 150) -> Image.Image:
+    qr = qrcode.make(data, border=0)
+    return qr.resize((size, size))
 
 def save_message(message: str) -> None:
-    DEFAULT_STORE.save_message(message)
+    config = load_config()
+    config["message"] = message
+    save_config(config)
