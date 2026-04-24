@@ -1,5 +1,6 @@
-cd epd
-sh setup.sh
+#!/bin/sh
+set -eu
 
-cd ../framily_flask
-sh setup.sh
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+
+exec sh "$SCRIPT_DIR/setup/full_setup.sh"

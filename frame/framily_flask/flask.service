@@ -1,13 +1,18 @@
 [Unit]
 Description=Framily setup Flask service
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
+User=framily
 WorkingDirectory=/home/framily
 ExecStart=/usr/bin/python3 /home/framily/main_flask.py
 Restart=on-failure
-RestartSec=2
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

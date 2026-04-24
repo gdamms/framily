@@ -97,6 +97,21 @@
             overflow: scroll;
         }
 
+        .status {
+            padding: 0.75rem;
+            border-radius: 10px;
+            border: 1px solid #93c5fd;
+            background: #eff6ff;
+        }
+
+        .last-error {
+            padding: 0.75rem;
+            border-radius: 10px;
+            border: 1px solid #fdba74;
+            background: #fff7ed;
+            word-break: break-word;
+        }
+
         .danger-zone {
             padding: 1rem;
             border-radius: 10px;
@@ -117,8 +132,19 @@
 <body>
     <main>
         <h1>Framily Setup</h1>
+        <div class="status">
+            <strong>Current state:</strong> {{ state|e }}
+        </div>
         {% if message %}
         <div class="message">{{ message }}</div>
+        {% endif %}
+        {% if last_error %}
+        <div class="last-error">
+            <strong>Last error:</strong> {{ last_error }}
+            {% if last_error_at %}
+            <div><small>Timestamp (unix): {{ last_error_at }}</small></div>
+            {% endif %}
+        </div>
         {% endif %}
         <form action="/setup" method="post">
             <label for="ssid">Wi-Fi SSID:</label>

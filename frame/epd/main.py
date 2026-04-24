@@ -2,7 +2,7 @@ from PIL import Image, ImageOps
 from pathlib import Path
 from inotify.adapters import Inotify
 import json
-from utils import EPD_IMAGE_PATH, EPD_INFO_PATH
+from frame_core.settings import EPD_IMAGE_PATH, EPD_INFO_PATH
 from epd import epd7in3e
 
 
