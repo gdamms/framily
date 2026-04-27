@@ -14,5 +14,5 @@ export const authApi = {
       body: JSON.stringify({ username_or_email: usernameOrEmail, password }),
     }),
 
-  me: (token: string) => request<UserInfo>("/auth/me", { token }),
+  me: () => request<UserInfo>("/auth/me"),
 };

@@ -34,7 +34,7 @@
   let pictureError = "";
   let fileInput: HTMLInputElement;
 
-  $: username = $page.params.username;
+  $: username = $page.params.username ?? "";
 
   onMount(async () => {
     if (!$authStore.isAuthenticated) {
@@ -47,12 +47,15 @@
   async function loadUserProfile() {
     loading = true;
     error = "";
-    try {
-      const token = authStore.getToken();
-      if (!token) return;
+    if (!username) {
+      error = "Invalid username";
+      loading = false;
+      return;
+    }
 
+    try {
       // Step 1: Load user info
-      const userResponse = await api.user.getInfo(username, token);
+      const userResponse = await api.user.getInfo(username);
       user = userResponse.user;
       isOwnProfile = user.username === $authStore.user?.username;
 
@@ -64,8 +67,8 @@
 
       // Step 2: Load framilies and pictures in parallel
       const [framilyResponse, picturesResponse] = await Promise.all([
-        api.framily.list(token, username),
-        api.pictures.list(token, { username }),
+        api.framily.list(username),
+        api.pictures.list({ username }),
       ]);
 
       framilies = framilyResponse.framilies.filter((f) => f.role >= 1);
@@ -82,15 +85,11 @@
     editError = "";
     editSuccess = "";
     try {
-      const token = authStore.getToken();
-      if (!token) return;
-
       const response = await api.user.updateProfile(
         {
           display_name: editForm.display_name,
           email: editForm.email,
         },
-        token,
       );
       user = response.user;
       editing = false;
@@ -116,15 +115,12 @@
     uploadingPicture = true;
     pictureError = "";
     try {
-      const token = authStore.getToken();
-      if (!token) return;
-
-      await api.user.uploadProfilePicture(file, token);
+      await api.user.uploadProfilePicture(file);
       await loadUserProfile();
 
       // Refresh auth store user data
       if (isOwnProfile) {
-        const meResponse = await api.auth.me(token);
+        const meResponse = await api.auth.me();
         authStore.updateUser(meResponse);
       }
     } catch (e: any) {
@@ -140,15 +136,12 @@
       return;
 
     try {
-      const token = authStore.getToken();
-      if (!token) return;
-
-      await api.user.deleteProfilePicture(token);
+      await api.user.deleteProfilePicture();
       await loadUserProfile();
 
       // Refresh auth store user data
       if (isOwnProfile) {
-        const meResponse = await api.auth.me(token);
+        const meResponse = await api.auth.me();
         authStore.updateUser(meResponse);
       }
     } catch (e: any) {
@@ -320,7 +313,7 @@
           {isOwnProfile ? "My" : `${user.display_name}'s`} Photos
           <span class="photo-count">({pictures.length})</span>
         </h2>
-        <Galery {pictures} />
+        <Galery {pictures} {framilies} />
       </section>
     {:else}
       <section class="profile-section">

@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { PictureInfo } from "$lib/api";
-  import { authStore } from "$lib/stores/auth";
   import { api } from "$lib/api";
   import { goto } from "$app/navigation";
 
@@ -10,20 +9,16 @@
 
   let { picture }: Props = $props();
 
-  function fetchImageOnError(event: Event): void {
+  async function fetchImageOnError(event: Event): Promise<void> {
     const img = event.target as HTMLImageElement;
     img.onerror = null;
-    const src = img.src;
-    const options = {
-      headers: {
-        Authorization: `Bearer ${authStore.getToken()}`,
-      },
-    };
-    fetch(src, options)
-      .then((response) => response.blob())
-      .then((blob) => {
-        img.src = URL.createObjectURL(blob);
-      });
+
+    try {
+      const blob = await api.pictures.getImageBlob(picture.id);
+      img.src = URL.createObjectURL(blob);
+    } catch {
+      // Keep the original failed image source.
+    }
   }
 
   function gotoPictureDetail() {

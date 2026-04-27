@@ -1,48 +1,75 @@
-import { writable, get } from "svelte/store";
-import { api, type UserInfo } from "$lib/api";
+import { writable } from "svelte/store";
+
+const AUTH_COOKIE_NAME = "auth_token";
 
 export interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
-  user: UserInfo | null;
   isLoading: boolean;
+}
+
+function getAuthTokenFromCookie(): string | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const cookiePrefix = `${AUTH_COOKIE_NAME}=`;
+  const cookie = document.cookie
+    .split(";")
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(cookiePrefix));
+
+  if (!cookie) {
+    return null;
+  }
+
+  return decodeURIComponent(cookie.slice(cookiePrefix.length));
+}
+
+function setAuthTokenCookie(token: string): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const secureFlag = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${AUTH_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; Max-Age=2592000; SameSite=Lax${secureFlag}`;
+}
+
+function clearAuthTokenCookie(): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const secureFlag = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${AUTH_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax${secureFlag}`;
 }
 
 function createAuthStore() {
   const initialToken =
-    typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    typeof window !== "undefined" ? getAuthTokenFromCookie() : null;
 
-  const { subscribe, set, update } = writable<AuthState>({
+  const authState = writable<AuthState>({
     token: initialToken,
     isAuthenticated: !!initialToken,
-    user: null,
     isLoading: !!initialToken,
   });
 
-  // Load user info on initialization if token exists
-  if (initialToken && typeof window !== "undefined") {
-    api.auth
-      .me(initialToken)
-      .then((user) => {
-        update((state) => ({ ...state, user, isLoading: false }));
-      })
-      .catch(() => {
-        // Token invalid, clear auth
-        localStorage.removeItem("auth_token");
-        set({
-          token: null,
-          isAuthenticated: false,
-          user: null,
-          isLoading: false,
-        });
-      });
-  }
+  const resetAuthState = () => {
+    clearAuthTokenCookie();
+    authState.set({
+      token: null,
+      isAuthenticated: false,
+      isLoading: false,
+    });
+  };
 
   return {
-    subscribe,
+    subscribe: authState.subscribe,
+    set: authState.set,
+    update: authState.update,
     setToken: async (token: string) => {
-      localStorage.setItem("auth_token", token);
-      update((state) => ({
+      setAuthTokenCookie(token);
+      authState.update((state) => ({
         ...state,
         token,
         isAuthenticated: true,
@@ -50,40 +77,21 @@ function createAuthStore() {
       }));
 
       try {
-        const user = await api.auth.me(token);
-        update((state) => ({ ...state, user, isLoading: false }));
+        authState.update((state) => ({ ...state, isLoading: false }));
       } catch {
-        update((state) => ({ ...state, isLoading: false }));
+        clearAuthTokenCookie();
+        resetAuthState();
       }
     },
     clearToken: () => {
-      localStorage.removeItem("auth_token");
-      set({
-        token: null,
-        isAuthenticated: false,
-        user: null,
-        isLoading: false,
-      });
+      clearAuthTokenCookie();
+      resetAuthState();
     },
     getToken: (): string | null => {
       if (typeof window !== "undefined") {
-        return localStorage.getItem("auth_token");
+        return getAuthTokenFromCookie();
       }
       return null;
-    },
-    refreshUser: async () => {
-      const state = get({ subscribe });
-      if (state.token) {
-        try {
-          const user = await api.auth.me(state.token);
-          update((s) => ({ ...s, user }));
-        } catch {
-          // Ignore errors
-        }
-      }
-    },
-    updateUser: (user: UserInfo) => {
-      update((state) => ({ ...state, user }));
     },
   };
 }

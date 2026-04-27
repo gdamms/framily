@@ -1,17 +1,12 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { authStore } from '$lib/stores/auth';
-  import { api } from '$lib/api';
 
   let isLoading = false;
 
   const handleLogout = async () => {
     isLoading = true;
     try {
-      const token = authStore.getToken();
-      if (token) {
-        await api.auth.logout(token);
-      }
       authStore.clearToken();
       await goto('/login');
     } catch (error) {

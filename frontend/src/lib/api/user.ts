@@ -2,36 +2,24 @@ import { request, requestFormData, API_BASE_URL } from "./client";
 import type { UserInfo, FramilyMember } from "./types";
 
 export const userApi = {
-  getInfo: (username: string, token: string) =>
-    request<{ user: UserInfo }>(
-      `/user/info?username=${encodeURIComponent(username)}`,
-      { token },
-    ),
+  getInfo: (username: string) =>
+    request<{ user: UserInfo }>(`/user/info?username=${encodeURIComponent(username)}`),
 
-  updateProfile: (
-    data: { display_name?: string; email?: string },
-    token: string,
-  ) =>
+  updateProfile: (data: { display_name?: string; email?: string }) =>
     request<{ user: UserInfo }>("/user/profile", {
       method: "PUT",
       body: JSON.stringify(data),
-      token,
     }),
 
-  uploadProfilePicture: (file: File, token: string) => {
+  uploadProfilePicture: (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    return requestFormData<{ message: string }>(
-      "/user/profile-picture",
-      formData,
-      token,
-    );
+    return requestFormData<{ message: string }>("/user/profile-picture", formData);
   },
 
-  deleteProfilePicture: (token: string) =>
+  deleteProfilePicture: () =>
     request<{ message: string }>("/user/profile-picture", {
       method: "DELETE",
-      token,
     }),
 
   getProfilePictureUrl: (user: UserInfo | FramilyMember): string => {

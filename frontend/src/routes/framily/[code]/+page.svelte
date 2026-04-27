@@ -51,12 +51,9 @@
     loading = true;
     error = "";
     try {
-      const token = authStore.getToken();
-      if (!token) return;
-
       const [framilyResponse, picturesResponse] = await Promise.all([
-        api.framily.info(framilyCode, token),
-        api.pictures.list(token, { framily_code: framilyCode }),
+        api.framily.info(framilyCode),
+        api.pictures.list({ framily_code: framilyCode }),
       ]);
 
       framily = framilyResponse.framily;
@@ -85,10 +82,7 @@
     uploading = true;
     uploadError = "";
     try {
-      const token = authStore.getToken();
-      if (!token) return;
-
-      await api.pictures.upload([framilyCode], file, token);
+      await api.pictures.upload([framilyCode], file);
       await loadFramilyData();
     } catch (e: any) {
       uploadError = e.message || "Failed to upload";
@@ -102,10 +96,7 @@
     inviteLoading = true;
     inviteError = "";
     try {
-      const token = authStore.getToken();
-      if (!token) return;
-
-      await api.framily.invite(framilyCode, inviteUsername, token);
+      await api.framily.invite(framilyCode, inviteUsername);
       showInviteModal = false;
       inviteUsername = "";
       await loadFramilyData();
@@ -120,10 +111,7 @@
     if (!confirm(`Are you sure you want to kick ${username}?`)) return;
 
     try {
-      const token = authStore.getToken();
-      if (!token) return;
-
-      await api.framily.kick(framilyCode, username, token);
+      await api.framily.kick(framilyCode, username);
       await loadFramilyData();
     } catch (e: any) {
       alert(e.message || "Failed to kick member");
@@ -132,10 +120,7 @@
 
   async function promoteMember(username: string, newRole: number) {
     try {
-      const token = authStore.getToken();
-      if (!token) return;
-
-      await api.framily.promote(framilyCode, username, newRole, token);
+      await api.framily.promote(framilyCode, username, newRole);
       await loadFramilyData();
     } catch (e: any) {
       alert(e.message || "Failed to change role");
@@ -147,10 +132,7 @@
     settingsError = "";
     settingsSuccess = "";
     try {
-      const token = authStore.getToken();
-      if (!token) return;
-
-      await api.framily.updateSettings(framilyCode, settingsForm, token);
+      await api.framily.updateSettings(framilyCode, settingsForm);
       settingsSuccess = "Settings saved!";
       setTimeout(() => (settingsSuccess = ""), 3000);
     } catch (e: any) {
@@ -164,10 +146,7 @@
     if (!confirm("Are you sure you want to leave this framily?")) return;
 
     try {
-      const token = authStore.getToken();
-      if (!token) return;
-
-      await api.framily.leave(framilyCode, token);
+      await api.framily.leave(framilyCode);
       await goto("/");
     } catch (e: any) {
       alert(e.message || "Failed to leave framily");
@@ -184,10 +163,7 @@
     if (!confirm("Really delete? All photos and data will be lost!")) return;
 
     try {
-      const token = authStore.getToken();
-      if (!token) return;
-
-      await api.framily.delete(framilyCode, token);
+      await api.framily.delete(framilyCode);
       await goto("/");
     } catch (e: any) {
       alert(e.message || "Failed to delete framily");
@@ -212,24 +188,25 @@
   }
 
   function removePicture(pictureId: string) {
-    return api.pictures.removeVisibility(pictureId, [framilyCode], authStore.getToken()!);
+    return api.pictures.removeVisibility(pictureId, [framilyCode]);
   }
 
-  function fetchImageOnError(event: Event): void {
+  async function fetchImageOnError(event: Event): Promise<void> {
     const img = event.target as HTMLImageElement;
     img.onerror = null; // Prevent infinite loop
 
     const src = img.src;
-    const options = {
-      headers: {
-        Authorization: `Bearer ${authStore.getToken()}`,
-      },
-    };
-    fetch(src, options)
-      .then((response) => response.blob())
-      .then((blob) => {
-        img.src = URL.createObjectURL(blob);
-      });
+    const pictureId = src.split("/").pop()?.split("?")[0];
+    if (!pictureId) {
+      return;
+    }
+
+    try {
+      const blob = await api.pictures.getImageBlob(pictureId);
+      img.src = URL.createObjectURL(blob);
+    } catch {
+      // Keep the original failed image source.
+    }
   }
 </script>
 

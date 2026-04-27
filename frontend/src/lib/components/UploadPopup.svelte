@@ -3,7 +3,6 @@
   import Popup from "$lib/components/Popup.svelte";
   import UploadZone from "$lib/components/UploadZone.svelte";
   import Button from "$lib/components/Button.svelte";
-  import { authStore } from "$lib/stores/auth";
   import { api } from "$lib/api/index";
 
   interface Props {
@@ -59,10 +58,7 @@
       }
 
       try {
-        const token = authStore.getToken();
-        if (!token) return;
-
-        await api.pictures.upload(selectedFramilyCodes, file, token);
+        await api.pictures.upload(selectedFramilyCodes, file);
         showMessage("Upload successful", "success");
       } catch (e: any) {
         showMessage(e.message || "Failed to upload", "error");

@@ -1,71 +1,56 @@
-import { request, requestFormData, API_BASE_URL } from "./client";
+import { request, requestBlob, requestFormData, API_BASE_URL } from "./client";
 import type { PictureInfo } from "./types";
 
+type PictureListOptions = { framily_code?: string; username?: string };
+
 export const picturesApi = {
-  list: (
-    token: string,
-    options: { framily_code?: string; username?: string },
-  ) => {
+  list: (options: PictureListOptions = {}) => {
+
     const params = new URLSearchParams();
     if (options.framily_code) params.set("framily_code", options.framily_code);
     if (options.username) params.set("username", options.username);
     return request<{ pictures: PictureInfo[] }>(
       `/pictures/list?${params.toString()}`,
-      { token },
     );
   },
 
-  listAll: (token: string) =>
-    request<{ pictures: PictureInfo[] }>("/pictures/list-all", { token }),
+  listAll: () => request<{ pictures: PictureInfo[] }>("/pictures/list-all"),
 
-  upload: (framily_codes: string[], file: File, token: string) => {
+  upload: (framily_codes: string[], file: File) => {
     const formData = new FormData();
     formData.append("framily_codes", framily_codes.join(","));
     formData.append("file", file);
-    return requestFormData<{ picture: PictureInfo }>(
-      "/pictures/upload",
-      formData,
-      token,
-    );
+    return requestFormData<{ picture: PictureInfo }>("/pictures/upload", formData);
   },
 
-  addVisibility: (
-    picture_id: string,
-    framily_codes: string[],
-    token: string,
-  ) =>
+  addVisibility: (picture_id: string, framily_codes: string[]) =>
     request<{ message: string; picture: PictureInfo }>(
       "/pictures/add-visibility",
       {
         method: "POST",
         body: JSON.stringify({ picture_id, framily_codes }),
-        token,
       },
     ),
 
-  removeVisibility: (
-    picture_id: string,
-    framily_codes: string[],
-    token: string,
-  ) =>
+  removeVisibility: (picture_id: string, framily_codes: string[]) =>
     request<{ message: string; picture: PictureInfo; warning?: string }>(
       "/pictures/remove-visibility",
       {
         method: "POST",
         body: JSON.stringify({ picture_id, framily_codes }),
-        token,
       },
     ),
 
-  delete: (picture_id: string, token: string) => {
+  delete: (picture_id: string) => {
     const url = `/pictures/${picture_id}`;
     return request<{ message: string }>(url, {
       method: "DELETE",
-      token,
     });
   },
 
   getImageUrl: (picture: PictureInfo): string => {
     return `${API_BASE_URL}/pictures/${picture.id}`;
   },
+
+  getImageBlob: (picture_id: string) => requestBlob(`/pictures/${picture_id}`),
 };

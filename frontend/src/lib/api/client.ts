@@ -1,7 +1,11 @@
+import { goto } from "$app/navigation";
+import { authStore } from "$lib/stores/auth";
+
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "/api/v1";
 
 export { API_BASE_URL };
+
 
 export class ApiError extends Error {
   constructor(
@@ -13,61 +17,121 @@ export class ApiError extends Error {
   }
 }
 
-export async function request<T>(
-  endpoint: string,
-  options?: RequestInit & { token?: string },
-): Promise<T> {
-  const { token, ...fetchOptions } = options || {};
+let isRedirectingToLogin = false;
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(fetchOptions.headers as Record<string, string> || {}),
-  };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+function toHeadersRecord(headers?: HeadersInit): Record<string, string> {
+  if (!headers) {
+    return {};
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  if (headers instanceof Headers) {
+    return Object.fromEntries(headers.entries());
+  }
+
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers);
+  }
+
+  return { ...headers };
+}
+
+function redirectToLoginOnUnauthorized(status: number): void {
+  if (
+    status === 401
+    && typeof window !== "undefined"
+    && window.location.pathname !== "/login"
+    && !isRedirectingToLogin
+  ) {
+    authStore.clearToken();
+    isRedirectingToLogin = true;
+    void goto("/login").finally(() => {
+      isRedirectingToLogin = false;
+    });
+  }
+}
+
+async function buildErrorMessage(response: Response): Promise<string> {
+  const fallback = response.statusText || "Request failed";
+  try {
+    const error = await response.clone().json();
+    return error.detail || error.message || fallback;
+  } catch {
+    try {
+      const errorText = await response.text();
+      return errorText || fallback;
+    } catch {
+      return fallback;
+    }
+  }
+}
+
+async function requestInternal<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  responseType: "json" | "blob" = "json",
+): Promise<T> {
+  const fetchOptions = { ...options };
+  const credentials = fetchOptions.credentials || "include";
+  const headers = toHeadersRecord(fetchOptions.headers);
+
+  const hasBody = fetchOptions.body !== undefined && fetchOptions.body !== null;
+  const isFormDataBody = typeof FormData !== "undefined" && fetchOptions.body instanceof FormData;
+  if (hasBody && !isFormDataBody && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const requestUrl = endpoint.startsWith("http")
+    ? endpoint
+    : `${API_BASE_URL}${endpoint}`;
+
+  const response = await fetch(requestUrl, {
     ...fetchOptions,
+    credentials,
     headers,
   });
 
   if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ detail: "Request failed" }));
+    redirectToLoginOnUnauthorized(response.status);
+    const message = await buildErrorMessage(response);
     throw new ApiError(
       response.status,
-      error.detail || error.message || "Request failed",
+      message,
     );
   }
 
-  return response.json();
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  if (responseType === "blob") {
+    return response.blob() as Promise<T>;
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export async function request<T>(
+  endpoint: string,
+  options?: RequestInit,
+): Promise<T> {
+  return requestInternal<T>(endpoint, options, "json");
 }
 
 export async function requestFormData<T>(
   endpoint: string,
   formData: FormData,
-  token?: string,
+  options?: Omit<RequestInit, "body" | "method">,
 ): Promise<T> {
-  const headers: HeadersInit = {};
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  return requestInternal<T>(endpoint, {
+    ...options,
     method: "POST",
-    headers,
     body: formData,
   });
+}
 
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ detail: "Request failed" }));
-    throw new ApiError(response.status, error.detail || "Request failed");
-  }
-
-  return response.json();
+export async function requestBlob(
+  endpoint: string,
+  options?: RequestInit,
+): Promise<Blob> {
+  return requestInternal<Blob>(endpoint, options, "blob");
 }
