@@ -36,7 +36,7 @@ export interface FramilyInfo {
   name: string | null;
   created_at: string;
   settings?: FramilySettings;
-  members?: FramilyMember[];
+  members: FramilyMember[];
   member_count?: number;
 }
 

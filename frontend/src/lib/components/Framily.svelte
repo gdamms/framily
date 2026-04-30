@@ -2,20 +2,22 @@
   import { onMount } from "svelte";
   import { api, type FramilyInfo, type PictureInfo } from "$lib/api";
   import Galery from "./Galery.svelte";
+  import Members from "./Members.svelte";
+  import { app } from "$lib/app";
 
   interface Props {
-    framily: FramilyInfo;
+    code: string;
   }
 
-  let { framily }: Props = $props();
+  let { code }: Props = $props();
 
+  let appState = app.state;
+
+  let framily: FramilyInfo | undefined = $state();
   let pictures: PictureInfo[] = $state([]);
 
-  type View = "pictures" | "members" | "settings";
-  let view: View = $state("pictures");
-
   onMount(async () => {
-    let infoResponse = await api.framily.info(framily.code);
+    let infoResponse = await api.framily.info(code);
     framily = infoResponse.framily;
 
     let picResponse = await api.pictures.list({
@@ -25,54 +27,53 @@
   });
 </script>
 
-<div class="framily-page">
-  <div class="framily-header">
-    <div class="framily-name">{framily.name}</div>
-    <div class="framily-code">@{framily.code}</div>
+{#if framily === undefined}
+  <div class="framily-page">Loading...</div>
+{:else if $appState.page.page !== "framily"}
+  <div class="framily-page">Framily not found</div>
+{:else}
+  <div class="framily-page">
+    <div class="framily-header">
+      <div class="framily-name">{framily.name}</div>
+      <div class="framily-code">@{framily.code}</div>
+    </div>
+    <div class="framily-nav">
+      <button
+        class="button"
+        class:selected={$appState.page.section === "pictures"}
+        onclick={() => (app.navigate({ page: "framily", code: framily.code, section: "pictures" }))}
+      >
+        Pictures
+      </button>
+      <button
+        class="button"
+        class:selected={$appState.page.section === "members"}
+        onclick={() => (app.navigate({ page: "framily", code: framily.code, section: "members" }))}
+      >
+        Members
+      </button>
+      <button
+        class="button"
+        class:selected={$appState.page.section === "settings"}
+        onclick={() => (app.navigate({ page: "framily", code: framily.code, section: "settings" }))}
+      >
+        Settings
+      </button>
+    </div>
+    <div class="framily-content">
+      {#if $appState.page.section === "pictures"}
+        <Galery {pictures} />
+      {:else if $appState.page.section === "members"}
+        <Members members={framily.members} />
+      {:else if $appState.page.section === "settings"}
+        <div class="settings">
+          <h3>Settings</h3>
+          <p>This is where you can manage your framily settings.</p>
+        </div>
+      {/if}
+    </div>
   </div>
-  <div class="framily-nav">
-    <button
-      class="button"
-      class:selected={view === "pictures"}
-      onclick={() => (view = "pictures")}
-    >
-      Pictures
-    </button>
-    <button
-      class="button"
-      class:selected={view === "members"}
-      onclick={() => (view = "members")}
-    >
-      Members
-    </button>
-    <button
-      class="button"
-      class:selected={view === "settings"}
-      onclick={() => (view = "settings")}
-    >
-      Settings
-    </button>
-  </div>
-  <div class="framily-content">
-    {#if view === "pictures"}
-      <Galery {pictures} />
-    {:else if view === "members"}
-      <div class="members-list">
-        {#each framily.members as member}
-          <button class="member">
-            <div class="member-name">{member.display_name}</div>
-            <div class="member-username">@{member.username}</div>
-          </button>
-        {/each}
-      </div>
-    {:else if view === "settings"}
-      <div class="settings">
-        <h3>Settings</h3>
-        <p>This is where you can manage your framily settings.</p>
-      </div>
-    {/if}
-  </div>
-</div>
+{/if}
 
 <style>
   .framily-page {
@@ -118,30 +119,5 @@
 
   .framily-content {
     flex: 1;
-  }
-
-  .members-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
-  }
-
-  .member {
-    border: none;
-    text-align: left;
-    background: white;
-    padding: 1rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  .member-name {
-    font-weight: bold;
-    font-size: 1.2rem;
-  }
-
-  .member-username {
-    color: #666;
   }
 </style>

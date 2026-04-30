@@ -92,7 +92,8 @@ def connect_framily(
     db: Session = Depends(get_db)
 ):
     """Connect first user to a framily. Makes them admin."""
-    framily = db.query(Framily).filter(Framily.code == request.framily_code).first()
+    framily_code = request.framily_code.strip().upper()
+    framily = db.query(Framily).filter(Framily.code == framily_code).first()
     if not framily:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -139,7 +140,8 @@ def invite_user(
     db: Session = Depends(get_db)
 ):
     """Invite a user to the framily. Admin only."""
-    framily = db.query(Framily).filter(Framily.code == request.framily_code).first()
+    framily_code = request.framily_code.strip().upper()
+    framily = db.query(Framily).filter(Framily.code == framily_code).first()
     if not framily:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -190,7 +192,8 @@ def join_framily(
     db: Session = Depends(get_db)
 ):
     """Accept or decline an invitation."""
-    framily = db.query(Framily).filter(Framily.code == request.framily_code).first()
+    framily_code = request.framily_code.strip().upper()
+    framily = db.query(Framily).filter(Framily.code == framily_code).first()
     if not framily:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
