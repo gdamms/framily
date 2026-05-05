@@ -1,15 +1,14 @@
 <script lang="ts">
-  import type { FramilyInfo } from "$lib/api";
   import Popup from "$lib/components/Popup.svelte";
-  import UploadZone from "$lib/components/UploadZone.svelte";
   import Button from "$lib/components/Button.svelte";
   import { api } from "$lib/api/index";
 
   interface Props {
+    isOpen?: boolean;
     onClose?: () => void;
   }
 
-  let { onClose }: Props = $props();
+  let { isOpen = $bindable(false), onClose }: Props = $props();
 
   let code = $state("");
 
@@ -59,9 +58,13 @@
       );
     }
   }
+
+  async function close() {
+    isOpen = false;
+  }
 </script>
 
-<Popup {onClose}>
+<Popup bind:isOpen {onClose}>
   <div class="content">
     {#if message}
       <div class="message {messageType}">{message}</div>
@@ -70,7 +73,7 @@
     <p>Enter the Framily code for the first connection:</p>
     <input type="text" bind:value={code} placeholder="Framily code" />
     <div class="buttons">
-      <Button onclick={onClose} color="#b8d9f2">Cancel</Button>
+      <Button onclick={close} color="#b8d9f2">Cancel</Button>
       <Button onclick={handleConnect}>Connect</Button>
     </div>
   </div>

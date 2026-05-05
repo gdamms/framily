@@ -3,20 +3,26 @@
 
   interface Props {
     children: Snippet;
+    isOpen?: boolean;
     onClose?: () => void;
   }
 
-  let { children, onClose }: Props = $props();
+  let { children, isOpen = $bindable(false), onClose = () => {} }: Props = $props();
+
+  function close() {
+    isOpen = false;
+    onClose();
+  }
 
   function handleBackgroundClick(event: MouseEvent): void {
-    if (event.target === event.currentTarget && onClose) {
-      onClose();
+    if (event.target === event.currentTarget) {
+      close();
     }
   }
 
   function handleEscapeKey(event: KeyboardEvent): void {
-    if (event.key === "Escape" && onClose) {
-      onClose();
+    if (event.key === "Escape") {
+      close();
     }
   }
 
@@ -29,24 +35,35 @@
   });
 </script>
 
-<button class="popup" onclick={handleBackgroundClick}>
+<div
+  class="popup"
+  class:isOpen
+  onclick={handleBackgroundClick}
+  onkeypress={() => {}}
+  role="button"
+  tabindex="0"
+>
   <div class="popup-content">
     {@render children()}
   </div>
-</button>
+</div>
 
 <style>
   .popup {
+    display: none;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
     justify-content: center;
     align-items: center;
     z-index: 1000;
+  }
+
+  .popup.isOpen {
+    display: flex;
   }
 
   .popup-content {

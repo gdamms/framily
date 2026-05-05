@@ -5,10 +5,11 @@
 
   interface Props {
     framilyCode: string;
+    isOpen?: boolean;
     onClose?: () => void;
   }
 
-  let { framilyCode, onClose }: Props = $props();
+  let { framilyCode, isOpen = $bindable(false), onClose }: Props = $props();
 
   let username = $state("");
 
@@ -49,7 +50,7 @@
       await api.framily.invite(framilyCode,username);
       showMessage("Invitation sent successfully!", "success");
       setTimeout(() => {
-        onClose && onClose();
+        close && close();
       }, 1000);
     } catch (error: any) {
       showMessage(
@@ -58,9 +59,13 @@
       );
     }
   }
+
+  async function close() {
+    isOpen = false;
+  }
 </script>
 
-<Popup {onClose}>
+<Popup bind:isOpen {onClose}>
   <div class="content">
     {#if message}
       <div class="message {messageType}">{message}</div>
@@ -69,7 +74,7 @@
     <p>Enter the username of the person you want to invite:</p>
     <input type="text" bind:value={username} placeholder="Username" />
     <div class="buttons">
-      <Button onclick={onClose} color="#b8d9f2">Cancel</Button>
+      <Button onclick={close} color="#b8d9f2">Cancel</Button>
       <Button onclick={handleConnect}>Invite</Button>
     </div>
   </div>

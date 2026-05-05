@@ -8,14 +8,19 @@ class PictureMetadata(BaseModel):
     height: Optional[int] = None
     format: Optional[str] = None
     file_size: Optional[int] = None
+    original_filename: Optional[str] = None
+
+
+class PictureFramilyInfo(BaseModel):
+    code: str
+    name: Optional[str] = None
 
 
 class PictureInfo(BaseModel):
     id: str
-    framily_ids: list[int]
-    framily_codes: list[str]
+    framilies: list[PictureFramilyInfo]
     uploader_username: str
-    uploader_display_name: str
+    uploader_display_name: Optional[str] = None
     upload_date: datetime
     metadata: Optional[PictureMetadata] = None
 
@@ -25,6 +30,12 @@ class PictureInfo(BaseModel):
 
 class PictureUploadResponse(BaseModel):
     picture: PictureInfo
+
+
+class PictureMutationResponse(BaseModel):
+    message: str
+    picture: PictureInfo
+    warning: Optional[str] = None
 
 
 class PictureFetchResponse(BaseModel):

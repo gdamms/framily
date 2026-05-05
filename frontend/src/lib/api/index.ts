@@ -2,10 +2,12 @@
 export type {
   TokenResponse,
   UserInfo,
+  UserFramilyInfo,
   FramilyListItem,
   FramilyMember,
   FramilySettings,
   FramilyInfo,
+  FramilyPictureInfo,
   PictureFramilyInfo,
   PictureInfo,
 } from "./types";

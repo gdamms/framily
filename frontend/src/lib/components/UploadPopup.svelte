@@ -8,10 +8,16 @@
   interface Props {
     framilies?: FramilyInfo[];
     framilyCodes?: string[];
+    isOpen?: boolean;
     onClose?: () => void;
   }
 
-  let { framilies = [], framilyCodes = [], onClose }: Props = $props();
+  let {
+    framilies = [],
+    framilyCodes = [],
+    isOpen = $bindable(false),
+    onClose,
+  }: Props = $props();
 
   let fileInput: HTMLInputElement | undefined = $state();
 
@@ -69,9 +75,13 @@
       showMessage("No file selected", "error");
     }
   }
+
+  async function close() {
+    isOpen = false;
+  }
 </script>
 
-<Popup {onClose}>
+<Popup bind:isOpen {onClose}>
   <div class="content">
     {#if message}
       <div class="message {messageType}">{message}</div>
@@ -91,7 +101,7 @@
       {/each}
     </div>
     <div class="buttons">
-      <Button onclick={onClose} color="#b8d9f2">Cancel</Button>
+      <Button onclick={close} color="#b8d9f2">Cancel</Button>
       <Button onclick={handleUpload}>Upload</Button>
     </div>
   </div>

@@ -42,36 +42,23 @@
 
     user = await api.auth.me();
   });
-
-  function closeUploadPopup() {
-    uploadPopupOpen = false;
-  }
-
-  function closeConnectFramilyPopup() {
-    connectFramilyPopupOpen = false;
-  }
-
-  function closeInvitePopup() {
-    invitePopupOpen = false;
-  }
 </script>
 
 {#if pictures === undefined || framilies === undefined || user === undefined}
   <div class="page">Loading...</div>
 {:else}
   <div class="page">
-    {#if uploadPopupOpen}
-      <UploadPopup
-        {framilies}
-        onClose={closeUploadPopup}
-        framilyCodes={framilies.map((f) => f.code)}
+    <UploadPopup
+      {framilies}
+      bind:isOpen={uploadPopupOpen}
+      framilyCodes={framilies.map((f) => f.code)}
+    />
+    <ConnectFramilyPopup bind:isOpen={connectFramilyPopupOpen} />
+    {#if $appState.page.page === "framily"}
+      <InvitePopup
+        framilyCode={$appState.page.code}
+        bind:isOpen={invitePopupOpen}
       />
-    {/if}
-    {#if connectFramilyPopupOpen}
-      <ConnectFramilyPopup onClose={closeConnectFramilyPopup} />
-    {/if}
-    {#if invitePopupOpen && $appState.page.page === "framily"}
-      <InvitePopup framilyCode={$appState.page.code} onClose={closeInvitePopup} />
     {/if}
     <div class="topBar">
       <div class="title">Framily</div>
@@ -125,7 +112,11 @@
       <button
         class="button"
         onclick={() =>
-          app.navigate({ page: "profile", username: user.username, section: "pictures" })}
+          app.navigate({
+            page: "profile",
+            username: user.username,
+            section: "pictures",
+          })}
       >
         <User />
       </button>

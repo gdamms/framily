@@ -7,8 +7,8 @@ from core.database import get_db
 from core.config import settings
 from core.minio import minio_client
 from api.v1.auth import get_current_user
-from models import User
-from schemas.user import ProfileUpdate
+from models import User, Framily, Picture, Membership, PictureVisibility
+from schemas.user import ProfileUpdate, UserInfo, UserInfoResponse, UserFramilyInfo
 
 router = APIRouter(
     prefix="/user",
@@ -20,7 +20,77 @@ ALLOWED_FORMATS = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB for profile pictures
 
 
-@router.get("/info")
+def build_picture_info(picture: Picture) -> dict:
+    framilies = []
+    for visibility in picture.visibility_records:
+        framily = visibility.framily
+        if framily:
+            framilies.append({
+                "code": framily.code,
+                "name": framily.name,
+            })
+
+    return {
+        "id": picture.id,
+        "framilies": framilies,
+        "uploader_username": picture.uploader.username if picture.uploader else "unknown",
+        "uploader_display_name": picture.uploader.display_name if picture.uploader else None,
+        "upload_date": picture.upload_date,
+        "metadata": picture.metadata_ or {},
+    }
+
+
+def build_user_info(target_user: User, current_user: User, db: Session, include_details: bool) -> UserInfo:
+    current_user_framily_ids = {
+        m.framily_id for m in db.query(Membership).filter(
+            Membership.user_id == current_user.id,
+            Membership.role >= 1,
+        ).all()
+    }
+
+    framilies = []
+    pictures = []
+
+    if include_details:
+        target_memberships = db.query(Membership).filter(
+            Membership.user_id == target_user.id,
+            Membership.role >= 1,
+        ).all()
+
+        for membership in target_memberships:
+            framily = membership.framily
+            framilies.append(UserFramilyInfo(
+                code=framily.code,
+                name=framily.name,
+                role=membership.role,
+                member_count=db.query(Membership).filter(
+                    Membership.framily_id == framily.id,
+                    Membership.role >= 1,
+                ).count(),
+                picture_count=db.query(PictureVisibility).filter(
+                    PictureVisibility.framily_id == framily.id,
+                ).count(),
+                created_at=framily.created_at,
+            ))
+
+        target_pictures = db.query(Picture).filter(Picture.uploaded_by == target_user.id).all()
+        for picture in target_pictures:
+            if current_user.id == target_user.id or set(picture.framily_ids).intersection(current_user_framily_ids):
+                pictures.append(build_picture_info(picture))
+
+        pictures.sort(key=lambda item: item["upload_date"], reverse=True)
+
+    return UserInfo(
+        username=target_user.username,
+        email=target_user.email if current_user.id == target_user.id or include_details else None,
+        display_name=target_user.display_name,
+        created_at=target_user.created_at if current_user.id == target_user.id else None,
+        framilies=framilies,
+        pictures=pictures,
+    )
+
+
+@router.get("/info", response_model=UserInfoResponse)
 def get_user_info(
     username: str = Query(...),
     current_user: User = Depends(get_current_user),
@@ -38,15 +108,7 @@ def get_user_info(
     is_self = current_user.id == target_user.id
 
     if is_self:
-        # Full info for self
-        return {
-            "user": {
-                "username": target_user.username,
-                "email": target_user.email,
-                "display_name": target_user.display_name,
-                "created_at": target_user.created_at.isoformat() if target_user.created_at else None,
-            }
-        }
+        return UserInfoResponse(user=build_user_info(target_user, current_user, db, include_details=True))
 
     # Get all framilies current user is in
     current_user_framilies = {m.framily_id for m in current_user.memberships if m.role >= 1}
@@ -59,25 +121,12 @@ def get_user_info(
             break
 
     if is_framily_member:
-        # Partial info for framily members
-        return {
-            "user": {
-                "username": target_user.username,
-                "email": target_user.email,
-                "display_name": target_user.display_name,
-            }
-        }
-    else:
-        # Basic info for external users
-        return {
-            "user": {
-                "username": target_user.username,
-                "display_name": target_user.display_name,
-            }
-        }
+        return UserInfoResponse(user=build_user_info(target_user, current_user, db, include_details=True))
+
+    return UserInfoResponse(user=build_user_info(target_user, current_user, db, include_details=False))
 
 
-@router.put("/profile")
+@router.put("/profile", response_model=UserInfoResponse)
 def update_profile(
     profile: ProfileUpdate,
     current_user: User = Depends(get_current_user),
@@ -102,13 +151,7 @@ def update_profile(
     db.commit()
     db.refresh(current_user)
 
-    return {
-        "user": {
-            "username": current_user.username,
-            "email": current_user.email,
-            "display_name": current_user.display_name
-        }
-    }
+    return UserInfoResponse(user=build_user_info(current_user, current_user, db, include_details=True))
 
 
 @router.post("/profile-picture")

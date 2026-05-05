@@ -9,6 +9,7 @@
   } from "$lib/api";
   import Galery from "./Galery.svelte";
   import Framilies from "./Framilies.svelte";
+  import ConfirmPopup from "./ConfirmPopup.svelte";
 
   interface Props {
     username: string;

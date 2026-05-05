@@ -2,6 +2,8 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 
+from schemas.picture import PictureMetadata
+
 
 # Request schemas
 class FramilyCreate(BaseModel):
@@ -78,6 +80,17 @@ class MemberInfo(BaseModel):
         from_attributes = True
 
 
+class PictureInfo(BaseModel):
+    id: str
+    uploader_username: str
+    uploader_display_name: Optional[str] = None
+    upload_date: datetime
+    metadata: Optional[PictureMetadata] = None
+
+    class Config:
+        from_attributes = True
+
+
 class SettingsInfo(BaseModel):
     picture_duration: int
     shuffle_mode: str
@@ -93,8 +106,10 @@ class FramilyInfo(BaseModel):
     name: Optional[str]
     created_at: datetime
     settings: Optional[SettingsInfo] = None
-    members: Optional[List[MemberInfo]] = None
+    members: List[MemberInfo] = Field(default_factory=list)
+    pictures: List[PictureInfo] = Field(default_factory=list)
     member_count: Optional[int] = None
+    picture_count: Optional[int] = None
 
     class Config:
         from_attributes = True

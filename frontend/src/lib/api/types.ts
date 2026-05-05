@@ -7,6 +7,17 @@ export interface UserInfo {
   email?: string;
   display_name: string;
   created_at?: string;
+  framilies?: UserFramilyInfo[];
+  pictures?: PictureInfo[];
+}
+
+export interface UserFramilyInfo {
+  code: string;
+  name?: string | null;
+  role: number;
+  member_count: number;
+  picture_count: number;
+  created_at: string;
 }
 
 export interface FramilyListItem {
@@ -24,6 +35,14 @@ export interface FramilyMember {
   joined_date: string;
 }
 
+export interface FramilyPictureInfo {
+  id: string;
+  uploader_username: string;
+  uploader_display_name?: string | null;
+  upload_date: string;
+  metadata: Record<string, unknown> | null;
+}
+
 export interface FramilySettings {
   picture_duration: number;
   shuffle_mode: string;
@@ -36,8 +55,10 @@ export interface FramilyInfo {
   name: string | null;
   created_at: string;
   settings?: FramilySettings;
-  members: FramilyMember[];
+  members?: FramilyMember[];
+  pictures?: FramilyPictureInfo[];
   member_count?: number;
+  picture_count?: number;
 }
 
 export interface PictureFramilyInfo {
@@ -49,7 +70,7 @@ export interface PictureInfo {
   id: string;
   framilies: PictureFramilyInfo[];
   uploader_username: string;
-  uploader_display_name: string;
+  uploader_display_name?: string | null;
   upload_date: string;
-  metadata: Record<string, unknown>;
+  metadata: Record<string, unknown> | null;
 }

@@ -49,6 +49,23 @@ def is_member(membership: Optional[Membership]) -> bool:
     return membership is not None and membership.role >= 1
 
 
+def get_framily_picture_info(framily: Framily) -> list[dict]:
+    """Build short picture summaries for a framily."""
+    pictures = []
+    for visibility in framily.picture_visibility:
+        picture = visibility.picture
+        if picture:
+            pictures.append({
+                "id": picture.id,
+                "uploader_username": picture.uploader.username if picture.uploader else "unknown",
+                "uploader_display_name": picture.uploader.display_name if picture.uploader else None,
+                "upload_date": picture.upload_date,
+                "metadata": picture.metadata_,
+            })
+
+    return pictures
+
+
 @router.post("/create", response_model=FramilyCreateResponse, status_code=status.HTTP_201_CREATED)
 def create_framily(request: FramilyCreate, db: Session = Depends(get_db)):
     """Create a new framily. This endpoint is used by the frame device."""
@@ -487,6 +504,8 @@ def get_framily_info(
                 joined_date=m.joined_at
             ))
 
+        pictures = get_framily_picture_info(framily)
+
         settings_info = None
         if framily.settings:
             settings_info = SettingsInfo(
@@ -501,7 +520,10 @@ def get_framily_info(
             name=framily.name,
             created_at=framily.created_at,
             settings=settings_info,
-            members=members
+            members=members,
+            pictures=pictures,
+            member_count=len(members),
+            picture_count=len(pictures)
         ))
 
     elif is_member(membership):
@@ -516,6 +538,8 @@ def get_framily_info(
                     joined_date=m.joined_at
                 ))
 
+        pictures = get_framily_picture_info(framily)
+
         settings_info = None
         if framily.settings:
             settings_info = SettingsInfo(
@@ -530,7 +554,10 @@ def get_framily_info(
             name=framily.name,
             created_at=framily.created_at,
             settings=settings_info,
-            members=members
+            members=members,
+            pictures=pictures,
+            member_count=len(members),
+            picture_count=len(pictures)
         ))
 
     else:
@@ -540,11 +567,14 @@ def get_framily_info(
             Membership.role >= 1
         ).count()
 
+        picture_count = len(framily.picture_visibility)
+
         return FramilyInfoResponse(framily=FramilyInfo(
             code=framily.code,
             name=framily.name,
             created_at=framily.created_at,
-            member_count=member_count
+            member_count=member_count,
+            picture_count=picture_count
         ))
 
 

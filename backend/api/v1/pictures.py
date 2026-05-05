@@ -12,7 +12,14 @@ from core.minio import minio_client
 from api.v1.auth import get_current_user
 from api.v1.framily import get_membership, is_member, is_admin
 from models import User, Framily, Picture, PictureVisibility, Membership
-from schemas.picture import AddVisibilityRequest, RemoveVisibilityRequest, FramilyCheck
+from schemas.picture import (
+    AddVisibilityRequest,
+    RemoveVisibilityRequest,
+    FramilyCheck,
+    PictureUploadResponse,
+    PictureListResponse,
+    PictureMutationResponse,
+)
 
 router = APIRouter(
     prefix="/pictures",
@@ -38,13 +45,13 @@ def get_picture_info(picture: Picture, db: Session) -> dict:
         "id": picture.id,
         "framilies": framilies,
         "uploader_username": picture.uploader.username if picture.uploader else "unknown",
-        "uploader_display_name": picture.uploader.display_name if picture.uploader else "Unknown",
-        "upload_date": picture.upload_date.isoformat(),
-        "metadata": picture.metadata_
+        "uploader_display_name": picture.uploader.display_name if picture.uploader else None,
+        "upload_date": picture.upload_date,
+        "metadata": picture.metadata_ or {}
     }
 
 
-@router.post("/upload", status_code=status.HTTP_201_CREATED)
+@router.post("/upload", response_model=PictureUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_picture(
     framily_codes: str = Form(..., description="Comma-separated list of framily codes"),
     file: UploadFile = File(...),
@@ -147,7 +154,7 @@ async def upload_picture(
     }
 
 
-@router.post("/add-visibility", status_code=status.HTTP_200_OK)
+@router.post("/add-visibility", response_model=PictureMutationResponse, status_code=status.HTTP_200_OK)
 def add_visibility(
     request: AddVisibilityRequest,
     current_user: User = Depends(get_current_user),
@@ -209,7 +216,7 @@ def add_visibility(
     }
 
 
-@router.post("/remove-visibility", status_code=status.HTTP_200_OK)
+@router.post("/remove-visibility", response_model=PictureMutationResponse, status_code=status.HTTP_200_OK)
 def remove_visibility(
     request: RemoveVisibilityRequest,
     current_user: User = Depends(get_current_user),
@@ -312,7 +319,7 @@ def fetch_picture(
     )
 
 
-@router.get("/list")
+@router.get("/list", response_model=PictureListResponse)
 def list_pictures(
     framily_code: Optional[str] = None,
     username: Optional[str] = None,
@@ -399,7 +406,7 @@ def list_pictures(
         return {"pictures": pictures}
 
 
-@router.get("/list-all")
+@router.get("/list-all", response_model=PictureListResponse)
 def list_all_pictures(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
