@@ -26,7 +26,7 @@ class Picture(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     uploaded_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     upload_date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    metadata_ = Column("metadata", JSON, default=dict)  # width, height, format, file_size
+    metadata_ = Column("metadata", JSON, default=dict)
 
     # Relationships
     uploader = relationship("User", back_populates="pictures")

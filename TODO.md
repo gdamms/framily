@@ -1,0 +1,2 @@
+- [ ] change role integer to enum string in database and code
+- [ ] create real framily settings

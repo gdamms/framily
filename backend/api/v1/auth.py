@@ -8,7 +8,7 @@ from core.database import get_db
 from core.config import settings
 from core.security import hash_password, verify_password, create_access_token
 from models import User
-from schemas.auth import UserRegister, UserLogin, Token, UserInfo
+from schemas.auth import RegisterRequest, RegisterResponse, LoginRequest, LoginResponse, UserInfo
 
 router = APIRouter(
     prefix="/auth",
@@ -52,11 +52,11 @@ def get_current_user(
     return user
 
 
-@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
-def register(user: UserRegister, db: Session = Depends(get_db)):
+@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
+def register(request: RegisterRequest, db: Session = Depends(get_db)):
     """Register a new user."""
     # Check if username already exists
-    existing_user = db.query(User).filter(User.username == user.username).first()
+    existing_user = db.query(User).filter(User.username == request.username).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -64,7 +64,7 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
         )
 
     # Check if email already exists
-    existing_email = db.query(User).filter(User.email == user.email).first()
+    existing_email = db.query(User).filter(User.email == request.email).first()
     if existing_email:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -72,12 +72,12 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
         )
 
     # Create new user
-    hashed_password = hash_password(user.password)
+    hashed_password = hash_password(request.password)
     db_user = User(
-        username=user.username,
-        email=user.email,
+        username=request.username,
+        email=request.email,
         hashed_password=hashed_password,
-        display_name=user.username  # Default display name is username
+        display_name=request.username  # Default display name is username
     )
     db.add(db_user)
     db.commit()
@@ -88,14 +88,14 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     return {"token": access_token}
 
 
-@router.post("/login", response_model=Token)
-def login(user: UserLogin, db: Session = Depends(get_db)):
+@router.post("/login", response_model=LoginResponse)
+def login(request: LoginRequest, db: Session = Depends(get_db)):
     """Login a user by username or email."""
     # Try to find user by username first, then by email
-    db_user = db.query(User).filter(User.username == user.username_or_email).first()
+    db_user = db.query(User).filter(User.username == request.username_or_email).first()
     if not db_user:
         # Try email lookup if username lookup failed
-        db_user = db.query(User).filter(User.email == user.username_or_email).first()
+        db_user = db.query(User).filter(User.email == request.username_or_email).first()
 
     if not db_user:
         # User not found
@@ -104,7 +104,7 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
             detail="Invalid credentials"
         )
 
-    if not verify_password(user.password, db_user.hashed_password):
+    if not verify_password(request.password, db_user.hashed_password):
         # Password does not match
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

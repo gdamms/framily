@@ -5,6 +5,7 @@ from sqlalchemy import func
 import uuid
 from io import BytesIO
 from typing import Optional
+from PIL import Image
 
 from core.database import get_db
 from core.config import settings
@@ -14,6 +15,7 @@ from api.v1.framily import get_membership, is_member, is_admin
 from models import User, Framily, Picture, PictureVisibility, Membership
 from schemas.picture import (
     AddVisibilityRequest,
+    PictureUploadRequest,
     RemoveVisibilityRequest,
     FramilyCheck,
     PictureUploadResponse,
@@ -26,7 +28,6 @@ router = APIRouter(
     tags=["pictures"],
 )
 
-ALLOWED_FORMATS = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 
@@ -53,44 +54,29 @@ def get_picture_info(picture: Picture, db: Session) -> dict:
 
 @router.post("/upload", response_model=PictureUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_picture(
-    framily_codes: str = Form(..., description="Comma-separated list of framily codes"),
+    request: PictureUploadRequest,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Upload a picture and make it visible to one or more framilies."""
-    # Parse framily codes
-    codes = [code.strip() for code in framily_codes.split(",") if code.strip()]
-    if not codes:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="At least one framily code is required"
-        )
-
     # Verify all framilies exist and user is a member
     framilies = []
-    for code in codes:
+    for code in request.framily_codes:
         framily = db.query(Framily).filter(Framily.code == code).first()
         if not framily:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Framily not found: {code}"
+                detail=f"Framily not found: {code}."
             )
 
         membership = get_membership(db, current_user.id, framily.id)
         if not is_member(membership):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Must be a member to upload pictures to: {code}"
+                detail=f"Must be a member to upload pictures to: {code}."
             )
         framilies.append(framily)
-
-    # Validate file type
-    if file.content_type not in ALLOWED_FORMATS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File type not allowed. Allowed: {', '.join(ALLOWED_FORMATS)}"
-        )
 
     # Read file content
     content = await file.read()
@@ -99,16 +85,28 @@ async def upload_picture(
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File too large. Max size: {MAX_FILE_SIZE / 1024 / 1024}MB"
+            detail=f"File too large. Max size: {MAX_FILE_SIZE / 1024 / 1024}MB."
         )
+
+    # Validate image by trying to open it with PIL
+    try:
+        image = Image.open(BytesIO(content))
+        image.verify()  # Will raise an exception if not a valid image
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid image file."
+        )
+
+    # Convert image to a consistent format (e.g., PNG) and get metadata
+    output = BytesIO()
+    image.save(output, format='PNG')  # Convert to PNG for consistency
+    output.seek(0)
+    content = output.getvalue()
 
     # Generate unique ID and filename
     picture_id = str(uuid.uuid4())
-    extension = file.content_type.split("/")[-1]
-    if extension == "jpeg":
-        extension = "jpg"
-    # Store in a shared folder since picture can belong to multiple families
-    filename = f"shared/{picture_id}.{extension}"
+    filename = f"shared/{picture_id}.png"
 
     # Upload to MinIO
     try:
@@ -129,11 +127,7 @@ async def upload_picture(
     picture = Picture(
         id=picture_id,
         uploaded_by=current_user.id,
-        metadata_={
-            "format": extension,
-            "file_size": len(content),
-            "original_filename": file.filename
-        }
+        metadata_={}
     )
     db.add(picture)
     db.flush()  # Get the picture ID before adding visibility records
@@ -182,7 +176,7 @@ def add_visibility(
         if not framily:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Framily not found: {code}"
+                detail=f"Framily not found: {code}."
             )
 
         # Check user is a member of this framily

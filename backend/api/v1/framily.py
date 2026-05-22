@@ -8,10 +8,10 @@ from core.database import get_db
 from api.v1.auth import get_current_user
 from models import User, Framily, FramilySettings, Membership
 from schemas.framily import (
-    FramilyCheck, FramilyCheckResponse, FramilyCreate, FramilyConnect, FramilyInvite, FramilyJoin,
-    FramilyLeave, FramilyKick, FramilyPromote, FramilySettingsUpdate,
-    FramilyDelete, FramilyCreateResponse, FramilyInfo, FramilyInfoResponse,
-    MemberInfo, SettingsInfo, MessageResponse
+    FramilyCheckRequest, FramilyCheckResponse, FramilyCreateRequest, FramilyConnectRequest, FramilyInviteRequest, FramilyJoinRequest,
+    FramilyLeaveRequest, FramilyKickRequest, FramilyPictureInfo, FramilyPromoteRequest, FramilySettingsUpdate,
+    FramilyDeleteRequest, FramilyCreateResponse, FramilyInfo, FramilyInfoResponse, FramilyUserInfo,
+    SettingsInfo, MessageResponse
 )
 
 router = APIRouter(
@@ -49,25 +49,8 @@ def is_member(membership: Optional[Membership]) -> bool:
     return membership is not None and membership.role >= 1
 
 
-def get_framily_picture_info(framily: Framily) -> list[dict]:
-    """Build short picture summaries for a framily."""
-    pictures = []
-    for visibility in framily.picture_visibility:
-        picture = visibility.picture
-        if picture:
-            pictures.append({
-                "id": picture.id,
-                "uploader_username": picture.uploader.username if picture.uploader else "unknown",
-                "uploader_display_name": picture.uploader.display_name if picture.uploader else None,
-                "upload_date": picture.upload_date,
-                "metadata": picture.metadata_,
-            })
-
-    return pictures
-
-
 @router.post("/create", response_model=FramilyCreateResponse, status_code=status.HTTP_201_CREATED)
-def create_framily(request: FramilyCreate, db: Session = Depends(get_db)):
+def create_framily(request: FramilyCreateRequest, db: Session = Depends(get_db)):
     """Create a new framily. This endpoint is used by the frame device."""
     # Generate unique code
     while True:
@@ -104,7 +87,7 @@ def create_framily(request: FramilyCreate, db: Session = Depends(get_db)):
 
 @router.post("/connect", response_model=MessageResponse)
 def connect_framily(
-    request: FramilyConnect,
+    request: FramilyConnectRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -152,7 +135,7 @@ def connect_framily(
 
 @router.post("/invite", response_model=MessageResponse)
 def invite_user(
-    request: FramilyInvite,
+    request: FramilyInviteRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -204,7 +187,7 @@ def invite_user(
 
 @router.post("/join", response_model=MessageResponse)
 def join_framily(
-    request: FramilyJoin,
+    request: FramilyJoinRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -238,7 +221,7 @@ def join_framily(
 
 @router.post("/leave", response_model=MessageResponse)
 def leave_framily(
-    request: FramilyLeave,
+    request: FramilyLeaveRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -265,40 +248,21 @@ def leave_framily(
         ).count()
 
         if admin_count == 1:
-            # Check if there are other members to promote
-            other_members = db.query(Membership).filter(
-                Membership.framily_id == framily.id,
-                Membership.role == 1
-            ).count()
-
-            if other_members > 0:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Cannot leave as last admin. Promote another member first."
-                )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot leave as last admin. Promote another member first. Or delete the framily if you want to disband."
+            )
 
     # Delete membership
     db.delete(membership)
     db.commit()
-
-    # Check if framily is now empty
-    remaining = db.query(Membership).filter(
-        Membership.framily_id == framily.id,
-        Membership.role >= 1
-    ).count()
-
-    if remaining == 0:
-        # Auto-delete framily
-        db.delete(framily)
-        db.commit()
-        return MessageResponse(message="Left framily. Framily deleted (last member).")
 
     return MessageResponse(message="Left framily")
 
 
 @router.post("/kick", response_model=MessageResponse)
 def kick_user(
-    request: FramilyKick,
+    request: FramilyKickRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -307,7 +271,7 @@ def kick_user(
     if not framily:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Framily not found"
+            detail="Framily not found."
         )
 
     # Check admin permission
@@ -315,7 +279,7 @@ def kick_user(
     if not is_admin(membership):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin permission required"
+            detail="Admin permission required."
         )
 
     # Find user to kick
@@ -323,22 +287,20 @@ def kick_user(
     if not target_user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail="User not found."
         )
 
-    # Cannot kick yourself
+    # Kicking self is just leaving
     if target_user.id == current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot kick yourself"
-        )
+        leave_framily(FramilyLeaveRequest(framily_code=request.framily_code), current_user, db)
+        return MessageResponse(message="You have left the framily.")
 
     # Find target's membership
     target_membership = get_membership(db, target_user.id, framily.id)
     if not target_membership:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User is not a member"
+            detail="User is not a member."
         )
 
     db.delete(target_membership)
@@ -349,7 +311,7 @@ def kick_user(
 
 @router.post("/promote", response_model=MessageResponse)
 def promote_user(
-    request: FramilyPromote,
+    request: FramilyPromoteRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -358,7 +320,7 @@ def promote_user(
     if not framily:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Framily not found"
+            detail="Framily not found."
         )
 
     # Check admin permission
@@ -366,7 +328,7 @@ def promote_user(
     if not is_admin(membership):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin permission required"
+            detail="Admin permission required."
         )
 
     # Find user to promote
@@ -374,14 +336,14 @@ def promote_user(
     if not target_user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail="User not found."
         )
 
     target_membership = get_membership(db, target_user.id, framily.id)
     if not target_membership:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User is not a member"
+            detail="User is not a member."
         )
 
     # Check if demoting last admin
@@ -394,7 +356,7 @@ def promote_user(
         if admin_count == 1:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Cannot demote last admin"
+                detail="Cannot demote last admin. Promote another member first. Or delete the framily if you want to disband."
             )
 
     target_membership.role = request.new_role
@@ -453,7 +415,7 @@ def update_settings(
 
 @router.post("/check", response_model=FramilyCheckResponse)
 def check_framily(
-    request: FramilyCheck,
+    request: FramilyCheckRequest,
     db: Session = Depends(get_db)
 ):
     """Check if framily code and frame token are valid. Used by frame device."""
@@ -487,100 +449,45 @@ def get_framily_info(
     if not framily:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Framily not found"
+            detail="Framily not found."
         )
 
+    # Check membership
     membership = get_membership(db, current_user.id, framily.id)
+    if not is_member(membership):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this framily."
+        )
 
-    # Build response based on role
-    if is_admin(membership):
-        # Full info for admins
-        members = []
-        for m in framily.memberships:
-            members.append(MemberInfo(
-                username=m.user.username,
-                display_name=m.user.display_name,
-                role=m.role,
-                joined_date=m.joined_at
-            ))
-
-        pictures = get_framily_picture_info(framily)
-
-        settings_info = None
-        if framily.settings:
-            settings_info = SettingsInfo(
-                picture_duration=framily.settings.picture_duration,
-                shuffle_mode=framily.settings.shuffle_mode,
-                transition_effect=framily.settings.transition_effect,
-                overlays=framily.settings.overlays or []
-            )
-
-        return FramilyInfoResponse(framily=FramilyInfo(
-            code=framily.code,
-            name=framily.name,
-            created_at=framily.created_at,
-            settings=settings_info,
-            members=members,
-            pictures=pictures,
-            member_count=len(members),
-            picture_count=len(pictures)
+    # Build members list
+    members = []
+    for m in framily.memberships:
+        members.append(FramilyUserInfo(
+            username=m.user.username,
+            display_name=m.user.display_name,
+            role=m.role,
         ))
 
-    elif is_member(membership):
-        # Partial info for members (no emails)
-        members = []
-        for m in framily.memberships:
-            if m.role >= 1:  # Only show active members
-                members.append(MemberInfo(
-                    username=m.user.username,
-                    display_name=m.user.display_name,
-                    role=m.role,
-                    joined_date=m.joined_at
-                ))
-
-        pictures = get_framily_picture_info(framily)
-
-        settings_info = None
-        if framily.settings:
-            settings_info = SettingsInfo(
-                picture_duration=framily.settings.picture_duration,
-                shuffle_mode=framily.settings.shuffle_mode,
-                transition_effect=framily.settings.transition_effect,
-                overlays=framily.settings.overlays or []
-            )
-
-        return FramilyInfoResponse(framily=FramilyInfo(
-            code=framily.code,
-            name=framily.name,
-            created_at=framily.created_at,
-            settings=settings_info,
-            members=members,
-            pictures=pictures,
-            member_count=len(members),
-            picture_count=len(pictures)
+    # Build pictures list
+    pictures = []
+    for v in framily.picture_visibility:
+        pictures.append(FramilyPictureInfo(
+            id=v.picture.id,
+            uploader_username=v.picture.uploader.username
         ))
 
-    else:
-        # Basic info for external/invited users
-        member_count = db.query(Membership).filter(
-            Membership.framily_id == framily.id,
-            Membership.role >= 1
-        ).count()
-
-        picture_count = len(framily.picture_visibility)
-
-        return FramilyInfoResponse(framily=FramilyInfo(
-            code=framily.code,
-            name=framily.name,
-            created_at=framily.created_at,
-            member_count=member_count,
-            picture_count=picture_count
-        ))
+    return FramilyInfoResponse(
+        code=framily.code,
+        name=framily.name,
+        members=members,
+        pictures=pictures,
+    )
 
 
 @router.post("/delete", response_model=MessageResponse)
 def delete_framily(
-    request: FramilyDelete,
+    request: FramilyDeleteRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -589,7 +496,7 @@ def delete_framily(
     if not framily:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Framily not found"
+            detail="Framily not found."
         )
 
     # Check admin permission
@@ -597,87 +504,10 @@ def delete_framily(
     if not is_admin(membership):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin permission required"
+            detail="Admin permission required."
         )
 
     db.delete(framily)
     db.commit()
 
-    return MessageResponse(message="Framily deleted")
-
-
-@router.get("/list")
-def list_framilies(
-    username: Optional[str] = Query(None),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """List framilies. If username is provided, list framilies that both the
-    current user and the target user are members of. Otherwise list all
-    framilies the current user is part of."""
-    if username is None:
-        # List current user's framilies
-        memberships = db.query(Membership).filter(
-            Membership.user_id == current_user.id
-        ).all()
-
-        framilies = []
-        for m in memberships:
-            framily = m.framily
-            member_count = db.query(Membership).filter(
-                Membership.framily_id == framily.id,
-                Membership.role >= 1
-            ).count()
-
-            framilies.append({
-                "code": framily.code,
-                "name": framily.name,
-                "role": m.role,
-                "member_count": member_count,
-                "created_at": framily.created_at.isoformat()
-            })
-
-        return {"framilies": framilies}
-    else:
-        # List framilies shared between current user and target user
-        target_user = db.query(User).filter(User.username == username).first()
-        if not target_user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-
-        # Get current user's framily IDs (role >= 1 = active member)
-        current_user_framily_ids = {
-            m.framily_id for m in db.query(Membership).filter(
-                Membership.user_id == current_user.id,
-                Membership.role >= 1
-            ).all()
-        }
-
-        # Get target user's memberships and filter to shared framilies
-        target_memberships = db.query(Membership).filter(
-            Membership.user_id == target_user.id
-        ).all()
-
-        framilies = []
-        for m in target_memberships:
-            # If target is current user, show all. Otherwise only show shared framilies.
-            if target_user.id != current_user.id and m.framily_id not in current_user_framily_ids:
-                continue
-
-            framily = m.framily
-            member_count = db.query(Membership).filter(
-                Membership.framily_id == framily.id,
-                Membership.role >= 1
-            ).count()
-
-            framilies.append({
-                "code": framily.code,
-                "name": framily.name,
-                "role": m.role,
-                "member_count": member_count,
-                "created_at": framily.created_at.isoformat()
-            })
-
-        return {"framilies": framilies}
+    return MessageResponse(message="Framily deleted.")

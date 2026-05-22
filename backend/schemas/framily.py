@@ -5,39 +5,81 @@ from datetime import datetime
 from schemas.picture import PictureMetadata
 
 
-# Request schemas
-class FramilyCreate(BaseModel):
+class FramilyCreateRequest(BaseModel):
     name: Optional[str] = None
 
 
-class FramilyConnect(BaseModel):
+class FramilyCreateResponse(BaseModel):
+    framily_code: str
+    frame_token: str
+
+
+class FramilyConnectRequest(BaseModel):
     framily_code: str = Field(..., min_length=8, max_length=8)
 
 
-class FramilyInvite(BaseModel):
+class FramilyInviteRequest(BaseModel):
     framily_code: str = Field(..., min_length=8, max_length=8)
     username: str
 
 
-class FramilyJoin(BaseModel):
+class FramilyJoinRequest(BaseModel):
     framily_code: str = Field(..., min_length=8, max_length=8)
     accepted: bool
 
 
-class FramilyLeave(BaseModel):
+class FramilyLeaveRequest(BaseModel):
     framily_code: str = Field(..., min_length=8, max_length=8)
 
 
-class FramilyKick(BaseModel):
+class FramilyKickRequest(BaseModel):
     framily_code: str = Field(..., min_length=8, max_length=8)
     username: str
 
 
-class FramilyPromote(BaseModel):
+class FramilyPromoteRequest(BaseModel):
     framily_code: str = Field(..., min_length=8, max_length=8)
     username: str
     new_role: int = Field(..., ge=0, le=2)
 
+
+class FramilyCheckRequest(BaseModel):
+    framily_code: str = Field(..., min_length=8, max_length=8)
+    frame_token: str = Field(..., min_length=64, max_length=64)
+
+
+class FramilyUserInfo(BaseModel):
+    username: str
+    display_name: Optional[str] = None
+    role: int
+
+
+class FramilyPictureInfo(BaseModel):
+    id: str
+    uploader_username: str
+
+
+class FramilyInfoResponse(BaseModel):
+    code: str
+    name: Optional[str]
+    members: List[FramilyUserInfo] = Field(default_factory=list)
+    pictures: List[FramilyPictureInfo] = Field(default_factory=list)
+
+
+class FramilyCheckResponse(BaseModel):
+    initiated: bool
+
+
+class FramilyDeleteRequest(BaseModel):
+    framily_code: str = Field(..., min_length=8, max_length=8)
+
+
+class MessageResponse(BaseModel):
+    message: str
+
+#############
+# Down there is trash, not really implemented yet, just a sketch from copilot
+#############
 
 class OverlayConfig(BaseModel):
     type: str
@@ -48,47 +90,12 @@ class FramilySettingsUpdate(BaseModel):
     framily_code: str = Field(..., min_length=8, max_length=8)
     settings: "SettingsData"
 
-class FramilyCheck(BaseModel):
-    framily_code: str = Field(..., min_length=8, max_length=8)
-    frame_token: str = Field(..., min_length=64, max_length=64)
-
 
 class SettingsData(BaseModel):
     picture_duration: Optional[int] = None
     shuffle_mode: Optional[str] = None
     transition_effect: Optional[str] = None
     overlays: Optional[List[OverlayConfig]] = None
-
-
-class FramilyDelete(BaseModel):
-    framily_code: str = Field(..., min_length=8, max_length=8)
-
-
-# Response schemas
-class FramilyCreateResponse(BaseModel):
-    framily_code: str
-    frame_token: str
-
-
-class MemberInfo(BaseModel):
-    username: str
-    display_name: Optional[str] = None
-    role: int
-    joined_date: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class PictureInfo(BaseModel):
-    id: str
-    uploader_username: str
-    uploader_display_name: Optional[str] = None
-    upload_date: datetime
-    metadata: Optional[PictureMetadata] = None
-
-    class Config:
-        from_attributes = True
 
 
 class SettingsInfo(BaseModel):
@@ -100,31 +107,6 @@ class SettingsInfo(BaseModel):
     class Config:
         from_attributes = True
 
-
-class FramilyInfo(BaseModel):
-    code: str
-    name: Optional[str]
-    created_at: datetime
-    settings: Optional[SettingsInfo] = None
-    members: List[MemberInfo] = Field(default_factory=list)
-    pictures: List[PictureInfo] = Field(default_factory=list)
-    member_count: Optional[int] = None
-    picture_count: Optional[int] = None
-
-    class Config:
-        from_attributes = True
-
-
-class FramilyInfoResponse(BaseModel):
-    framily: FramilyInfo
-
-
-class FramilyCheckResponse(BaseModel):
-    initiated: bool
-
-
-class MessageResponse(BaseModel):
-    message: str
 
 
 # Update forward references

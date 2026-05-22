@@ -3,6 +3,13 @@ from typing import Optional
 from datetime import datetime
 
 
+class PictureUploadRequest(BaseModel):
+    framily_codes: list[str]
+
+
+
+
+
 class PictureMetadata(BaseModel):
     width: Optional[int] = None
     height: Optional[int] = None
