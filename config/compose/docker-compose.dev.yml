@@ -2,7 +2,7 @@ name: framily
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18
     container_name: framily-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-framily}
@@ -11,7 +11,7 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_dev_data:/var/lib/postgresql/18/docker
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
@@ -27,7 +27,7 @@ services:
     ports:
       - "${MINIO_PORT:-9000}:${MINIO_PORT:-9000}"
     volumes:
-      - minio_data:/minio_data
+      - minio_dev_data:/minio_data
     command: server /minio_data --console-address ":9001"
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
@@ -87,5 +87,5 @@ services:
         condition: service_healthy
 
 volumes:
-  postgres_data:
-  minio_data:
+  postgres_dev_data:
+  minio_dev_data:
