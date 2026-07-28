@@ -20,45 +20,22 @@ export interface UserFramilyInfo {
   created_at: string;
 }
 
-export interface FramilyListItem {
-  code: string;
-  name: string | null;
-  role: number;
-  member_count: number;
-  created_at: string;
-}
-
 export interface FramilyMember {
   username: string;
-  display_name: string;
+  display_name?: string | null;
   role: number;
-  joined_date: string;
 }
 
 export interface FramilyPictureInfo {
   id: string;
   uploader_username: string;
-  uploader_display_name?: string | null;
-  upload_date: string;
-  metadata: Record<string, unknown> | null;
-}
-
-export interface FramilySettings {
-  picture_duration: number;
-  shuffle_mode: string;
-  transition_effect: string;
-  overlays: Array<{ type: string; position: string }>;
 }
 
 export interface FramilyInfo {
   code: string;
   name: string | null;
-  created_at: string;
-  settings?: FramilySettings;
-  members?: FramilyMember[];
-  pictures?: FramilyPictureInfo[];
-  member_count?: number;
-  picture_count?: number;
+  members: FramilyMember[];
+  pictures: FramilyPictureInfo[];
 }
 
 export interface PictureFramilyInfo {

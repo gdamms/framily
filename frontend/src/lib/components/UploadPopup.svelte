@@ -1,12 +1,12 @@
 <script lang="ts">
-  import type { FramilyInfo } from "$lib/api";
+  import type { UserFramilyInfo } from "$lib/api";
   import Popup from "$lib/components/Popup.svelte";
   import UploadZone from "$lib/components/UploadZone.svelte";
   import Button from "$lib/components/Button.svelte";
   import { api } from "$lib/api/index";
 
   interface Props {
-    framilies?: FramilyInfo[];
+    framilies?: UserFramilyInfo[];
     framilyCodes?: string[];
     isOpen?: boolean;
     onClose?: () => void;
@@ -20,6 +20,17 @@
   }: Props = $props();
 
   let fileInput: HTMLInputElement | undefined = $state();
+
+  let selected: Record<string, boolean> = $state({});
+
+  $effect(() => {
+    if (isOpen) {
+      const defaultCodes = new Set(framilyCodes);
+      selected = Object.fromEntries(
+        framilies.map((framily) => [framily.code, defaultCodes.has(framily.code)]),
+      );
+    }
+  });
 
   let message = $state();
   let messageType = $state<"info" | "error" | "success">();
@@ -42,22 +53,15 @@
     }
   }
 
-  async function getSelectedFramilyCodes() {
-    const framilyCheckboxes = document.querySelectorAll(
-      ".framily-checkbox",
-    ) as NodeListOf<HTMLInputElement>;
-    return Array.from(framilyCheckboxes)
-      .filter((checkbox) => checkbox.checked)
-      .map((checkbox) => checkbox.id.replace("framily-", ""));
-  }
-
   async function handleUpload() {
     if (fileInput && fileInput.files && fileInput.files.length > 0) {
       const file = fileInput.files[0];
 
       showMessage("Uploading...", "info", null);
 
-      const selectedFramilyCodes = await getSelectedFramilyCodes();
+      const selectedFramilyCodes = Object.entries(selected)
+        .filter(([, checked]) => checked)
+        .map(([code]) => code);
       if (selectedFramilyCodes.length === 0) {
         showMessage("Please select at least one framily", "error");
         return;
@@ -93,7 +97,7 @@
           class="framily-checkbox"
           type="checkbox"
           id={"framily-" + framily.code}
-          checked={framilyCodes.includes(framily.code)}
+          bind:checked={selected[framily.code]}
         />
         <label class="framily-label" for={"framily-" + framily.code}
           >{framily.name}</label

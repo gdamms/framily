@@ -4,27 +4,31 @@
   import Galery from "./Galery.svelte";
   import Members from "./Members.svelte";
   import { app } from "$lib/app";
+  import ImagePlus from "@lucide/svelte/icons/image-plus";
 
   interface Props {
     code: string;
+    currentUsername: string;
+    onAddPicture?: (framilyCode: string) => void;
   }
 
-  let { code }: Props = $props();
+  let { code, currentUsername, onAddPicture }: Props = $props();
 
   let appState = app.state;
 
   let framily: FramilyInfo | undefined = $state();
   let pictures: PictureInfo[] = $state([]);
 
-  onMount(async () => {
-    let infoResponse = await api.framily.info(code);
-    framily = infoResponse.framily;
+  async function loadFramily() {
+    framily = await api.framily.info(code);
 
     let picResponse = await api.pictures.list({
       framily_code: framily.code,
     });
     pictures = picResponse.pictures;
-  });
+  }
+
+  onMount(loadFramily);
 </script>
 
 {#if framily === undefined}
@@ -41,35 +45,34 @@
       <button
         class="button"
         class:selected={$appState.page.section === "pictures"}
-        onclick={() => (app.navigate({ page: "framily", code: framily.code, section: "pictures" }))}
+        onclick={() => (app.navigate({ page: "framily", code: framily!.code, section: "pictures" }))}
       >
         Pictures
       </button>
       <button
         class="button"
         class:selected={$appState.page.section === "members"}
-        onclick={() => (app.navigate({ page: "framily", code: framily.code, section: "members" }))}
+        onclick={() => (app.navigate({ page: "framily", code: framily!.code, section: "members" }))}
       >
         Members
-      </button>
-      <button
-        class="button"
-        class:selected={$appState.page.section === "settings"}
-        onclick={() => (app.navigate({ page: "framily", code: framily.code, section: "settings" }))}
-      >
-        Settings
       </button>
     </div>
     <div class="framily-content">
       {#if $appState.page.section === "pictures"}
+        {#if onAddPicture}
+          <button class="add-picture" onclick={() => onAddPicture?.(framily!.code)}>
+            <ImagePlus size={16} />
+            Add picture
+          </button>
+        {/if}
         <Galery {pictures} />
       {:else if $appState.page.section === "members"}
-        <Members members={framily.members} />
-      {:else if $appState.page.section === "settings"}
-        <div class="settings">
-          <h3>Settings</h3>
-          <p>This is where you can manage your framily settings.</p>
-        </div>
+        <Members
+          framilyCode={framily.code}
+          members={framily.members}
+          {currentUsername}
+          onChanged={loadFramily}
+        />
       {/if}
     </div>
   </div>
@@ -119,5 +122,23 @@
 
   .framily-content {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .add-picture {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    align-self: flex-start;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    margin: 1rem 1rem 0;
   }
 </style>

@@ -1,8 +1,5 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
-from datetime import datetime
-
-from schemas.picture import PictureMetadata
 
 
 class FramilyCreateRequest(BaseModel):
@@ -76,38 +73,3 @@ class FramilyDeleteRequest(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
-
-#############
-# Down there is trash, not really implemented yet, just a sketch from copilot
-#############
-
-class OverlayConfig(BaseModel):
-    type: str
-    position: str
-
-
-class FramilySettingsUpdate(BaseModel):
-    framily_code: str = Field(..., min_length=8, max_length=8)
-    settings: "SettingsData"
-
-
-class SettingsData(BaseModel):
-    picture_duration: Optional[int] = None
-    shuffle_mode: Optional[str] = None
-    transition_effect: Optional[str] = None
-    overlays: Optional[List[OverlayConfig]] = None
-
-
-class SettingsInfo(BaseModel):
-    picture_duration: int
-    shuffle_mode: str
-    transition_effect: str
-    overlays: List[OverlayConfig] = []
-
-    class Config:
-        from_attributes = True
-
-
-
-# Update forward references
-FramilySettingsUpdate.model_rebuild()

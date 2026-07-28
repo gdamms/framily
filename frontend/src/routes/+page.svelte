@@ -1,65 +1,59 @@
 <script lang="ts">
   import {
     api,
+    type UserFramilyInfo,
     type PictureInfo,
-    type FramilyInfo,
     type UserInfo,
   } from "$lib/api";
   import Framilies from "$lib/components/Framilies.svelte";
   import Framily from "$lib/components/Framily.svelte";
   import Galery from "$lib/components/Galery.svelte";
   import Profile from "$lib/components/Profile.svelte";
+  import PictureView from "$lib/components/PictureView.svelte";
   import UploadPopup from "$lib/components/UploadPopup.svelte";
-  import {
-    LayoutDashboard,
-    LayoutList,
-    ImagePlus,
-    User,
-    Menu,
-    ListPlus,
-    UserPlus,
-  } from "@lucide/svelte";
+  import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
+  import LayoutList from "@lucide/svelte/icons/layout-list";
+  import ImagePlus from "@lucide/svelte/icons/image-plus";
+  import User from "@lucide/svelte/icons/user";
+  import Menu from "@lucide/svelte/icons/menu";
   import { onMount } from "svelte";
   import { app } from "$lib/app";
   import ConnectFramilyPopup from "$lib/components/ConnectFramilyPopup.svelte";
-  import InvitePopup from "$lib/components/InvitePopup.svelte";
 
   const appState = app.state;
 
-  let pictures: PictureInfo[] | undefined = $state();
-  let framilies: FramilyInfo[] | undefined = $state();
   let user: UserInfo | undefined = $state();
+  let framilies: UserFramilyInfo[] = $derived(user?.framilies ?? []);
+  let dashboardPictures: PictureInfo[] | undefined = $state();
   let uploadPopupOpen = $state(false);
+  let uploadDefaultCodes: string[] = $state([]);
   let connectFramilyPopupOpen = $state(false);
-  let invitePopupOpen = $state(false);
+
+  function openUploadPopup(codes: string[]) {
+    uploadDefaultCodes = codes;
+    uploadPopupOpen = true;
+  }
 
   onMount(async () => {
-    let picResponse = await api.pictures.listAll();
-    pictures = picResponse.pictures;
+    const me = await api.auth.me();
+    const response = await api.user.getInfo(me.username);
+    user = response.user;
 
-    let famResponse = await api.framily.list();
-    framilies = famResponse.framilies;
-
-    user = await api.auth.me();
+    const picturesResponse = await api.pictures.listAll();
+    dashboardPictures = picturesResponse.pictures;
   });
 </script>
 
-{#if pictures === undefined || framilies === undefined || user === undefined}
+{#if dashboardPictures === undefined || framilies === undefined || user === undefined}
   <div class="page">Loading...</div>
 {:else}
   <div class="page">
     <UploadPopup
       {framilies}
       bind:isOpen={uploadPopupOpen}
-      framilyCodes={framilies.map((f) => f.code)}
+      framilyCodes={uploadDefaultCodes}
     />
     <ConnectFramilyPopup bind:isOpen={connectFramilyPopupOpen} />
-    {#if $appState.page.page === "framily"}
-      <InvitePopup
-        framilyCode={$appState.page.code}
-        bind:isOpen={invitePopupOpen}
-      />
-    {/if}
     <div class="topBar">
       <div class="title">Framily</div>
       <button class="button">
@@ -68,15 +62,38 @@
     </div>
     <div class="content">
       {#if $appState.page.page === "dashboard"}
-        <Galery {pictures} />
+        <button
+          class="add-picture"
+          onclick={() => openUploadPopup(framilies.map((f) => f.code))}
+        >
+          <ImagePlus size={16} />
+          Add picture
+        </button>
+        <Galery pictures={dashboardPictures} />
       {:else if $appState.page.page === "framilies"}
-        <Framilies {framilies} />
+        <Framilies
+          {framilies}
+          onAddFramily={() => (connectFramilyPopupOpen = true)}
+        />
       {:else if $appState.page.page === "profile"}
-        <Profile username={$appState.page.username} />
+        <Profile
+          username={$appState.page.username}
+          currentUsername={user.username}
+          onAddPicture={() => openUploadPopup(framilies.map((f) => f.code))}
+        />
       {:else if $appState.page.page === "framily"}
-        <Framily code={$appState.page.code} />
+        <Framily
+          code={$appState.page.code}
+          currentUsername={user.username}
+          onAddPicture={(code) => openUploadPopup([code])}
+        />
       {:else if $appState.page.page === "picture"}
-        Not implemented yet
+        <PictureView
+          picture={$appState.page.picture}
+          currentUsername={user.username}
+          myFramilies={framilies}
+          onClose={() => app.navigate({ page: "dashboard" })}
+        />
       {/if}
     </div>
     <div class="bottomBar">
@@ -92,29 +109,12 @@
       >
         <LayoutList />
       </button>
-      {#if $appState.page.page === "dashboard"}
-        <button class="button" onclick={() => (uploadPopupOpen = true)}>
-          <ImagePlus />
-        </button>
-      {:else if $appState.page.page === "framilies"}
-        <button class="button" onclick={() => (connectFramilyPopupOpen = true)}>
-          <ListPlus />
-        </button>
-      {:else if $appState.page.page === "framily" && $appState.page.section === "pictures"}
-        <button class="button" onclick={() => (uploadPopupOpen = true)}>
-          <ImagePlus />
-        </button>
-      {:else if $appState.page.page === "framily" && $appState.page.section === "members"}
-        <button class="button" onclick={() => (invitePopupOpen = true)}>
-          <UserPlus />
-        </button>
-      {/if}
       <button
         class="button"
         onclick={() =>
           app.navigate({
             page: "profile",
-            username: user.username,
+            username: user!.username,
             section: "pictures",
           })}
       >
@@ -174,5 +174,23 @@
   .content {
     flex: 1;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .add-picture {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    align-self: flex-start;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    margin: 1rem 1rem 0;
   }
 </style>

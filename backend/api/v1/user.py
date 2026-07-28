@@ -5,7 +5,7 @@ from io import BytesIO
 
 from core.database import get_db
 from core.config import settings
-from core.minio import minio_client
+from core.minio import s3_client
 from api.v1.auth import get_current_user
 from models import User, Framily, Picture, Membership, PictureVisibility
 from schemas.user import ProfileUpdate, UserInfo, UserInfoResponse, UserFramilyInfo
@@ -40,7 +40,11 @@ def build_picture_info(picture: Picture) -> dict:
     }
 
 
-def build_user_info(target_user: User, current_user: User, db: Session, include_details: bool) -> UserInfo:
+def build_user_info(target_user: User, current_user: User, db: Session) -> UserInfo:
+    """Build user info. Self sees everything (incl. pending invites); anyone
+    else sees only the framilies/pictures they have in common with the target."""
+    is_self = current_user.id == target_user.id
+
     current_user_framily_ids = {
         m.framily_id for m in db.query(Membership).filter(
             Membership.user_id == current_user.id,
@@ -48,43 +52,45 @@ def build_user_info(target_user: User, current_user: User, db: Session, include_
         ).all()
     }
 
+    role_filter = [Membership.user_id == target_user.id]
+    role_filter.append(Membership.role >= 0 if is_self else Membership.role >= 1)
+    target_memberships = db.query(Membership).filter(*role_filter).all()
+
     framilies = []
+    common_framily_ids = set()
+    for membership in target_memberships:
+        framily = membership.framily
+        if not is_self and framily.id not in current_user_framily_ids:
+            continue
+        common_framily_ids.add(framily.id)
+        framilies.append(UserFramilyInfo(
+            code=framily.code,
+            name=framily.name,
+            role=membership.role,
+            member_count=db.query(Membership).filter(
+                Membership.framily_id == framily.id,
+                Membership.role >= 1,
+            ).count(),
+            picture_count=db.query(PictureVisibility).filter(
+                PictureVisibility.framily_id == framily.id,
+            ).count(),
+            created_at=framily.created_at,
+        ))
+
     pictures = []
-
-    if include_details:
-        target_memberships = db.query(Membership).filter(
-            Membership.user_id == target_user.id,
-            Membership.role >= 1,
-        ).all()
-
-        for membership in target_memberships:
-            framily = membership.framily
-            framilies.append(UserFramilyInfo(
-                code=framily.code,
-                name=framily.name,
-                role=membership.role,
-                member_count=db.query(Membership).filter(
-                    Membership.framily_id == framily.id,
-                    Membership.role >= 1,
-                ).count(),
-                picture_count=db.query(PictureVisibility).filter(
-                    PictureVisibility.framily_id == framily.id,
-                ).count(),
-                created_at=framily.created_at,
-            ))
-
+    if is_self or common_framily_ids:
         target_pictures = db.query(Picture).filter(Picture.uploaded_by == target_user.id).all()
         for picture in target_pictures:
-            if current_user.id == target_user.id or set(picture.framily_ids).intersection(current_user_framily_ids):
+            if is_self or set(picture.framily_ids).intersection(common_framily_ids):
                 pictures.append(build_picture_info(picture))
 
         pictures.sort(key=lambda item: item["upload_date"], reverse=True)
 
     return UserInfo(
         username=target_user.username,
-        email=target_user.email if current_user.id == target_user.id or include_details else None,
+        email=target_user.email if is_self else None,
         display_name=target_user.display_name,
-        created_at=target_user.created_at if current_user.id == target_user.id else None,
+        created_at=target_user.created_at if is_self else None,
         framilies=framilies,
         pictures=pictures,
     )
@@ -104,26 +110,7 @@ def get_user_info(
             detail="User not found"
         )
 
-    # Check if requesting own info
-    is_self = current_user.id == target_user.id
-
-    if is_self:
-        return UserInfoResponse(user=build_user_info(target_user, current_user, db, include_details=True))
-
-    # Get all framilies current user is in
-    current_user_framilies = {m.framily_id for m in current_user.memberships if m.role >= 1}
-
-    # Check if target user shares any framily
-    is_framily_member = False
-    for m in target_user.memberships:
-        if m.framily_id in current_user_framilies and m.role >= 1:
-            is_framily_member = True
-            break
-
-    if is_framily_member:
-        return UserInfoResponse(user=build_user_info(target_user, current_user, db, include_details=True))
-
-    return UserInfoResponse(user=build_user_info(target_user, current_user, db, include_details=False))
+    return UserInfoResponse(user=build_user_info(target_user, current_user, db))
 
 
 @router.put("/profile", response_model=UserInfoResponse)
@@ -151,7 +138,7 @@ def update_profile(
     db.commit()
     db.refresh(current_user)
 
-    return UserInfoResponse(user=build_user_info(current_user, current_user, db, include_details=True))
+    return UserInfoResponse(user=build_user_info(current_user, current_user, db))
 
 
 @router.post("/profile-picture")
@@ -187,12 +174,12 @@ async def post_profile_picture(
     # Delete old profile picture if exists
     for ext in ["jpg", "png", "webp", "gif"]:
         old_filename = f"profile_pictures/{current_user.username}.{ext}"
-        minio_client.remove_object(settings.MINIO_BUCKET, old_filename)
+        s3_client.remove_object(settings.S3_BUCKET, old_filename)
 
-    # Upload to MinIO
+    # Upload to S3 storage
     try:
-        minio_client.put_object(
-            settings.MINIO_BUCKET,
+        s3_client.put_object(
+            settings.S3_BUCKET,
             filename,
             BytesIO(content),
             len(content),
@@ -231,7 +218,7 @@ def get_profile_picture(
     for extension in ["jpg", "png", "webp", "gif"]:
         object_name = f"profile_pictures/{user.username}.{extension}"
         try:
-            response = minio_client.get_object(settings.MINIO_BUCKET, object_name)
+            response = s3_client.get_object(settings.S3_BUCKET, object_name)
 
             content_type_map = {
                 "jpg": "image/jpeg",
@@ -265,10 +252,10 @@ def delete_profile_picture(
     db: Session = Depends(get_db)
 ):
     """Delete current user's profile picture."""
-    # Delete from MinIO
+    # Delete from S3 storage
     for ext in ["jpg", "png", "webp", "gif"]:
         old_filename = f"profile_pictures/{current_user.username}.{ext}"
-        minio_client.remove_object(settings.MINIO_BUCKET, old_filename)
+        s3_client.remove_object(settings.S3_BUCKET, old_filename)
 
     # Update user record
     db.commit()

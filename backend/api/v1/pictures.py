@@ -9,13 +9,12 @@ from PIL import Image
 
 from core.database import get_db
 from core.config import settings
-from core.minio import minio_client
+from core.minio import s3_client
 from api.v1.auth import get_current_user
 from api.v1.framily import get_membership, is_member, is_admin
 from models import User, Framily, Picture, PictureVisibility, Membership
 from schemas.picture import (
     AddVisibilityRequest,
-    PictureUploadRequest,
     RemoveVisibilityRequest,
     FramilyCheck,
     PictureUploadResponse,
@@ -29,6 +28,7 @@ router = APIRouter(
 )
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+UNSUPPORTED_IMAGE_FORMATS = {"GIF"}  # Animated formats aren't supported by the frame display.
 
 
 def get_picture_info(picture: Picture, db: Session) -> dict:
@@ -54,15 +54,27 @@ def get_picture_info(picture: Picture, db: Session) -> dict:
 
 @router.post("/upload", response_model=PictureUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_picture(
-    request: PictureUploadRequest,
+    framily_codes: str = Form(...),
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Upload a picture and make it visible to one or more framilies."""
+    """Upload a picture and make it visible to one or more framilies.
+
+    framily_codes is a comma-separated list of codes (sent as a multipart form
+    field alongside the file, since a JSON body can't be combined with a file
+    upload in the same request).
+    """
+    codes = [code.strip() for code in framily_codes.split(",") if code.strip()]
+    if not codes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one framily_code is required."
+        )
+
     # Verify all framilies exist and user is a member
     framilies = []
-    for code in request.framily_codes:
+    for code in codes:
         framily = db.query(Framily).filter(Framily.code == code).first()
         if not framily:
             raise HTTPException(
@@ -88,34 +100,57 @@ async def upload_picture(
             detail=f"File too large. Max size: {MAX_FILE_SIZE / 1024 / 1024}MB."
         )
 
-    # Validate image by trying to open it with PIL
+    # Validate image by trying to open it with PIL. verify() invalidates the
+    # Image object for further use, so read the format before calling it and
+    # reopen the file afterwards for the actual conversion below.
     try:
         image = Image.open(BytesIO(content))
-        image.verify()  # Will raise an exception if not a valid image
+        image_format = (image.format or "").upper()
+        image.verify()
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid image file."
         )
 
-    # Convert image to a consistent format (e.g., PNG) and get metadata
+    if not image_format or image_format in UNSUPPORTED_IMAGE_FORMATS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unsupported image format. GIFs and videos are not supported."
+        )
+
+    # Convert image to a consistent format (PNG) for storage.
+    image = Image.open(BytesIO(content))
+    if image.mode not in ("RGB", "RGBA"):
+        image = image.convert("RGBA")
+    width, height = image.size
+
     output = BytesIO()
-    image.save(output, format='PNG')  # Convert to PNG for consistency
-    output.seek(0)
+    image.save(output, format="PNG")
     content = output.getvalue()
+
+    # Sanity check: make sure the converted bytes actually decode as a valid
+    # PNG before we persist and upload them.
+    try:
+        Image.open(BytesIO(content)).verify()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to convert image."
+        )
 
     # Generate unique ID and filename
     picture_id = str(uuid.uuid4())
     filename = f"shared/{picture_id}.png"
 
-    # Upload to MinIO
+    # Upload to S3 storage
     try:
-        minio_client.put_object(
-            settings.MINIO_BUCKET,
+        s3_client.put_object(
+            settings.S3_BUCKET,
             filename,
             BytesIO(content),
             len(content),
-            content_type=file.content_type
+            content_type="image/png"
         )
     except Exception as e:
         raise HTTPException(
@@ -127,7 +162,13 @@ async def upload_picture(
     picture = Picture(
         id=picture_id,
         uploaded_by=current_user.id,
-        metadata_={}
+        metadata_={
+            "format": "png",
+            "width": width,
+            "height": height,
+            "file_size": len(content),
+            "original_filename": file.filename,
+        }
     )
     db.add(picture)
     db.flush()  # Get the picture ID before adding visibility records
@@ -225,12 +266,7 @@ def remove_visibility(
             detail="Picture not found"
         )
 
-    # Only uploader can remove visibility
-    if picture.uploaded_by != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the uploader can remove visibility from a picture"
-        )
+    is_uploader = picture.uploaded_by == current_user.id
 
     removed_framilies = []
     for code in request.framily_codes:
@@ -240,6 +276,17 @@ def remove_visibility(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Framily not found: {code}"
             )
+
+        # Uploader can remove from any framily; a framily admin can remove
+        # the picture from their own framily's view (moderation), even if
+        # they didn't upload it.
+        if not is_uploader:
+            membership = get_membership(db, current_user.id, framily.id)
+            if not is_admin(membership):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Must be the uploader or an admin of {code} to remove visibility"
+                )
 
         # Remove visibility record if it exists
         visibility = db.query(PictureVisibility).filter(
@@ -276,7 +323,9 @@ def fetch_picture(
     framily_code = request.framily_code
     frame_token = request.frame_token
 
-    framily = db.query(Framily).filter(Framily.code == framily_code and Framily.frame_token == frame_token).first()
+    framily = db.query(Framily).filter(
+        Framily.code == framily_code, Framily.frame_token == frame_token
+    ).first()
     if not framily:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -300,8 +349,8 @@ def fetch_picture(
         uploader_name = picture.uploader.display_name or picture.uploader.username
 
     return StreamingResponse(
-        minio_client.get_object(
-            settings.MINIO_BUCKET,
+        s3_client.get_object(
+            settings.S3_BUCKET,
             f"shared/{picture.id}.{picture.metadata_.get('format', 'jpg')}"
         ).stream(32*1024),
         media_type=f"image/{picture.metadata_.get('format', 'jpg')}",
@@ -439,11 +488,12 @@ def list_all_pictures(
 @router.delete("/{picture_id}")
 def delete_picture(
     picture_id: str,
-    framily_code: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Delete a picture and remove its visibility."""
+    """Delete a picture entirely, uploader only. To remove a picture from a
+    single framily's view without deleting it (e.g. framily admin moderation),
+    use POST /pictures/remove-visibility instead."""
     picture = db.query(Picture).filter(Picture.id == picture_id).first()
     if not picture:
         raise HTTPException(
@@ -453,20 +503,19 @@ def delete_picture(
 
     is_uploader = picture.uploaded_by == current_user.id
 
-    # No framily_code provided - full deletion (uploader only)
     if not is_uploader:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the uploader can fully delete a picture. Admins can remove visibility from specific framilies using framily_code parameter."
+            detail="Only the uploader can delete a picture. Use remove-visibility to take it down from a specific framily."
         )
 
-    # Delete from MinIO
+    # Delete from S3 storage
     try:
         file_format = picture.metadata_.get("format", "jpg") if picture.metadata_ else "jpg"
         object_name = f"shared/{picture_id}.{file_format}"
-        minio_client.remove_object(settings.MINIO_BUCKET, object_name)
+        s3_client.remove_object(settings.S3_BUCKET, object_name)
     except Exception:
-        pass  # Continue even if MinIO delete fails
+        pass  # Continue even if S3 delete fails
 
     # Delete all visibility records (cascade will handle this, but be explicit)
     db.query(PictureVisibility).filter(
@@ -486,7 +535,7 @@ def get_picture_image(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Serve a picture image from MinIO."""
+    """Serve a picture image from S3 storage."""
     # Get picture from database
     picture = db.query(Picture).filter(Picture.id == picture_id).first()
     if not picture:
@@ -517,8 +566,8 @@ def get_picture_image(
     file_format = picture.metadata_.get("format", "jpg") if picture.metadata_ else "jpg"
     object_name = f"shared/{picture_id}.{file_format}"
 
-    # Get object from MinIO
-    response = minio_client.get_object(settings.MINIO_BUCKET, object_name)
+    # Get object from S3 storage
+    response = s3_client.get_object(settings.S3_BUCKET, object_name)
 
     # Determine content type
     content_type_map = {

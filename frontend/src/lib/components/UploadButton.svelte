@@ -1,6 +1,6 @@
 <script lang="ts">
   import IconButton from "$lib/components/IconButton.svelte";
-  import { ImageUp } from "@lucide/svelte";
+  import ImageUp from "@lucide/svelte/icons/image-up";
 
   interface Props {
     onclick?: (() => void);

@@ -1,4 +1,5 @@
 import { writable, type Writable } from "svelte/store";
+import type { PictureInfo } from "./api/types";
 
 export type DashboardPage = {
   page: "dashboard";
@@ -18,12 +19,12 @@ export type ProfilePage = {
 export type FramilyPage = {
   page: "framily";
   code: string;
-  section: "pictures" | "members" | "settings";
+  section: "pictures" | "members";
 }
 
 export type PicturePage = {
   page: "picture";
-  id: string;
+  picture: PictureInfo;
 }
 
 export type Page = DashboardPage | FramiliesPage | ProfilePage | FramilyPage | PicturePage;
@@ -37,13 +38,48 @@ interface App {
   navigate: (page: Page) => void;
 }
 
+const STORAGE_KEY = "framily:page";
+const DEFAULT_PAGE: Page = { page: "dashboard" };
+
+function loadStoredPage(): Page {
+  if (typeof localStorage === "undefined") {
+    return DEFAULT_PAGE;
+  }
+
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return DEFAULT_PAGE;
+    }
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.page === "string") {
+      return parsed as Page;
+    }
+  } catch {
+    // Malformed or inaccessible storage - fall back to the default page.
+  }
+  return DEFAULT_PAGE;
+}
+
+function storePage(page: Page): void {
+  if (typeof localStorage === "undefined") {
+    return;
+  }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(page));
+  } catch {
+    // Storage unavailable (e.g. private browsing quota) - ignore.
+  }
+}
+
 function createApp(): App {
   const state: Writable<AppState> = writable({
-    page: { page: "dashboard" },
+    page: loadStoredPage(),
   });
 
   function navigate(page: Page) {
     state.update(() => ({ page }));
+    storePage(page);
   }
 
   return {

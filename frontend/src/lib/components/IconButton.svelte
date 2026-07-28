@@ -15,11 +15,12 @@
     type,
     color,
   }: Props = $props();
+
+  let Icon: typeof IconType = $derived(icon);
 </script>
 
 <div class="icon-btn">
   <Button onclick={onclick} type={type} color={color}>
-    {@const Icon = icon}
     <Icon />
   </Button>
 </div>

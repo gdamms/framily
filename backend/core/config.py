@@ -15,12 +15,13 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@postgres:5432/framily"
 
-    # MinIO
-    MINIO_ENDPOINT: str = "minio:9000"
-    MINIO_ACCESS_KEY: str = "minioadmin"
-    MINIO_SECRET_KEY: str = "minioadmin"
-    MINIO_BUCKET: str = "framily"
-    MINIO_SECURE: bool = False
+    # S3-compatible storage (Garage)
+    S3_ENDPOINT: str = "garage:3900"
+    S3_ACCESS_KEY: str = "garageadmin"
+    S3_SECRET_KEY: str = "garageadmin"
+    S3_BUCKET: str = "framily"
+    S3_REGION: str = "garage"
+    S3_SECURE: bool = False
 
     # Auth
     SECRET_KEY: str = "your-secret-key-change-in-production"

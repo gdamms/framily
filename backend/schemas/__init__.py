@@ -1,13 +1,13 @@
 from .auth import RegisterRequest, RegisterResponse, LoginRequest, LoginResponse, UserInfo
 from .framily import (
-    FramilyCreateRequest, FramilyConnectRequest, FramilyInviteRequest, FramilyJoinRequest, 
-    FramilyLeaveRequest, FramilyKickRequest, FramilyPromoteRequest, FramilySettingsUpdate,
+    FramilyCreateRequest, FramilyConnectRequest, FramilyInviteRequest, FramilyJoinRequest,
+    FramilyLeaveRequest, FramilyKickRequest, FramilyPromoteRequest,
     FramilyDeleteRequest, FramilyCreateResponse, FramilyInfoResponse,
-    SettingsInfo, MessageResponse
+    MessageResponse
 )
 from .picture import (
     PictureInfo, PictureMetadata, PictureUploadResponse,
-    PictureFetchResponse, PictureListResponse, PictureUploadRequest,
+    PictureFetchResponse, PictureListResponse,
     AddVisibilityRequest, RemoveVisibilityRequest
 )
 from .user import ProfileUpdate

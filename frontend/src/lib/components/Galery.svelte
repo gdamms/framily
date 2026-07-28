@@ -15,7 +15,7 @@
     {#each pictures as picture}
       <button
         class="picture-button"
-        onclick={() => app.navigate({ page: "picture", id: picture.id })}
+        onclick={() => app.navigate({ page: "picture", picture })}
       >
         <img
           class="picture"

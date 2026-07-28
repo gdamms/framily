@@ -9,9 +9,9 @@ from api.v1.auth import get_current_user
 from models import User, Framily, FramilySettings, Membership
 from schemas.framily import (
     FramilyCheckRequest, FramilyCheckResponse, FramilyCreateRequest, FramilyConnectRequest, FramilyInviteRequest, FramilyJoinRequest,
-    FramilyLeaveRequest, FramilyKickRequest, FramilyPictureInfo, FramilyPromoteRequest, FramilySettingsUpdate,
-    FramilyDeleteRequest, FramilyCreateResponse, FramilyInfo, FramilyInfoResponse, FramilyUserInfo,
-    SettingsInfo, MessageResponse
+    FramilyLeaveRequest, FramilyKickRequest, FramilyPictureInfo, FramilyPromoteRequest,
+    FramilyDeleteRequest, FramilyCreateResponse, FramilyInfoResponse, FramilyUserInfo,
+    MessageResponse
 )
 
 router = APIRouter(
@@ -366,53 +366,6 @@ def promote_user(
     return MessageResponse(message="User role updated")
 
 
-@router.post("/settings", response_model=MessageResponse)
-def update_settings(
-    request: FramilySettingsUpdate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Update framily settings. Admin only."""
-    framily = db.query(Framily).filter(Framily.code == request.framily_code).first()
-    if not framily:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Framily not found"
-        )
-
-    # Check admin permission
-    membership = get_membership(db, current_user.id, framily.id)
-    if not is_admin(membership):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin permission required"
-        )
-
-    settings = db.query(FramilySettings).filter(
-        FramilySettings.framily_id == framily.id
-    ).first()
-
-    if not settings:
-        # Create settings if missing
-        settings = FramilySettings(framily_id=framily.id)
-        db.add(settings)
-
-    # Update settings
-    if request.settings.picture_duration is not None:
-        settings.picture_duration = request.settings.picture_duration
-    if request.settings.shuffle_mode is not None:
-        settings.shuffle_mode = request.settings.shuffle_mode
-    if request.settings.transition_effect is not None:
-        settings.transition_effect = request.settings.transition_effect
-    if request.settings.overlays is not None:
-        settings.overlays = [o.model_dump() for o in request.settings.overlays]
-
-    db.commit()
-    db.refresh(settings)
-
-    return MessageResponse(message="Settings updated")
-
-
 @router.post("/check", response_model=FramilyCheckResponse)
 def check_framily(
     request: FramilyCheckRequest,
@@ -422,7 +375,9 @@ def check_framily(
     framily_code = request.framily_code
     frame_token = request.frame_token
 
-    framily = db.query(Framily).filter(Framily.code == framily_code and Framily.frame_token == frame_token).first()
+    framily = db.query(Framily).filter(
+        Framily.code == framily_code, Framily.frame_token == frame_token
+    ).first()
     if not framily:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

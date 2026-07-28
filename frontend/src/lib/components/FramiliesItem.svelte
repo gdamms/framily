@@ -1,12 +1,13 @@
 <script lang="ts">
   import { api } from "$lib/api";
   import { app } from "$lib/app";
-  import { Check, X } from "@lucide/svelte";
-  import { type FramilyInfo, type FramilyListItem } from "$lib/api";
+  import Check from "@lucide/svelte/icons/check";
+  import X from "@lucide/svelte/icons/x";
+  import { type UserFramilyInfo } from "$lib/api";
   import ConfirmPopup from "./ConfirmPopup.svelte";
 
   interface Props {
-    framily: FramilyInfo | FramilyListItem;
+    framily: UserFramilyInfo;
   }
 
   let { framily }: Props = $props();

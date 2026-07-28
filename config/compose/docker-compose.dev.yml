@@ -2,35 +2,38 @@ name: framily
 
 services:
   postgres:
-    image: postgres:18
+    image: postgres:latest
     container_name: framily-postgres
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-framily}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "${POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}"
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
     volumes:
       - postgres_dev_data:/var/lib/postgresql/18/docker
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  minio:
-    image: minio/minio:latest
-    container_name: framily-minio
+  garage:
+    image: dxflrs/garage:v2.3.0
+    container_name: framily-garage
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      GARAGE_DEFAULT_ACCESS_KEY: ${S3_ACCESS_KEY}
+      GARAGE_DEFAULT_SECRET_KEY: ${S3_SECRET_KEY}
+      GARAGE_DEFAULT_BUCKET: ${S3_BUCKET}
     ports:
-      - "${MINIO_PORT:-9000}:${MINIO_PORT:-9000}"
+      - "${S3_PORT}:3900"
     volumes:
-      - minio_dev_data:/minio_data
-    command: server /minio_data --console-address ":9001"
+      - ../garage/garage.toml:/etc/garage.toml:ro
+      - garage_dev_meta:/var/lib/garage/meta
+      - garage_dev_data:/var/lib/garage/data
+    command: /garage server --single-node --default-bucket
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "/garage", "status"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -40,27 +43,29 @@ services:
       context: ../../backend
       dockerfile: Dockerfile.dev
       args:
-        UID: ${UID:-}
-        GID: ${GID:-}
+        UID: ${UID}
+        GID: ${GID}
     container_name: framily-backend
     volumes:
       - ../../backend:/app:z
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-framily}
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
-      MINIO_BUCKET: ${MINIO_BUCKET:-framily}
-      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
-      TITLE: ${TITLE:-Framily Backend}
-      VERSION: ${VERSION:-1.0.0}
-      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_REGION: ${S3_REGION}
+      S3_SECURE: ${S3_SECURE}
+      SECRET_KEY: ${SECRET_KEY}
+      TITLE: ${TITLE}
+      VERSION: ${VERSION}
+      CORS_ORIGINS: ${CORS_ORIGINS}
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "${BACKEND_PORT}:8000"
     depends_on:
       postgres:
         condition: service_healthy
-      minio:
+      garage:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
@@ -73,19 +78,21 @@ services:
       context: ../../frontend
       dockerfile: Dockerfile.dev
       args:
-        UID: ${UID:-}
-        GID: ${GID:-}
+        UID: ${UID}
+        GID: ${GID}
     container_name: framily-frontend
     volumes:
       - ../../frontend:/app:z
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:${BACKEND_PORT:-8000}/api/v1}
+      VITE_API_URL: ${VITE_API_URL}
+      ALLOWED_HOST: ${ALLOWED_HOST}
     ports:
-      - "${FRONTEND_PORT:-5173}:5173"
+      - "${FRONTEND_PORT}:5173"
     depends_on:
       backend:
         condition: service_healthy
 
 volumes:
   postgres_dev_data:
-  minio_dev_data:
+  garage_dev_meta:
+  garage_dev_data:

@@ -20,9 +20,6 @@ fi
 
 # Set up environment variables
 ENV_EXAMPLE_FILE="$COLLABST_DIR/config/env/dev.env.example"
-if [ ! -f "$ENV_EXAMPLE_FILE" ]; then
-    ENV_EXAMPLE_FILE="$COLLABST_DIR/config/env/base.env.example"
-fi
 ENV_FILE="$COLLABST_DIR/config/env/.env"
 
 mkdir -p "$COLLABST_DIR/config/env"

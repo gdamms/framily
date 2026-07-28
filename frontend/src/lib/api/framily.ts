@@ -1,14 +1,7 @@
 import { request } from "./client";
-import type { FramilyListItem, FramilyInfo, FramilySettings } from "./types";
+import type { FramilyInfo } from "./types";
 
 export const framilyApi = {
-  list: (username?: string) => {
-    const params = username
-      ? `?username=${encodeURIComponent(username)}`
-      : "";
-    return request<{ framilies: FramilyListItem[] }>(`/framily/list${params}`);
-  },
-
   connect: (framily_code: string) =>
     request<{ message: string }>("/framily/connect", {
       method: "POST",
@@ -16,7 +9,7 @@ export const framilyApi = {
     }),
 
   info: (framily_code: string) =>
-    request<{ framily: FramilyInfo }>(`/framily/info?framily_code=${framily_code}`),
+    request<FramilyInfo>(`/framily/info?framily_code=${framily_code}`),
 
   invite: (framily_code: string, username: string) =>
     request<{ message: string }>("/framily/invite", {
@@ -50,15 +43,6 @@ export const framilyApi = {
     request<{ message: string }>("/framily/promote", {
       method: "POST",
       body: JSON.stringify({ framily_code, username, new_role }),
-    }),
-
-  updateSettings: (
-    framily_code: string,
-    settings: Partial<FramilySettings>,
-  ) =>
-    request<{ message: string }>("/framily/settings", {
-      method: "POST",
-      body: JSON.stringify({ framily_code, settings }),
     }),
 
   delete: (framily_code: string) =>
