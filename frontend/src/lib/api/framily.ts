@@ -50,4 +50,13 @@ export const framilyApi = {
       method: "POST",
       body: JSON.stringify({ framily_code }),
     }),
+
+  updateSettings: (
+    framily_code: string,
+    data: { name?: string; orientation?: string; interval_minutes?: number },
+  ) =>
+    request<{ message: string }>("/framily/settings", {
+      method: "PUT",
+      body: JSON.stringify({ framily_code, ...data }),
+    }),
 };

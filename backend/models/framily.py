@@ -13,6 +13,9 @@ class Framily(Base):
     name = Column(String(100), nullable=False)
     frame_token = Column(String(64), unique=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    # Reported by the frame device the first time it registers (see /framily/create).
+    resolution_width = Column(Integer, nullable=True)
+    resolution_height = Column(Integer, nullable=True)
 
     # Relationships
     settings = relationship("FramilySettings", back_populates="framily", uselist=False, cascade="all, delete-orphan")
@@ -34,6 +37,10 @@ class FramilySettings(Base):
     shuffle_mode = Column(String(20), default="random")  # random, sequential
     transition_effect = Column(String(20), default="fade")  # fade, slide, etc.
     overlays = Column(JSON, default=list)  # List of overlay configurations
+    # Degrees to rotate a picture before serving it to the frame ("0", "90", "180", "270").
+    # Defaults to "90" to match the frame's previous hardcoded rotate-to-portrait behavior.
+    orientation = Column(String(3), default="90")
+    interval_minutes = Column(Integer, default=5)  # Minutes between frame picture fetches
 
     # Relationships
     framily = relationship("Framily", back_populates="settings")

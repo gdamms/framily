@@ -5,6 +5,7 @@ export type {
   UserFramilyInfo,
   FramilyMember,
   FramilyInfo,
+  FramilySettingsInfo,
   FramilyPictureInfo,
   PictureFramilyInfo,
   PictureInfo,

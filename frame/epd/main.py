@@ -14,7 +14,6 @@ def render_image(epd: epd7in3e.EPD, image_path: Path):
         print(f"Image file '{image_path}' not found. Cannot display.")
         return
     img = Image.open(image_path)
-    img = img.rotate(90, expand=True)
     resampling = Image.Resampling.LANCZOS
     img = ImageOps.fit(img, (epd.width, epd.height), method=resampling, centering=(0.5, 0.5))
     epd.display(epd.getbuffer(img))

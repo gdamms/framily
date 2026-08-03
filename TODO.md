@@ -2,9 +2,9 @@
 - [ ] change role integer to enum string in database and code
 - [ ] add when the framily first init, it sends informations like its resolution
 - [ ] when the frame fetches a picture, it should be sent read to be displayed - the frame does not manage image rotation, croping, or resizin, it should only get the image and display it as is (with some security checks, like checking the image size and type) with it, it receive the next delay before fetching the next image
-- [ ] add settings to the framily:
-  - [ ] add a setting to change the frame's display interval (in minutes)
-  - [ ] add a setting to change the frame's orientation (4 directions)
+- [x] add settings to the framily:
+  - [x] add a setting to change the frame's display interval (in minutes)
+  - [x] add a setting to change the frame's orientation (4 directions)
 - [x] remove settings tab from users profiles that are not me
 - [x] next to my display name, in my profile, it should have a little pen icon. When I click on the pen/name, it should start editing it. When I click outside of the input or press enter, it should save my user display name.
 - [x] remove the "add framily" button in the bottom navbar and add a "add framily" button in the top like the "invite user" button when in members tab of a framily. DO the same for add picture button in the pictures tab of a framily, in my profile pictures page and in the dashboard. In the dashboard and in my profile pictures page, all framilies should be checked by default. But when in a framily, only that framily should be checked by default.

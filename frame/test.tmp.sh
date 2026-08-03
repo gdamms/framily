@@ -6,4 +6,4 @@
 # }
 curl -X POST localhost:8000/api/v1/framily/create \
   -H "Content-Type: application/json" \
-  -d '{"name": "test framily"}'
+  -d '{"name": "test framily"}' >> test_framily_create_response.tmp.json

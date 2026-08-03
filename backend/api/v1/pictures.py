@@ -348,17 +348,36 @@ def fetch_picture(
     if picture.uploader:
         uploader_name = picture.uploader.display_name or picture.uploader.username
 
+    file_format = picture.metadata_.get("format", "jpg") if picture.metadata_ else "jpg"
+    object_name = f"shared/{picture.id}.{file_format}"
+    media_type = f"image/{file_format}"
+    headers = {
+        "Cache-Control": "no-cache",
+        "X-Picture-ID": picture.id,
+        "X-Uploader-Name": uploader_name or "Unknown"
+    }
+
+    # The frame just displays whatever it's given as-is - rotate here so it
+    # comes out already oriented for how the frame is physically mounted.
+    orientation = framily.settings.orientation if framily.settings else "0"
+    if orientation and orientation != "0":
+        raw = b"".join(s3_client.get_object(settings.S3_BUCKET, object_name).stream(32 * 1024))
+        image = Image.open(BytesIO(raw))
+        image = image.rotate(int(orientation), expand=True)
+
+        pil_format = "JPEG" if file_format.lower() in ("jpg", "jpeg") else file_format.upper()
+        if pil_format == "JPEG" and image.mode in ("RGBA", "P"):
+            image = image.convert("RGB")
+
+        output = BytesIO()
+        image.save(output, format=pil_format)
+
+        return Response(content=output.getvalue(), media_type=media_type, headers=headers)
+
     return StreamingResponse(
-        s3_client.get_object(
-            settings.S3_BUCKET,
-            f"shared/{picture.id}.{picture.metadata_.get('format', 'jpg')}"
-        ).stream(32*1024),
-        media_type=f"image/{picture.metadata_.get('format', 'jpg')}",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Picture-ID": picture.id,
-            "X-Uploader-Name": uploader_name or "Unknown"
-        }
+        s3_client.get_object(settings.S3_BUCKET, object_name).stream(32 * 1024),
+        media_type=media_type,
+        headers=headers
     )
 
 

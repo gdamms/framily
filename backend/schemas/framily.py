@@ -1,14 +1,30 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Literal, Optional, List
+
+Orientation = Literal["0", "90", "180", "270"]
 
 
 class FramilyCreateRequest(BaseModel):
     name: Optional[str] = None
+    resolution_width: Optional[int] = None
+    resolution_height: Optional[int] = None
 
 
 class FramilyCreateResponse(BaseModel):
     framily_code: str
     frame_token: str
+
+
+class FramilySettingsInfo(BaseModel):
+    orientation: Orientation
+    interval_minutes: int
+
+
+class FramilyUpdateSettingsRequest(BaseModel):
+    framily_code: str = Field(..., min_length=8, max_length=8)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    orientation: Optional[Orientation] = None
+    interval_minutes: Optional[int] = Field(default=None, ge=1, le=1440)
 
 
 class FramilyConnectRequest(BaseModel):
@@ -61,6 +77,9 @@ class FramilyInfoResponse(BaseModel):
     name: Optional[str]
     members: List[FramilyUserInfo] = Field(default_factory=list)
     pictures: List[FramilyPictureInfo] = Field(default_factory=list)
+    settings: FramilySettingsInfo
+    resolution_width: Optional[int] = None
+    resolution_height: Optional[int] = None
 
 
 class FramilyCheckResponse(BaseModel):

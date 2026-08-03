@@ -117,8 +117,16 @@ def create_framily():
 
     create_url = server_url / FRAMILY_CREATE_PATH
 
+    create_payload = {'name': 'My Framily'}
     try:
-        response = create_url.post(json={'name': 'My Framily'})
+        epd_info = json.loads(EPD_INFO_PATH.read_text())
+        create_payload['resolution_width'] = epd_info.get('width')
+        create_payload['resolution_height'] = epd_info.get('height')
+    except (OSError, json.JSONDecodeError):
+        pass  # EPD info not written yet - create without resolution.
+
+    try:
+        response = create_url.post(json=create_payload)
         if not response.ok:
             print(f"Failed to create framily: {response.text}")
             save_message(f"Failed to create framily. Please check the server URL and try again. (Status: {response.status_code} - {response.text})")

@@ -10,8 +10,8 @@ from models import User, Framily, FramilySettings, Membership
 from schemas.framily import (
     FramilyCheckRequest, FramilyCheckResponse, FramilyCreateRequest, FramilyConnectRequest, FramilyInviteRequest, FramilyJoinRequest,
     FramilyLeaveRequest, FramilyKickRequest, FramilyPictureInfo, FramilyPromoteRequest,
-    FramilyDeleteRequest, FramilyCreateResponse, FramilyInfoResponse, FramilyUserInfo,
-    MessageResponse
+    FramilyDeleteRequest, FramilyCreateResponse, FramilyInfoResponse, FramilySettingsInfo, FramilyUserInfo,
+    FramilyUpdateSettingsRequest, MessageResponse
 )
 
 router = APIRouter(
@@ -65,7 +65,9 @@ def create_framily(request: FramilyCreateRequest, db: Session = Depends(get_db))
     framily = Framily(
         code=code,
         name=request.name or code,
-        frame_token=frame_token
+        frame_token=frame_token,
+        resolution_width=request.resolution_width,
+        resolution_height=request.resolution_height,
     )
     db.add(framily)
     db.commit()
@@ -437,7 +439,55 @@ def get_framily_info(
         name=framily.name,
         members=members,
         pictures=pictures,
+        settings=FramilySettingsInfo(
+            orientation=framily.settings.orientation if framily.settings else "0",
+            interval_minutes=framily.settings.interval_minutes if framily.settings else 5,
+        ),
+        resolution_width=framily.resolution_width,
+        resolution_height=framily.resolution_height,
     )
+
+
+@router.put("/settings", response_model=MessageResponse)
+def update_framily_settings(
+    request: FramilyUpdateSettingsRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update a framily's name and/or display settings. Admin only."""
+    framily_code = request.framily_code.strip().upper()
+    framily = db.query(Framily).filter(Framily.code == framily_code).first()
+    if not framily:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Framily not found."
+        )
+
+    membership = get_membership(db, current_user.id, framily.id)
+    if not is_admin(membership):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required."
+        )
+
+    if request.name is not None:
+        stripped_name = request.name.strip()
+        if not stripped_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Framily name cannot be empty."
+            )
+        framily.name = stripped_name
+
+    if framily.settings:
+        if request.orientation is not None:
+            framily.settings.orientation = request.orientation
+        if request.interval_minutes is not None:
+            framily.settings.interval_minutes = request.interval_minutes
+
+    db.commit()
+
+    return MessageResponse(message="Framily settings updated.")
 
 
 @router.post("/delete", response_model=MessageResponse)

@@ -31,11 +31,19 @@ export interface FramilyPictureInfo {
   uploader_username: string;
 }
 
+export interface FramilySettingsInfo {
+  orientation: "0" | "90" | "180" | "270";
+  interval_minutes: number;
+}
+
 export interface FramilyInfo {
   code: string;
   name: string | null;
   members: FramilyMember[];
   pictures: FramilyPictureInfo[];
+  settings: FramilySettingsInfo;
+  resolution_width: number | null;
+  resolution_height: number | null;
 }
 
 export interface PictureFramilyInfo {

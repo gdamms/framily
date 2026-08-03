@@ -19,7 +19,7 @@ export type ProfilePage = {
 export type FramilyPage = {
   page: "framily";
   code: string;
-  section: "pictures" | "members";
+  section: "pictures" | "members" | "settings";
 }
 
 export type PicturePage = {
