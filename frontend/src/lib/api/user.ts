@@ -1,5 +1,5 @@
 import { request, requestFormData, API_BASE_URL } from "./client";
-import type { UserInfo, FramilyMember } from "./types";
+import type { UserInfo } from "./types";
 
 export const userApi = {
   getInfo: (username: string) =>
@@ -11,18 +11,21 @@ export const userApi = {
       body: JSON.stringify(data),
     }),
 
-  uploadProfilePicture: (file: File) => {
+  uploadAvatar: (username: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    return requestFormData<{ message: string }>("/user/profile-picture", formData);
+    return requestFormData<{ message: string }>(
+      `/avatars/user?username=${encodeURIComponent(username)}`,
+      formData,
+    );
   },
 
-  deleteProfilePicture: () =>
-    request<{ message: string }>("/user/profile-picture", {
+  deleteAvatar: (username: string) =>
+    request<{ message: string }>(`/avatars/user?username=${encodeURIComponent(username)}`, {
       method: "DELETE",
     }),
 
-  getProfilePictureUrl: (user: UserInfo | FramilyMember): string => {
-    return `${API_BASE_URL}/user/profile-picture?username=${user.username}&t=${new Date().getTime()}`;
+  getAvatarUrl: (username: string): string => {
+    return `${API_BASE_URL}/avatars/user?username=${encodeURIComponent(username)}`;
   },
 };

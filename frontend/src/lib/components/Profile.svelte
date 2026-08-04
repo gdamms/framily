@@ -3,6 +3,7 @@
   import { api, type UserInfo } from "$lib/api";
   import Galery from "./Galery.svelte";
   import Framilies from "./Framilies.svelte";
+  import Avatar from "./Avatar.svelte";
   import Pencil from "@lucide/svelte/icons/pencil";
   import ImagePlus from "@lucide/svelte/icons/image-plus";
 
@@ -71,7 +72,7 @@
 {:else}
   <div class="profile">
     <div class="profile-header">
-      <div class="profile-avatar">Avatar</div>
+      <Avatar kind="user" id={user.username} label={user.display_name} editable={isOwnProfile} size={64} />
       <div class="profile-names">
         {#if isOwnProfile && editingName}
           <input
@@ -142,16 +143,6 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-  }
-
-  .profile-avatar {
-    width: 64px;
-    height: 64px;
-    background: #ccc;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
   .profile-name {

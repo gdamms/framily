@@ -5,6 +5,7 @@
   import X from "@lucide/svelte/icons/x";
   import { type UserFramilyInfo } from "$lib/api";
   import ConfirmPopup from "./ConfirmPopup.svelte";
+  import Avatar from "./Avatar.svelte";
 
   interface Props {
     framily: UserFramilyInfo;
@@ -58,9 +59,12 @@
   role="button"
   tabindex="0"
 >
-  <div class="framily-info">
-    <div class="framily-name">{framily.name}</div>
-    <div class="framily-code">@{framily.code}</div>
+  <div class="framily-identity">
+    <Avatar kind="framily" id={framily.code} label={framily.name ?? framily.code} size={40} />
+    <div class="framily-info">
+      <div class="framily-name">{framily.name}</div>
+      <div class="framily-code">@{framily.code}</div>
+    </div>
   </div>
   <div class="framily-actions">
     {#if framily.role === 0}
@@ -117,6 +121,12 @@
     text-align: left;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .framily-identity {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
   .framily-info {

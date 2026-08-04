@@ -4,6 +4,7 @@
   import Galery from "./Galery.svelte";
   import Members from "./Members.svelte";
   import FramilySettings from "./FramilySettings.svelte";
+  import Avatar from "./Avatar.svelte";
   import { app } from "$lib/app";
   import ImagePlus from "@lucide/svelte/icons/image-plus";
   import Pencil from "@lucide/svelte/icons/pencil";
@@ -73,23 +74,26 @@
 {:else}
   <div class="framily-page">
     <div class="framily-header">
-      {#if isAdmin && editingName}
-        <input
-          class="framily-name-input"
-          bind:value={nameDraft}
-          bind:this={nameInputEl}
-          onblur={saveName}
-          onkeydown={handleNameKeydown}
-        />
-      {:else if isAdmin}
-        <button class="framily-name editable" onclick={startEditingName}>
-          <span>{framily.name}</span>
-          <Pencil size={16} />
-        </button>
-      {:else}
-        <div class="framily-name">{framily.name}</div>
-      {/if}
-      <div class="framily-code">@{framily.code}</div>
+      <Avatar kind="framily" id={framily.code} label={framily.name ?? framily.code} editable={isAdmin} size={64} />
+      <div class="framily-names">
+        {#if isAdmin && editingName}
+          <input
+            class="framily-name-input"
+            bind:value={nameDraft}
+            bind:this={nameInputEl}
+            onblur={saveName}
+            onkeydown={handleNameKeydown}
+          />
+        {:else if isAdmin}
+          <button class="framily-name editable" onclick={startEditingName}>
+            <span>{framily.name}</span>
+            <Pencil size={16} />
+          </button>
+        {:else}
+          <div class="framily-name">{framily.name}</div>
+        {/if}
+        <div class="framily-code">@{framily.code}</div>
+      </div>
     </div>
     <div class="framily-nav">
       <button
@@ -148,6 +152,15 @@
   .framily-header {
     background: #eee;
     padding: 0 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .framily-names {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
   }
 
   .framily-name {

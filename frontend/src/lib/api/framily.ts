@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request, requestFormData, API_BASE_URL } from "./client";
 import type { FramilyInfo } from "./types";
 
 export const framilyApi = {
@@ -64,4 +64,23 @@ export const framilyApi = {
       method: "PUT",
       body: JSON.stringify({ framily_code, ...data }),
     }),
+
+  uploadAvatar: (framily_code: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return requestFormData<{ message: string }>(
+      `/avatars/framily?framily_code=${encodeURIComponent(framily_code)}`,
+      formData,
+    );
+  },
+
+  deleteAvatar: (framily_code: string) =>
+    request<{ message: string }>(
+      `/avatars/framily?framily_code=${encodeURIComponent(framily_code)}`,
+      { method: "DELETE" },
+    ),
+
+  getAvatarUrl: (framily_code: string): string => {
+    return `${API_BASE_URL}/avatars/framily?framily_code=${encodeURIComponent(framily_code)}`;
+  },
 };

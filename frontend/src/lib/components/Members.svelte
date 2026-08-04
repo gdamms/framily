@@ -3,6 +3,7 @@
   import { app } from "$lib/app";
   import ConfirmPopup from "./ConfirmPopup.svelte";
   import InvitePopup from "./InvitePopup.svelte";
+  import Avatar from "./Avatar.svelte";
   import UserPlus from "@lucide/svelte/icons/user-plus";
 
   interface Props {
@@ -88,8 +89,11 @@
               section: "pictures",
             })}
         >
-          <div class="member-name">{member.display_name}</div>
-          <div class="member-username">@{member.username}</div>
+          <Avatar kind="user" id={member.username} label={member.display_name ?? member.username} size={40} />
+          <div class="member-names">
+            <div class="member-name">{member.display_name}</div>
+            <div class="member-username">@{member.username}</div>
+          </div>
         </button>
         <span class="role-badge role-{member.role}">{roleName(member.role)}</span>
         {#if isAdmin && member.username !== currentUsername}
@@ -154,6 +158,9 @@
   }
 
   .member-identity {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
     background: none;
     border: none;
     text-align: left;
