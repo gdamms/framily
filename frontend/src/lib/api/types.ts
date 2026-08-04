@@ -51,11 +51,19 @@ export interface PictureFramilyInfo {
   name: string;
 }
 
+export interface PictureMetadata {
+  width?: number | null;
+  height?: number | null;
+  format?: string | null;
+  file_size?: number | null;
+  original_filename?: string | null;
+}
+
 export interface PictureInfo {
   id: string;
   framilies: PictureFramilyInfo[];
   uploader_username: string;
   uploader_display_name?: string | null;
   upload_date: string;
-  metadata: Record<string, unknown> | null;
+  metadata: PictureMetadata | null;
 }

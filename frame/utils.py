@@ -123,3 +123,7 @@ def save_message(message: str) -> None:
     config = load_config()
     config["message"] = message
     save_config(config)
+
+
+def clear_message() -> None:
+    save_message("")

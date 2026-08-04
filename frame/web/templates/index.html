@@ -91,10 +91,18 @@
         .message {
             padding: 0.75rem;
             border-radius: 10px;
-            background: #fee2e2;
             font-weight: 500;
-            border: 1px solid #ff9d9d;
             overflow: scroll;
+        }
+
+        .message-error {
+            background: #fee2e2;
+            border: 1px solid #ff9d9d;
+        }
+
+        .message-success {
+            background: #dcfce7;
+            border: 1px solid #86efac;
         }
 
         .danger-zone {
@@ -118,9 +126,10 @@
     <main>
         <h1>Framily Setup</h1>
         {% if message %}
-        <div class="message">{{ message }}</div>
+        <div id="initial-message" class="message message-error">{{ message }}</div>
         {% endif %}
-        <form action="/setup" method="post">
+        <div id="setup-status" class="message" hidden></div>
+        <form id="setup-form" action="/setup" method="post">
             <label for="ssid">Wi-Fi SSID:</label>
             <input id="ssid" type="text" name="ssid" placeholder="SSID" value="{{ ssid|e }}" required>
             <label for="password">Wi-Fi Password:</label>
@@ -132,7 +141,7 @@
             </div>
             <label for="url">Server URL:</label>
             <input id="url" type="text" name="url" placeholder="Server URL" value="{{ url|e }}" required>
-            <button type="submit">Setup Framily</button>
+            <button id="setup-submit" type="submit">Setup Framily</button>
         </form>
         <div class="danger-zone">
             <h2>Danger Zone</h2>
@@ -149,6 +158,48 @@
 
         showPasswordCheckbox.addEventListener('change', () => {
             passwordField.type = showPasswordCheckbox.checked ? 'text' : 'password';
+        });
+
+        const setupForm = document.getElementById('setup-form');
+        const setupStatus = document.getElementById('setup-status');
+        const setupSubmit = document.getElementById('setup-submit');
+        const initialMessage = document.getElementById('initial-message');
+
+        function showStatus(text, success) {
+            initialMessage?.setAttribute('hidden', '');
+
+            setupStatus.textContent = text;
+            setupStatus.classList.remove('message-success', 'message-error');
+            setupStatus.classList.add(success ? 'message-success' : 'message-error');
+            setupStatus.hidden = false;
+        }
+
+        setupForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            setupSubmit.disabled = true;
+            setupSubmit.textContent = 'Saving...';
+
+            try {
+                const response = await fetch(setupForm.action, {
+                    method: 'POST',
+                    body: new FormData(setupForm),
+                });
+                const data = await response.json();
+                showStatus(data.message || 'Credentials saved.', response.ok);
+
+                if (response.ok) {
+                    for (const field of setupForm.elements) {
+                        field.disabled = true;
+                    }
+                } else {
+                    setupSubmit.disabled = false;
+                    setupSubmit.textContent = 'Setup Framily';
+                }
+            } catch (err) {
+                showStatus(`Could not reach the frame: ${err}`, false);
+                setupSubmit.disabled = false;
+                setupSubmit.textContent = 'Setup Framily';
+            }
         });
     </script>
 </body>

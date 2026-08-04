@@ -1,39 +1,45 @@
-<script lang="ts">
-  import { onMount, type Snippet, tick } from "svelte";
+<script lang="ts" generics="T">
+  import type { Snippet } from "svelte";
 
-  interface MasonryProps {
-    children: Snippet;
+  interface MasonryProps<T> {
+    items: T[];
+    children: Snippet<[T]>;
     num?: number;
+    getAspectRatio?: (item: T) => number | null | undefined;
   }
 
-  let { children, num = 3 }: MasonryProps = $props();
+  const DEFAULT_ASPECT_RATIO = 1;
 
-  let masonryChildren: HTMLDivElement | undefined = $state();
-  let items: HTMLElement[] = $state([]);
+  let { items, children, num = 3, getAspectRatio }: MasonryProps<T> = $props();
 
-  onMount(async () => {
-    const observer = new MutationObserver((mutations) => {
-      const columns = document.querySelectorAll(".masonry-column");
-      items = Array.from(masonryChildren?.children || []) as HTMLElement[];
-      for (let i = 0; i < items.length; i++) {
-        const columnIndex = i % num;
-        columns[columnIndex].appendChild(items[i]);
+  // Distribute items across columns by always appending to the column with
+  // the smallest accumulated height, using each item's aspect ratio (from
+  // picture resolution metadata when available) to estimate the height it
+  // will take up at a fixed column width. This keeps columns balanced
+  // without waiting for images to load and reflow.
+  let columns: T[][] = $derived.by(() => {
+    const cols: T[][] = Array.from({ length: num }, () => []);
+    const heights = new Array(num).fill(0);
+    for (const item of items) {
+      const ratio = getAspectRatio?.(item) || DEFAULT_ASPECT_RATIO;
+      let shortest = 0;
+      for (let i = 1; i < num; i++) {
+        if (heights[i] < heights[shortest]) shortest = i;
       }
-    });
-    if (masonryChildren) {
-      observer.observe(masonryChildren, { childList: true });
+      cols[shortest].push(item);
+      heights[shortest] += 1 / ratio;
     }
+    return cols;
   });
-
-  $effect(() => {});
 </script>
 
 <div class="masonry">
-  <div bind:this={masonryChildren} class="masonry-children">
-    {@render children()}
-  </div>
-  {#each Array(num) as _, i}
-    <div class="masonry-column"></div>
+  {#each columns as column}
+    <div class="masonry-column">
+      {#each column as item}
+        {@render children(item)}
+      {/each}
+    </div>
   {/each}
 </div>
 
@@ -43,10 +49,6 @@
     display: flex;
     flex-direction: row;
     gap: 6px;
-  }
-
-  .masonry-children {
-    display: none;
   }
 
   .masonry-column {

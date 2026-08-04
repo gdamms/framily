@@ -12,7 +12,7 @@ load_dotenv("/opt/framily/config.env")
 import sys
 sys.path.append("/opt/framily")
 
-from utils import HOTSPOT_DOMAIN, get_hotspot, EPD_INFO_PATH, EPD_IMAGE_PATH, make_qr, WEB_PORT, run, CON_HOTSPOT, CON_WIFI, load_config, save_config, save_message, start_hotspot
+from utils import HOTSPOT_DOMAIN, get_hotspot, EPD_INFO_PATH, EPD_IMAGE_PATH, make_qr, WEB_PORT, run, CON_HOTSPOT, CON_WIFI, load_config, save_config, save_message, clear_message, start_hotspot
 
 
 FRAMILY_CREATE_PATH = "/api/v1/framily/create"
@@ -126,13 +126,13 @@ def create_framily():
         pass  # EPD info not written yet - create without resolution.
 
     try:
-        response = create_url.post(json=create_payload)
+        response = create_url.post(json=create_payload, timeout=10)
         if not response.ok:
             print(f"Failed to create framily: {response.text}")
             save_message(f"Failed to create framily. Please check the server URL and try again. (Status: {response.status_code} - {response.text})")
             start_hotspot()
             exit()
-    except requests.exceptions.ConnectionError as e:
+    except requests.exceptions.RequestException as e:
         print(f"Error connecting to the server: {e}")
         save_message(f"Error connecting to the server: {e}. Please check the server URL and try again.")
         start_hotspot()
@@ -149,6 +149,7 @@ def create_framily():
 
     config["framily_code"] = framily_code
     config["frame_token"] = frame_token
+    config["message"] = ""
     save_config(config)
     print("Framily created successfully.")
 
@@ -166,20 +167,23 @@ def check_framily():
         response = check_url.post(json={
             "framily_code": framily_code,
             "frame_token": framily_token
-        })
+        }, timeout=10)
         if not response.ok:
             print(f"Framily does not exist or token is invalid: {response.text}")
             save_message("Framily does not exist or token is invalid. Please check the server URL and try again.")
             start_hotspot()
             exit()
-    except requests.exceptions.ConnectionError as e:
+    except requests.exceptions.RequestException as e:
         print(f"Error connecting to the server: {e}")
         save_message(f"Error connecting to the server: {e}. Please check the server URL and try again.")
         start_hotspot()
         exit()
 
     response_json = response.json()
-    return response_json.get("initiated", False)
+    initiated = response_json.get("initiated", False)
+    if initiated:
+        clear_message()
+    return initiated
 
 
 def fetch_image():
@@ -205,6 +209,7 @@ def fetch_image():
                 with open(EPD_IMAGE_PATH, "wb") as f:
                     f.write(response.content)
                 print("Picture fetched and saved successfully.")
+            clear_message()
         else:
             print(f"Failed to fetch picture: {response.text}")
             save_message(f"Failed to fetch picture. Please check the server URL and try again. (Status: {response.status_code} - {response.text})")

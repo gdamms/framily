@@ -1,9 +1,15 @@
 import json
+import threading
+import time
 from pathlib import Path
 
 import flask
 
 from utils import TEMPLATE_FOLDER, WEB_PORT, WEB_ADDRESS, load_config, reset_config, save_config, get_wifi, set_wifi
+
+# Give the HTTP response time to reach the browser over the hotspot link
+# before nmcli brings up the Wi-Fi connection and tears the hotspot down.
+WIFI_CONNECT_DELAY_SECONDS = 2
 
 
 def main():
@@ -34,9 +40,17 @@ def main():
         config["server_url"] = url
         save_config(config)
 
-        set_wifi(ssid, password)
+        def connect_later():
+            time.sleep(WIFI_CONNECT_DELAY_SECONDS)
+            set_wifi(ssid, password)
 
-        return {"status": "success"}, 200
+        threading.Thread(target=connect_later, daemon=True).start()
+
+        message = (
+            "Credentials saved! Trying to connect to Wi-Fi and to the server. "
+            "You can close this page and follow the instructions on the frame."
+        )
+        return {"status": "success", "message": message}, 200
 
     @app.route("/reset", methods=["POST"])
     def reset():

@@ -8,11 +8,17 @@
   }
 
   let { pictures }: Props = $props();
+
+  function getAspectRatio(picture: PictureInfo): number | undefined {
+    const { width, height } = picture.metadata ?? {};
+    if (!width || !height) return undefined;
+    return width / height;
+  }
 </script>
 
 <div class="galery">
-  <Masonry>
-    {#each pictures as picture}
+  <Masonry items={pictures} {getAspectRatio}>
+    {#snippet children(picture: PictureInfo)}
       <button
         class="picture-button"
         onclick={() => app.navigate({ page: "picture", picture })}
@@ -21,9 +27,12 @@
           class="picture"
           src={api.pictures.getImageUrl(picture)}
           alt={picture.id}
+          style={getAspectRatio(picture)
+            ? `aspect-ratio: ${getAspectRatio(picture)}`
+            : undefined}
         />
       </button>
-    {/each}
+    {/snippet}
   </Masonry>
 </div>
 

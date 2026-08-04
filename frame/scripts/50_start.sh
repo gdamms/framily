@@ -11,6 +11,6 @@ require_root
 systemctl daemon-reload
 systemctl enable framily-epd.service
 systemctl enable framily-web.service
-systemctl start framily-epd.service
-systemctl start framily-web.service
+systemctl restart framily-epd.service
+systemctl restart framily-web.service
 systemctl restart NetworkManager.service

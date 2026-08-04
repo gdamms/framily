@@ -5,3 +5,8 @@ config/env/.env.prod
 
 # Framily token files
 *.token
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyd
