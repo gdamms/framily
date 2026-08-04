@@ -53,7 +53,12 @@ export const framilyApi = {
 
   updateSettings: (
     framily_code: string,
-    data: { name?: string; orientation?: string; interval_minutes?: number },
+    data: {
+      name?: string;
+      orientation?: string;
+      interval_minutes?: number;
+      show_uploader_name?: boolean;
+    },
   ) =>
     request<{ message: string }>("/framily/settings", {
       method: "PUT",

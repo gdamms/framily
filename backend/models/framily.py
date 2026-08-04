@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 
@@ -13,7 +13,7 @@ class Framily(Base):
     name = Column(String(100), nullable=False)
     frame_token = Column(String(64), unique=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    # Reported by the frame device the first time it registers (see /framily/create).
+    # Reported by the frame device via POST /frame/status.
     resolution_width = Column(Integer, nullable=True)
     resolution_height = Column(Integer, nullable=True)
 
@@ -41,6 +41,10 @@ class FramilySettings(Base):
     # Defaults to "90" to match the frame's previous hardcoded rotate-to-portrait behavior.
     orientation = Column(String(3), default="90")
     interval_minutes = Column(Integer, default=5)  # Minutes between frame picture fetches
+    # Whether to burn a "by <display name>" credit into the bottom-right of
+    # the image server-side before serving it to the frame (see /frame/fetch).
+    # Not exposed via /frame/settings - the frame doesn't need to know this.
+    show_uploader_name = Column(Boolean, default=False, nullable=False)
 
     # Relationships
     framily = relationship("Framily", back_populates="settings")

@@ -34,6 +34,7 @@ export interface FramilyPictureInfo {
 export interface FramilySettingsInfo {
   orientation: "0" | "90" | "180" | "270";
   interval_minutes: number;
+  show_uploader_name: boolean;
 }
 
 export interface FramilyInfo {

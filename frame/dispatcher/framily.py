@@ -15,9 +15,14 @@ sys.path.append("/opt/framily")
 from utils import HOTSPOT_DOMAIN, get_hotspot, EPD_INFO_PATH, EPD_IMAGE_PATH, make_qr, WEB_PORT, run, CON_HOTSPOT, CON_WIFI, load_config, save_config, save_message, clear_message, start_hotspot
 
 
-FRAMILY_CREATE_PATH = "/api/v1/framily/create"
-FRAMILY_CHECK_PATH = "/api/v1/framily/check"
-PICTURE_FETCH_PATH = "/api/v1/pictures/fetch"
+FRAME_CREATE_PATH = "/api/v1/frame/create"
+FRAME_CHECK_PATH = "/api/v1/frame/check"
+FRAME_STATUS_PATH = "/api/v1/frame/status"
+FRAME_SETTINGS_PATH = "/api/v1/frame/settings"
+FRAME_FETCH_PATH = "/api/v1/frame/fetch"
+
+# Used if the server can't be reached to fetch the real fetch interval.
+DEFAULT_INTERVAL_MINUTES = 5
 
 
 def display_hotspot():
@@ -115,15 +120,9 @@ def create_framily():
     server_url = config.get("server_url", "")
     server_url = URL(server_url)
 
-    create_url = server_url / FRAMILY_CREATE_PATH
+    create_url = server_url / FRAME_CREATE_PATH
 
     create_payload = {'name': 'My Framily'}
-    try:
-        epd_info = json.loads(EPD_INFO_PATH.read_text())
-        create_payload['resolution_width'] = epd_info.get('width')
-        create_payload['resolution_height'] = epd_info.get('height')
-    except (OSError, json.JSONDecodeError):
-        pass  # EPD info not written yet - create without resolution.
 
     try:
         response = create_url.post(json=create_payload, timeout=10)
@@ -161,7 +160,7 @@ def check_framily():
     framily_token = config.get("frame_token", "")
 
     server_url = URL(server_url)
-    check_url = server_url / FRAMILY_CHECK_PATH
+    check_url = server_url / FRAME_CHECK_PATH
 
     try:
         response = check_url.post(json={
@@ -186,6 +185,63 @@ def check_framily():
     return initiated
 
 
+def report_status():
+    """Report frame status information (currently just the display
+    resolution) to the server. Best-effort: failures here shouldn't block
+    the frame from displaying pictures."""
+    config = load_config()
+    server_url = config.get("server_url", "")
+    framily_code = config.get("framily_code", "")
+    framily_token = config.get("frame_token", "")
+
+    status_payload = {
+        "framily_code": framily_code,
+        "frame_token": framily_token,
+    }
+    try:
+        epd_info = json.loads(EPD_INFO_PATH.read_text())
+        status_payload["resolution_width"] = epd_info.get("width")
+        status_payload["resolution_height"] = epd_info.get("height")
+    except (OSError, json.JSONDecodeError):
+        return  # EPD info not written yet - nothing to report.
+
+    server_url = URL(server_url)
+    status_url = server_url / FRAME_STATUS_PATH
+
+    try:
+        response = status_url.post(json=status_payload, timeout=10)
+        if not response.ok:
+            print(f"Failed to report status: {response.text}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error reporting status: {e}")
+
+
+def fetch_settings() -> int:
+    """Fetch the interval (in minutes) the frame should wait between picture
+    fetches. Falls back to DEFAULT_INTERVAL_MINUTES if the server can't be
+    reached, since a missed settings fetch shouldn't stop the frame."""
+    config = load_config()
+    server_url = config.get("server_url", "")
+    framily_code = config.get("framily_code", "")
+    framily_token = config.get("frame_token", "")
+
+    server_url = URL(server_url)
+    settings_url = server_url / FRAME_SETTINGS_PATH
+
+    try:
+        response = settings_url.post(json={
+            "framily_code": framily_code,
+            "frame_token": framily_token
+        }, timeout=10)
+        if response.ok:
+            return response.json().get("interval_minutes", DEFAULT_INTERVAL_MINUTES)
+        print(f"Failed to fetch settings: {response.text}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching settings: {e}")
+
+    return DEFAULT_INTERVAL_MINUTES
+
+
 def fetch_image():
     config = load_config()
     server_url = config.get("server_url", "")
@@ -193,7 +249,7 @@ def fetch_image():
     framily_token = config.get("frame_token", "")
 
     server_url = URL(server_url)
-    fetch_url = server_url / PICTURE_FETCH_PATH
+    fetch_url = server_url / FRAME_FETCH_PATH
 
     try:
         response = fetch_url.post(json={
@@ -236,9 +292,12 @@ def start_framily():
         display_framily_info()
         time.sleep(5)
 
+    report_status()
+
     while True:
         fetch_image()
-        time.sleep(60)
+        interval_minutes = fetch_settings()
+        time.sleep(interval_minutes * 60)
 
 
 def wifi_up():

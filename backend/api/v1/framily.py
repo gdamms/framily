@@ -1,16 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
-import secrets
-import string
 
 from core.database import get_db
 from api.v1.auth import get_current_user
-from models import User, Framily, FramilySettings, Membership
+from models import User, Framily, Membership
 from schemas.framily import (
-    FramilyCheckRequest, FramilyCheckResponse, FramilyCreateRequest, FramilyConnectRequest, FramilyInviteRequest, FramilyJoinRequest,
+    FramilyConnectRequest, FramilyInviteRequest, FramilyJoinRequest,
     FramilyLeaveRequest, FramilyKickRequest, FramilyPictureInfo, FramilyPromoteRequest,
-    FramilyDeleteRequest, FramilyCreateResponse, FramilyInfoResponse, FramilySettingsInfo, FramilyUserInfo,
+    FramilyDeleteRequest, FramilyInfoResponse, FramilySettingsInfo, FramilyUserInfo,
     FramilyUpdateSettingsRequest, MessageResponse
 )
 
@@ -18,17 +16,6 @@ router = APIRouter(
     prefix="/framily",
     tags=["framily"],
 )
-
-
-def generate_framily_code() -> str:
-    """Generate a unique 8-character framily code."""
-    chars = string.ascii_uppercase + string.digits
-    return ''.join(secrets.choice(chars) for _ in range(8))
-
-
-def generate_frame_token() -> str:
-    """Generate a 64-character secure token for the frame."""
-    return secrets.token_urlsafe(48)[:64]
 
 
 def get_membership(db: Session, user_id: int, framily_id: int) -> Optional[Membership]:
@@ -47,44 +34,6 @@ def is_admin(membership: Optional[Membership]) -> bool:
 def is_member(membership: Optional[Membership]) -> bool:
     """Check if membership is member or admin role."""
     return membership is not None and membership.role >= 1
-
-
-@router.post("/create", response_model=FramilyCreateResponse, status_code=status.HTTP_201_CREATED)
-def create_framily(request: FramilyCreateRequest, db: Session = Depends(get_db)):
-    """Create a new framily. This endpoint is used by the frame device."""
-    # Generate unique code
-    while True:
-        code = generate_framily_code()
-        existing = db.query(Framily).filter(Framily.code == code).first()
-        if not existing:
-            break
-
-    frame_token = generate_frame_token()
-
-    # Create framily
-    framily = Framily(
-        code=code,
-        name=request.name or code,
-        frame_token=frame_token,
-        resolution_width=request.resolution_width,
-        resolution_height=request.resolution_height,
-    )
-    db.add(framily)
-    db.commit()
-    db.refresh(framily)
-
-    # Create default settings
-    settings = FramilySettings(
-        framily_id=framily.id,
-        picture_duration=10,
-        shuffle_mode="random",
-        transition_effect="fade",
-        overlays=[]
-    )
-    db.add(settings)
-    db.commit()
-
-    return FramilyCreateResponse(framily_code=code, frame_token=frame_token)
 
 
 @router.post("/connect", response_model=MessageResponse)
@@ -368,33 +317,6 @@ def promote_user(
     return MessageResponse(message="User role updated")
 
 
-@router.post("/check", response_model=FramilyCheckResponse)
-def check_framily(
-    request: FramilyCheckRequest,
-    db: Session = Depends(get_db)
-):
-    """Check if framily code and frame token are valid. Used by frame device."""
-    framily_code = request.framily_code
-    frame_token = request.frame_token
-
-    framily = db.query(Framily).filter(
-        Framily.code == framily_code, Framily.frame_token == frame_token
-    ).first()
-    if not framily:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Framily not found"
-        )
-
-    members = db.query(User).join(Membership).filter(
-        Membership.framily_id == framily.id,
-        Membership.role >= 1
-    ).all()
-
-    initiated = len(members) > 0
-    return FramilyCheckResponse(initiated=initiated)
-
-
 @router.get("/info", response_model=FramilyInfoResponse)
 def get_framily_info(
     framily_code: str = Query(..., min_length=8, max_length=8),
@@ -442,6 +364,7 @@ def get_framily_info(
         settings=FramilySettingsInfo(
             orientation=framily.settings.orientation if framily.settings else "0",
             interval_minutes=framily.settings.interval_minutes if framily.settings else 5,
+            show_uploader_name=framily.settings.show_uploader_name if framily.settings else False,
         ),
         resolution_width=framily.resolution_width,
         resolution_height=framily.resolution_height,
@@ -484,6 +407,8 @@ def update_framily_settings(
             framily.settings.orientation = request.orientation
         if request.interval_minutes is not None:
             framily.settings.interval_minutes = request.interval_minutes
+        if request.show_uploader_name is not None:
+            framily.settings.show_uploader_name = request.show_uploader_name
 
     db.commit()
 

@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Header
-from fastapi.responses import StreamingResponse, Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 import uuid
 from io import BytesIO
 from typing import Optional
@@ -16,7 +15,6 @@ from models import User, Framily, Picture, PictureVisibility, Membership
 from schemas.picture import (
     AddVisibilityRequest,
     RemoveVisibilityRequest,
-    FramilyCheck,
     PictureUploadResponse,
     PictureListResponse,
     PictureMutationResponse,
@@ -311,74 +309,6 @@ def remove_visibility(
         "picture": get_picture_info(picture, db),
         "warning": "Picture has no visibility left" if remaining_visibility == 0 else None
     }
-
-
-@router.post("/fetch")
-def fetch_picture(
-    request: FramilyCheck,
-    db: Session = Depends(get_db)
-):
-    """Fetch a random picture for the frame. Uses frame token auth."""
-    # Find framily by frame token
-    framily_code = request.framily_code
-    frame_token = request.frame_token
-
-    framily = db.query(Framily).filter(
-        Framily.code == framily_code, Framily.frame_token == frame_token
-    ).first()
-    if not framily:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Framily not found or invalid frame token"
-        )
-
-    # Get a random picture visible to this framily
-    visibility = db.query(PictureVisibility).filter(
-        PictureVisibility.framily_id == framily.id
-    ).order_by(func.random()).first()
-
-    if not visibility:
-        # No pictures available for this framily
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-    picture = visibility.picture
-
-    # Get uploader info
-    uploader_name = None
-    if picture.uploader:
-        uploader_name = picture.uploader.display_name or picture.uploader.username
-
-    file_format = picture.metadata_.get("format", "jpg") if picture.metadata_ else "jpg"
-    object_name = f"shared/{picture.id}.{file_format}"
-    media_type = f"image/{file_format}"
-    headers = {
-        "Cache-Control": "no-cache",
-        "X-Picture-ID": picture.id,
-        "X-Uploader-Name": uploader_name or "Unknown"
-    }
-
-    # The frame just displays whatever it's given as-is - rotate here so it
-    # comes out already oriented for how the frame is physically mounted.
-    orientation = framily.settings.orientation if framily.settings else "0"
-    if orientation and orientation != "0":
-        raw = b"".join(s3_client.get_object(settings.S3_BUCKET, object_name).stream(32 * 1024))
-        image = Image.open(BytesIO(raw))
-        image = image.rotate(int(orientation), expand=True)
-
-        pil_format = "JPEG" if file_format.lower() in ("jpg", "jpeg") else file_format.upper()
-        if pil_format == "JPEG" and image.mode in ("RGBA", "P"):
-            image = image.convert("RGB")
-
-        output = BytesIO()
-        image.save(output, format=pil_format)
-
-        return Response(content=output.getvalue(), media_type=media_type, headers=headers)
-
-    return StreamingResponse(
-        s3_client.get_object(settings.S3_BUCKET, object_name).stream(32 * 1024),
-        media_type=media_type,
-        headers=headers
-    )
 
 
 @router.get("/list", response_model=PictureListResponse)

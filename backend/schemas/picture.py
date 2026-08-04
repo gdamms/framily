@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
@@ -59,8 +59,3 @@ class AddVisibilityRequest(BaseModel):
 class RemoveVisibilityRequest(BaseModel):
     picture_id: str
     framily_codes: list[str]
-
-
-class FramilyCheck(BaseModel):
-    framily_code: str = Field(..., min_length=8, max_length=8)
-    frame_token: str = Field(..., min_length=64, max_length=64)

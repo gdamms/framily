@@ -1,0 +1,234 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse, Response
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
+import secrets
+import string
+
+from core.database import get_db
+from core.config import settings
+from core.minio import s3_client
+from models import User, Framily, FramilySettings, Membership, PictureVisibility
+from schemas.framily import MessageResponse
+from schemas.frame import (
+    FrameAuthRequest, FrameCreateRequest, FrameCreateResponse,
+    FrameCheckResponse, FrameStatusRequest, FrameSettingsResponse
+)
+
+router = APIRouter(
+    prefix="/frame",
+    tags=["frame"],
+)
+
+
+def generate_framily_code() -> str:
+    """Generate a unique 8-character framily code."""
+    chars = string.ascii_uppercase + string.digits
+    return ''.join(secrets.choice(chars) for _ in range(8))
+
+
+def generate_frame_token() -> str:
+    """Generate a 64-character secure token for the frame."""
+    return secrets.token_urlsafe(48)[:64]
+
+
+def draw_uploader_credit(image: Image.Image, uploader_name: str) -> Image.Image:
+    """Burn a "by <name>" credit into the bottom-right corner of the image."""
+    if image.mode not in ("RGB", "RGBA"):
+        image = image.convert("RGBA")
+
+    text = f"by {uploader_name}"
+    font_size = max(12, round(min(image.size) * 0.03))
+    font = ImageFont.load_default(size=font_size)
+
+    draw = ImageDraw.Draw(image)
+    bbox = draw.textbbox((0, 0), text, font=font)
+    text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    margin = round(font_size * 0.5)
+    x = image.width - text_w - margin - bbox[0]
+    y = image.height - text_h - margin - bbox[1]
+
+    draw.text(
+        (x, y), text, font=font,
+        fill="white", stroke_width=max(1, font_size // 12), stroke_fill="black"
+    )
+    return image
+
+
+def get_framily_by_frame_auth(db: Session, framily_code: str, frame_token: str) -> Framily:
+    """Look up a framily by code + frame token. Shared auth for all frame-device endpoints."""
+    framily = db.query(Framily).filter(
+        Framily.code == framily_code, Framily.frame_token == frame_token
+    ).first()
+    if not framily:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Framily not found or invalid frame token"
+        )
+    return framily
+
+
+@router.post("/create", response_model=FrameCreateResponse, status_code=status.HTTP_201_CREATED)
+def create_framily(request: FrameCreateRequest, db: Session = Depends(get_db)):
+    """Create a new framily. This endpoint is used by the frame device."""
+    # Generate unique code
+    while True:
+        code = generate_framily_code()
+        existing = db.query(Framily).filter(Framily.code == code).first()
+        if not existing:
+            break
+
+    frame_token = generate_frame_token()
+
+    # Create framily
+    framily = Framily(
+        code=code,
+        name=request.name or code,
+        frame_token=frame_token,
+    )
+    db.add(framily)
+    db.commit()
+    db.refresh(framily)
+
+    # Create default settings
+    framily_settings = FramilySettings(
+        framily_id=framily.id,
+        picture_duration=10,
+        shuffle_mode="random",
+        transition_effect="fade",
+        overlays=[]
+    )
+    db.add(framily_settings)
+    db.commit()
+
+    return FrameCreateResponse(framily_code=code, frame_token=frame_token)
+
+
+@router.post("/check", response_model=FrameCheckResponse)
+def check_framily(request: FrameAuthRequest, db: Session = Depends(get_db)):
+    """Check if framily code and frame token are valid, and whether a user has
+    set the framily up yet. Used by the frame device."""
+    framily = get_framily_by_frame_auth(db, request.framily_code, request.frame_token)
+
+    members = db.query(User).join(Membership).filter(
+        Membership.framily_id == framily.id,
+        Membership.role >= 1
+    ).all()
+
+    return FrameCheckResponse(initiated=len(members) > 0)
+
+
+@router.post("/status", response_model=MessageResponse)
+def update_status(request: FrameStatusRequest, db: Session = Depends(get_db)):
+    """Report frame status information. Currently just the display resolution,
+    reported separately from /frame/create since it isn't known until the
+    e-ink driver has initialized."""
+    framily = get_framily_by_frame_auth(db, request.framily_code, request.frame_token)
+
+    if request.resolution_width is not None:
+        framily.resolution_width = request.resolution_width
+    if request.resolution_height is not None:
+        framily.resolution_height = request.resolution_height
+
+    db.commit()
+
+    return MessageResponse(message="Status updated")
+
+
+@router.post("/settings", response_model=FrameSettingsResponse)
+def get_frame_settings(request: FrameAuthRequest, db: Session = Depends(get_db)):
+    """Fetch settings the frame device needs to operate, e.g. the delay
+    between picture fetches. Used by the frame device."""
+    framily = get_framily_by_frame_auth(db, request.framily_code, request.frame_token)
+
+    interval_minutes = framily.settings.interval_minutes if framily.settings else 5
+    return FrameSettingsResponse(interval_minutes=interval_minutes)
+
+
+@router.post("/fetch")
+def fetch_picture(request: FrameAuthRequest, db: Session = Depends(get_db)):
+    """Fetch a random picture for the frame. Uses frame token auth."""
+    framily = get_framily_by_frame_auth(db, request.framily_code, request.frame_token)
+
+    # Get a random picture visible to this framily
+    visibility = db.query(PictureVisibility).filter(
+        PictureVisibility.framily_id == framily.id
+    ).order_by(func.random()).first()
+
+    if not visibility:
+        # No pictures available for this framily
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    picture = visibility.picture
+
+    # Get uploader info
+    uploader_name = None
+    if picture.uploader:
+        uploader_name = picture.uploader.display_name or picture.uploader.username
+
+    file_format = picture.metadata_.get("format", "jpg") if picture.metadata_ else "jpg"
+    object_name = f"shared/{picture.id}.{file_format}"
+    media_type = f"image/{file_format}"
+    headers = {
+        "Cache-Control": "no-cache",
+        "X-Picture-ID": picture.id,
+        "X-Uploader-Name": uploader_name or "Unknown"
+    }
+
+    # The frame just displays whatever it's given as-is - rotate here so it
+    # comes out already oriented for how the frame is physically mounted, and
+    # crop/resize to exactly cover the frame's reported resolution (scale up
+    # to the smallest size that covers the frame, then center-crop the rest).
+    orientation = framily.settings.orientation if framily.settings else "0"
+    needs_rotation = bool(orientation and orientation != "0")
+    needs_resize = bool(framily.resolution_width and framily.resolution_height)
+    # The uploader-credit overlay is burned into the image server-side; it's
+    # intentionally not exposed via /frame/settings - the frame device has no
+    # need to know about it.
+    needs_credit = bool(framily.settings and framily.settings.show_uploader_name and uploader_name)
+
+    if not needs_rotation and not needs_resize and not needs_credit:
+        return StreamingResponse(
+            s3_client.get_object(settings.S3_BUCKET, object_name).stream(32 * 1024),
+            media_type=media_type,
+            headers=headers
+        )
+
+    raw = b"".join(s3_client.get_object(settings.S3_BUCKET, object_name).stream(32 * 1024))
+    image = Image.open(BytesIO(raw))
+
+    if needs_resize:
+        target_w, target_h = framily.resolution_width, framily.resolution_height
+        # The rotation below swaps width/height for a 90/270 turn, so crop to
+        # the swapped dimensions here - after rotating, the image ends up
+        # exactly target_w x target_h as reported by the frame.
+        if needs_rotation and orientation in ("90", "270"):
+            crop_w, crop_h = target_h, target_w
+        else:
+            crop_w, crop_h = target_w, target_h
+
+        img_w, img_h = image.size
+        scale = max(crop_w / img_w, crop_h / img_h)
+        new_w, new_h = round(img_w * scale), round(img_h * scale)
+        image = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+        left = (new_w - crop_w) // 2
+        top = (new_h - crop_h) // 2
+        image = image.crop((left, top, left + crop_w, top + crop_h))
+
+    if needs_credit:
+        image = draw_uploader_credit(image, uploader_name)
+
+    if needs_rotation:
+        image = image.rotate(int(orientation), expand=True)
+
+    pil_format = "JPEG" if file_format.lower() in ("jpg", "jpeg") else file_format.upper()
+    if pil_format == "JPEG" and image.mode in ("RGBA", "P"):
+        image = image.convert("RGB")
+
+    output = BytesIO()
+    image.save(output, format=pil_format)
+
+    return Response(content=output.getvalue(), media_type=media_type, headers=headers)

@@ -34,6 +34,17 @@
     }
   }
 
+  async function toggleShowUploaderName() {
+    const show_uploader_name = !framily.settings.show_uploader_name;
+    error = "";
+    try {
+      await api.framily.updateSettings(framily.code, { show_uploader_name });
+      onChanged();
+    } catch (e: any) {
+      error = e.message || "Failed to update setting";
+    }
+  }
+
   async function saveInterval() {
     error = "";
     const minutes = Math.round(Number(intervalDraft));
@@ -41,6 +52,7 @@
       error = "Interval must be between 1 and 1440 minutes";
       return;
     }
+    if (minutes === framily.settings.interval_minutes) return;
     savingInterval = true;
     try {
       await api.framily.updateSettings(framily.code, { interval_minutes: minutes });
@@ -78,12 +90,10 @@
           min="1"
           max="1440"
           bind:value={intervalDraft}
-          onkeydown={(e) => e.key === "Enter" && saveInterval()}
+          disabled={savingInterval}
+          onchange={saveInterval}
         />
         <span class="unit">minutes</span>
-        <button class="save-button" onclick={saveInterval} disabled={savingInterval}>
-          Save
-        </button>
       </div>
     {:else}
       <div class="setting-value">{framily.settings.interval_minutes} minutes</div>
@@ -106,6 +116,25 @@
       </div>
     {:else}
       <div class="setting-value">{framily.settings.orientation}°</div>
+    {/if}
+  </div>
+
+  <div class="setting">
+    <div class="setting-label">Show uploader name</div>
+    <div class="setting-description">
+      Displays "by &lt;name&gt;" in the corner of each picture on the frame.
+    </div>
+    {#if isAdmin}
+      <label class="toggle-row">
+        <input
+          type="checkbox"
+          checked={framily.settings.show_uploader_name}
+          onchange={toggleShowUploaderName}
+        />
+        <span>{framily.settings.show_uploader_name ? "On" : "Off"}</span>
+      </label>
+    {:else}
+      <div class="setting-value">{framily.settings.show_uploader_name ? "On" : "Off"}</div>
     {/if}
   </div>
 </div>
@@ -141,6 +170,26 @@
     color: #333;
   }
 
+  .setting-description {
+    color: #666;
+    font-size: 0.85rem;
+    margin: -0.25rem 0 0;
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    width: fit-content;
+  }
+
+  .toggle-row input {
+    width: 1.1rem;
+    height: 1.1rem;
+    cursor: pointer;
+  }
+
   .interval-row {
     display: flex;
     align-items: center;
@@ -154,20 +203,6 @@
 
   .unit {
     color: #666;
-  }
-
-  .save-button {
-    padding: 0.35rem 0.75rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    background-color: #007bff;
-    color: white;
-  }
-
-  .save-button:disabled {
-    opacity: 0.6;
-    cursor: default;
   }
 
   .orientation-row {
