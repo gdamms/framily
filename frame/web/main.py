@@ -1,15 +1,29 @@
-import json
-import threading
-import time
-from pathlib import Path
-
 import flask
 
-from utils import TEMPLATE_FOLDER, WEB_PORT, WEB_ADDRESS, load_config, reset_config, save_config, get_wifi, set_wifi
+from logging_setup import LOG_PATH, get_logger
+from utils import (
+    AGENT_RECHECK_PATH,
+    TEMPLATE_FOLDER,
+    WEB_PORT,
+    WEB_ADDRESS,
+    load_config,
+    reset_config,
+    save_config,
+    get_wifi,
+)
 
-# Give the HTTP response time to reach the browser over the hotspot link
-# before nmcli brings up the Wi-Fi connection and tears the hotspot down.
-WIFI_CONNECT_DELAY_SECONDS = 2
+logger = get_logger("web")
+
+LOG_TAIL_LINES = 500
+
+
+def _tail_log(n: int) -> str:
+    try:
+        with open(LOG_PATH, "r", errors="replace") as f:
+            lines = f.readlines()
+    except OSError as e:
+        return f"Could not read log file '{LOG_PATH}': {e}"
+    return "".join(lines[-n:])
 
 
 def main():
@@ -36,15 +50,17 @@ def main():
         password = data.get("password", "")
         url = data.get("url", "")
 
+        # Just record the intent here. The agent service owns every actual
+        # NetworkManager mutation (it's the only writer), so it picks this
+        # up and performs the Wi-Fi switch itself - this route never blocks
+        # on nmcli.
         config = load_config()
         config["server_url"] = url
+        config["pending_wifi_ssid"] = ssid
+        config["pending_wifi_password"] = password
         save_config(config)
-
-        def connect_later():
-            time.sleep(WIFI_CONNECT_DELAY_SECONDS)
-            set_wifi(ssid, password)
-
-        threading.Thread(target=connect_later, daemon=True).start()
+        AGENT_RECHECK_PATH.touch(exist_ok=True)
+        logger.info(f"Setup submitted: server_url={url!r}, ssid={ssid!r}")
 
         message = (
             "Credentials saved! Trying to connect to Wi-Fi and to the server. "
@@ -54,12 +70,20 @@ def main():
 
     @app.route("/reset", methods=["POST"])
     def reset():
+        logger.info("Configuration reset requested.")
         reset_config()
-        set_wifi("","", start=False)
+        config = load_config()
+        config["pending_wifi_reset"] = True
+        save_config(config)
+        AGENT_RECHECK_PATH.touch(exist_ok=True)
         return {"status": "success"}, 200
 
-    print('starting')
-    app.run(host=WEB_ADDRESS, port=WEB_PORT, use_reloader=False)
+    @app.route("/logs")
+    def logs():
+        return flask.Response(_tail_log(LOG_TAIL_LINES), mimetype="text/plain")
+
+    logger.info("Starting web UI.")
+    app.run(host=WEB_ADDRESS, port=WEB_PORT, use_reloader=False, threaded=True)
 
 
 if __name__ == "__main__":

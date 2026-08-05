@@ -1,1 +1,6 @@
 tmp/
+framily.log*
+agent.lock
+agent.recheck
+config.json
+

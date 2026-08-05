@@ -1,5 +1,5 @@
 [Unit]
-Description=Framily setup Flask service
+Description=Framily agent service
 After=network-online.target
 Wants=network-online.target
 StartLimitIntervalSec=300
@@ -9,7 +9,7 @@ StartLimitBurst=10
 Type=simple
 WorkingDirectory=/opt/framily
 EnvironmentFile=/opt/framily/config.env
-ExecStart=/usr/bin/python3 -m web.main
+ExecStart=/usr/bin/python3 -m agent.main
 Restart=always
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1

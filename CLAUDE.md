@@ -166,26 +166,44 @@ render logic rather than adding a SvelteKit route.
 ## Frame device architecture
 
 Everything under `frame/` runs directly on the Raspberry Pi's OS (systemd services), independent
-of the Docker Compose stack:
+of the Docker Compose stack. The code stays flat and pragmatic — there was previously a layered
+`frame_core/` shared library, but it was deliberately removed; don't reintroduce that pattern.
 
-- `frame/frame_core/` — shared library: `settings.py` (all tunables via `FRAMILY_*` env vars,
-  e.g. poll intervals, retry/backoff, hotspot thresholds), `api.py` (`FrameApiClient`, the HTTP
-  client for the three frame-facing backend endpoints), `display.py` (e-ink rendering),
-  `network.py` (NetworkManager Wi-Fi/hotspot control), `lock.py` (`fcntl`-based file locking to
-  prevent overlapping runs), `logging.py`, `config.py` (persisted local frame state/config).
-- `frame/epd/` — the e-ink panel driver (`epd7in3e.py`, vendor-derived) plus `main.py`, the main
-  display loop service (`framily-epd.service`).
-- `frame/web/` — a local web UI (`framily-web.service`) for on-device setup, shown when the frame
-  is in hotspot mode.
-- `frame/dispatcher/framily.py` — NetworkManager dispatcher hook, invoked on network state
-  changes to drive Wi-Fi vs. hotspot transitions.
+- `frame/utils.py` — shared helpers imported by every component: env-var-backed constants
+  (`FRAMILY_*`), `run()` (subprocess wrapper around `nmcli`, with a timeout so a hung call can't
+  wedge a caller), Wi-Fi/hotspot get/set helpers, `load_config()`/`save_config()` for the
+  persisted `config.json` (server URL, framily registration, and the pending-Wi-Fi-intent fields
+  the web UI writes for the agent to pick up), `AGENT_LOCK_PATH`/`AGENT_RECHECK_PATH`.
+- `frame/logging_setup.py` — one `get_logger(name)` helper used by every component instead of
+  `print()`: logs to `journald` and to a size-capped rotating file at `FRAMILY_LOG_PATH`
+  (default `/opt/framily/framily.log`), which the web UI exposes at `/logs`.
+- `frame/agent/main.py` (`framily-agent.service`, `Restart=always`) — the actual brain: decides
+  Wi-Fi vs. hotspot mode by polling NetworkManager state itself (not dependent on the dispatcher
+  hook firing), registers/checks the framily, and polls `PICTURE_FETCH_PATH` on the
+  server-configured interval (clamped to a sane range). Transient failures (5xx, network errors)
+  retry with backoff (`FrameApiError(transient=True)`, a handful of consecutive attempts) before
+  falling back to hotspot mode. It's the sole owner of NetworkManager mutations — nothing else
+  calls `nmcli` to change connections — and holds an `fcntl` lock (`AGENT_LOCK_PATH`) so only one
+  instance runs at a time.
+- `frame/epd/` — the e-ink panel driver (`epd7in3e.py`, vendor-derived) plus `main.py`
+  (`framily-epd.service`), which watches the image file's parent directory (not the file itself —
+  more robust against the file not existing yet or watchdog/inotify edge cases) and redraws on
+  change.
+- `frame/web/` — the local setup UI (`framily-web.service`, `Restart=always`, threaded Flask dev
+  server), reachable at whatever address the frame currently has (Wi-Fi LAN IP or hotspot IP) in
+  either mode. `/setup` only writes the requested Wi-Fi/server intent into `config.json` — it does
+  not call `nmcli` directly, so a stuck `nmcli` can never wedge the UI. `/logs` serves the tail of
+  the shared log file.
+- `frame/dispatcher/framily.py` — a NetworkManager dispatcher hook, deliberately thin: on a
+  `wlan0` state change it just touches `AGENT_RECHECK_PATH` so the agent reacts faster than its
+  own poll interval. It holds no logic of its own and is never required for correctness — the
+  agent doesn't depend on it firing.
 
-Runtime flow (see `frame/README.md` for more detail): connect to Wi-Fi → call
-`FRAMILY_CREATE_PATH` to register if not already registered → poll `FRAMILY_CHECK_PATH` until the
-framily has ≥1 member → poll `PICTURE_FETCH_PATH` every `FRAME_FETCH_INTERVAL_SECONDS` (default
-60s). Transient failures (5xx, network errors) retry with exponential backoff
-(`FrameApiError(transient=True)`); persistent failures fall back to hotspot mode so the device can
-be reprovisioned. If hotspot mode, credentials are regenerated each time (`Framily-XXXX` SSID).
+Runtime flow (see `frame/README.md` for more detail): the agent connects to Wi-Fi → calls
+`FRAMILY_CREATE_PATH` to register if not already registered → polls `FRAMILY_CHECK_PATH` until the
+framily has ≥1 member → polls `PICTURE_FETCH_PATH` on the configured interval. Persistent failures
+fall back to hotspot mode so the device can be reprovisioned. If hotspot mode, credentials are
+regenerated each time (`Framily-XXXX` SSID).
 
 ## Conventions worth knowing
 

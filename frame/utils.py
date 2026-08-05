@@ -5,6 +5,10 @@ import qrcode
 from PIL import Image
 import os
 
+from logging_setup import get_logger
+
+logger = get_logger("utils")
+
 
 try:
     WEB_ADDRESS = os.environ["FRAMILY_WEB_ADDRESS"]
@@ -27,10 +31,24 @@ DEFAULT_CONFIG = {
     "framily_code": "",
     "frame_token": "",
     "message": "",
+    "pending_wifi_ssid": "",
+    "pending_wifi_password": "",
+    "pending_wifi_reset": False,
 }
 
+# Default timeout for subprocess calls (mostly nmcli). Generous enough to
+# cover a real Wi-Fi association attempt, but bounded so a wedged nmcli can
+# never hang a caller (e.g. a Flask request thread) forever.
+DEFAULT_RUN_TIMEOUT_SECONDS = 20
 
-def run(cmd: list[str] | str) -> str:
+# Single-instance lock for framily-agent.service.
+AGENT_LOCK_PATH = CONFIG_PATH.parent / "agent.lock"
+# Touched by the NetworkManager dispatcher hook (and by config writes) to
+# wake the agent's poll loop early instead of waiting out a long sleep.
+AGENT_RECHECK_PATH = CONFIG_PATH.parent / "agent.recheck"
+
+
+def run(cmd: list[str] | str, timeout: float = DEFAULT_RUN_TIMEOUT_SECONDS) -> str:
     shell = isinstance(cmd, str)
 
     try:
@@ -40,10 +58,14 @@ def run(cmd: list[str] | str) -> str:
             check=True,
             capture_output=True,
             text=True,
+            timeout=timeout,
         )
     except subprocess.CalledProcessError as e:
-        print(e.stderr.strip(), flush=True)
+        logger.warning(f"Command failed: {cmd!r}: {e.stderr.strip()}")
         return e.stdout.strip()
+    except subprocess.TimeoutExpired:
+        logger.warning(f"Command timed out after {timeout}s: {cmd!r}")
+        return ""
 
     return completed.stdout.strip()
 
@@ -56,8 +78,10 @@ def set_wifi(ssid: str, password: str, start: bool = True) -> None:
 
 
 def get_wifi() -> tuple[str, str]:
-    ssid = run(['nmcli', '-g', '802-11-wireless.ssid', 'connection', 'show', CON_WIFI])
-    password = run(['nmcli', '-s', '-g', '802-11-wireless-security.psk', 'connection', 'show', CON_WIFI])
+    # Short timeout: this is a pure read called from web request threads and
+    # should never take more than a moment.
+    ssid = run(['nmcli', '-g', '802-11-wireless.ssid', 'connection', 'show', CON_WIFI], timeout=5)
+    password = run(['nmcli', '-s', '-g', '802-11-wireless-security.psk', 'connection', 'show', CON_WIFI], timeout=5)
     return ssid, password
 
 
@@ -73,9 +97,9 @@ def set_hotspot(ssid: str, password: str, start: bool = True) -> None:
 
 
 def get_hotspot() -> tuple[str, str]:
-    ssid = run(['nmcli', '-g', '802-11-wireless.ssid', 'connection', 'show', CON_HOTSPOT])
-    password = run(['nmcli', '-s', '-g', '802-11-wireless-security.psk', 'connection', 'show', CON_HOTSPOT])
-    address = run(['ip', '-br', 'addr', 'show', WLAN_IF])
+    ssid = run(['nmcli', '-g', '802-11-wireless.ssid', 'connection', 'show', CON_HOTSPOT], timeout=5)
+    password = run(['nmcli', '-s', '-g', '802-11-wireless-security.psk', 'connection', 'show', CON_HOTSPOT], timeout=5)
+    address = run(['ip', '-br', 'addr', 'show', WLAN_IF], timeout=5)
     address = address.split()[2].split('/')[0]  # Extract the IP address
 
     # Set DNS to resolve the hotspot domain to the local IP address
@@ -90,20 +114,28 @@ def start_hotspot():
     run(['nmcli', 'connection', 'up', CON_HOTSPOT])
 
 
+def get_active_connection() -> str:
+    """Name of the currently active connection on WLAN_IF (empty if none)."""
+    return run(['nmcli', '-t', '-f', 'NAME', 'connection', 'show', '--active'], timeout=5).split("\n")[0]
+
+
 def load_config() -> dict:
     if not CONFIG_PATH.exists():
-        return DEFAULT_CONFIG
+        return dict(DEFAULT_CONFIG)
 
     try:
         config = json.loads(CONFIG_PATH.read_text())
     except (json.JSONDecodeError, OSError):
-        return DEFAULT_CONFIG
+        return dict(DEFAULT_CONFIG)
 
     return {
         "server_url": config.get("server_url", ""),
         "framily_code": config.get("framily_code", ""),
         "frame_token": config.get("frame_token", ""),
         "message": config.get("message", ""),
+        "pending_wifi_ssid": config.get("pending_wifi_ssid", ""),
+        "pending_wifi_password": config.get("pending_wifi_password", ""),
+        "pending_wifi_reset": config.get("pending_wifi_reset", False),
     }
 
 def save_config(config: dict) -> None:

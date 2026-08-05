@@ -14,4 +14,7 @@ tar -czf "$FRAMILY_ARCHIVE_FILE" \
     --exclude="*.pyc" \
     --exclude="tmp" \
     --exclude="config.json" \
+    --exclude="framily.log*" \
+    --exclude="agent.lock" \
+    --exclude="agent.recheck" \
     .

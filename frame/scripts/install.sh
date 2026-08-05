@@ -31,12 +31,39 @@ command_exists() {
 }
 
 stop_services() {
-    for svc in framily-epd.service framily-web.service; do
+    for svc in framily-epd.service framily-web.service framily-agent.service; do
         if systemctl is-active --quiet "$svc" 2>/dev/null; then
             log "Stopping $svc..."
             systemctl stop "$svc"
         fi
     done
+}
+
+merge_config_env() {
+    # Overlay every KEY=VALUE line from the preserved old config.env ($1)
+    # onto the freshly extracted template ($2): existing keys keep the old
+    # (possibly user-customized) value, and any key that's new in the
+    # template since $1 was written is left at its template default. A
+    # naive whole-file preserve would silently drop newly introduced keys
+    # on every upgrade, breaking scripts/services that expect them.
+    old="$1"
+    target="$2"
+    [ -f "$old" ] || return 0
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in
+            ''|'#'*) continue ;;
+        esac
+        key="${line%%=*}"
+        if grep -q "^${key}=" "$target" 2>/dev/null; then
+            tmp=$(mktemp)
+            grep -v "^${key}=" "$target" > "$tmp"
+            printf '%s\n' "$line" >> "$tmp"
+            mv "$tmp" "$target"
+        else
+            printf '%s\n' "$line" >> "$target"
+        fi
+    done < "$old"
 }
 
 require_root
@@ -72,12 +99,14 @@ done
 mkdir -p "$FRAMILY_OPT"
 tar -xzf "$ARCHIVE_PATH" -C "$FRAMILY_OPT"
 
-for f in config.env config.json; do
-    if [ -f "$preserve_dir/$f" ]; then
-        log "Preserving existing $f"
-        cp -p "$preserve_dir/$f" "$FRAMILY_OPT/$f"
-    fi
-done
+if [ -f "$preserve_dir/config.env" ]; then
+    log "Merging existing config.env (keeping customized values, adding any new keys)"
+    merge_config_env "$preserve_dir/config.env" "$FRAMILY_OPT/config.env"
+fi
+if [ -f "$preserve_dir/config.json" ]; then
+    log "Preserving existing config.json"
+    cp -p "$preserve_dir/config.json" "$FRAMILY_OPT/config.json"
+fi
 rm -rf "$preserve_dir"
 
 log "Running setup..."

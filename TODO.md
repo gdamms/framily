@@ -1,11 +1,19 @@
 - [ ] enhance the ui (probably done by myself as I have a better idea of what I want)
 - [ ] change role integer to enum string in database and code
-- [ ] add when the framily first init, it sends informations like its resolution
-- [ ] when the frame fetches a picture, it should be sent read to be displayed - the frame does not manage image rotation, croping, or resizin, it should only get the image and display it as is (with some security checks, like checking the image size and type) with it, it receive the next delay before fetching the next image
+- [x] when the frame fetches a picture, it should be sent read to be displayed - the frame does not manage image rotation, croping, or resizin, it should only get the image and display it as is (with some security checks, like checking the image size and type) with it, it receive the next delay before fetching the next image
 - [x] add settings to the framily:
   - [x] add a setting to change the frame's display interval (in minutes)
   - [x] add a setting to change the frame's orientation (4 directions)
 - [x] remove settings tab from users profiles that are not me
 - [x] next to my display name, in my profile, it should have a little pen icon. When I click on the pen/name, it should start editing it. When I click outside of the input or press enter, it should save my user display name.
 - [x] remove the "add framily" button in the bottom navbar and add a "add framily" button in the top like the "invite user" button when in members tab of a framily. DO the same for add picture button in the pictures tab of a framily, in my profile pictures page and in the dashboard. In the dashboard and in my profile pictures page, all framilies should be checked by default. But when in a framily, only that framily should be checked by default.
-- [ ] just like user can rename their display name, admins can rename the framily name. an icon next to the framily name should allow admins to edit the framily name when clicking on it. When the input loses focus or enter is pressed, it should save the new framily name. It can also be changed in the framily settings tab.
+- [x] just like user can rename their display name, admins can rename the framily name. an icon next to the framily name should allow admins to edit the framily name when clicking on it. When the input loses focus or enter is pressed, it should save the new framily name. It can also be changed in the framily settings tab.
+- [ ] in the frame settings display the frame ip address, the frame should send its ip address on the wifi network using the status endpoint (allows to access the frame webinterface)
+- [ ] the frame should send status periodically to the server (every fetch like the settings?) no only once at startup
+- [ ] frame settings endpoint should not only return the next delay (maybe there is nothing else for now, might have changed) but a json with multiple settings (that contain the next delay) changes need to be done server side and frame side
+- [ ] as the frame is eink spectra6, a preprocessing should be apply to better display the images (contrast, brightness, etc...) a very adaptative preprocessing should be applied and configurable in the frame settings (one simple cursor in the settings to change the preprocess level, abstract to users), the real work is "how to preprocess the image". Sill have to be done server side
+- [ ] when someone leaves a framily, all picture visibility between the user pictures and the framily should be removed (the user pictures should not be deleted, but the visibility to the framily should be removed)
+- [ ] group frame status like ip and resolution in a section at the end of the frame settings page
+- [ ] add a danger zone in the framily settings page to delete the framily (when trying to leave a framily while beeing the last admin, it is not possible, send a message to the user to delete the framily instead as they are the last admin)
+- [ ] add a danger zone in the user settings page to delete the user account
+- [ ] put settings into separate sections for the framily and the user settings pages
