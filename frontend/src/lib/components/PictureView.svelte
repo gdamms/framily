@@ -23,11 +23,11 @@
 
   let isUploader = $derived(picture.uploader_username === currentUsername);
   let adminCodes = $derived(
-    new Set(myFramilies.filter((f) => f.role === 2).map((f) => f.code)),
+    new Set(myFramilies.filter((f) => f.role === "admin").map((f) => f.code)),
   );
   let addableFramilies = $derived(
     myFramilies.filter(
-      (f) => f.role >= 1 && !framilies.some((pf) => pf.code === f.code),
+      (f) => f.role !== "invited" && !framilies.some((pf) => pf.code === f.code),
     ),
   );
 

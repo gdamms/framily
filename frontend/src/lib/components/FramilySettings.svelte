@@ -12,7 +12,7 @@
   let { framily, currentUsername, onChanged, onDeleted }: Props = $props();
 
   let isAdmin = $derived(
-    framily.members.find((m) => m.username === currentUsername)?.role === 2,
+    framily.members.find((m) => m.username === currentUsername)?.role === "admin",
   );
 
   const ORIENTATIONS = ["0", "90", "180", "270"] as const;

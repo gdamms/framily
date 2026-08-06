@@ -123,7 +123,7 @@ def check_framily(request: FrameAuthRequest, db: Session = Depends(get_db)):
 
     members = db.query(User).join(Membership).filter(
         Membership.framily_id == framily.id,
-        Membership.role >= 1
+        Membership.role.in_(["member", "admin"])
     ).all()
 
     return FrameCheckResponse(initiated=len(members) > 0)

@@ -43,12 +43,13 @@ def build_user_info(target_user: User, current_user: User, db: Session) -> UserI
     current_user_framily_ids = {
         m.framily_id for m in db.query(Membership).filter(
             Membership.user_id == current_user.id,
-            Membership.role >= 1,
+            Membership.role.in_(["member", "admin"]),
         ).all()
     }
 
     role_filter = [Membership.user_id == target_user.id]
-    role_filter.append(Membership.role >= 0 if is_self else Membership.role >= 1)
+    if not is_self:
+        role_filter.append(Membership.role.in_(["member", "admin"]))
     target_memberships = db.query(Membership).filter(*role_filter).all()
 
     framilies = []
@@ -64,7 +65,7 @@ def build_user_info(target_user: User, current_user: User, db: Session) -> UserI
             role=membership.role,
             member_count=db.query(Membership).filter(
                 Membership.framily_id == framily.id,
-                Membership.role >= 1,
+                Membership.role.in_(["member", "admin"]),
             ).count(),
             picture_count=db.query(PictureVisibility).filter(
                 PictureVisibility.framily_id == framily.id,
@@ -154,14 +155,14 @@ def delete_account(
 
     admin_memberships = db.query(Membership).filter(
         Membership.user_id == current_user.id,
-        Membership.role == 2
+        Membership.role == "admin"
     ).all()
 
     sole_admin_of = []
     for membership in admin_memberships:
         admin_count = db.query(Membership).filter(
             Membership.framily_id == membership.framily_id,
-            Membership.role == 2
+            Membership.role == "admin"
         ).count()
         if admin_count == 1:
             sole_admin_of.append(membership.framily.name or membership.framily.code)

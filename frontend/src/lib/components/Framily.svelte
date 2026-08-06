@@ -24,7 +24,7 @@
   let pictures: PictureInfo[] = $state([]);
 
   let isAdmin = $derived(
-    framily?.members.find((m) => m.username === currentUsername)?.role === 2,
+    framily?.members.find((m) => m.username === currentUsername)?.role === "admin",
   );
 
   let editingName = $state(false);

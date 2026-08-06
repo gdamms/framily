@@ -3,6 +3,7 @@ from typing import Optional
 from datetime import datetime
 
 from schemas.picture import PictureInfo
+from schemas.framily import Role
 
 
 class ProfileUpdate(BaseModel):
@@ -17,7 +18,7 @@ class DeleteAccountRequest(BaseModel):
 class UserFramilyInfo(BaseModel):
     code: str
     name: Optional[str] = None
-    role: int
+    role: Role
     member_count: int
     picture_count: int
     created_at: datetime

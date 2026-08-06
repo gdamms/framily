@@ -77,7 +77,7 @@
     </div>
   </div>
   <div class="framily-actions">
-    {#if framily.role === 0}
+    {#if framily.role === "invited"}
       <div class="invite-buttons">
         <div
           class="decline"

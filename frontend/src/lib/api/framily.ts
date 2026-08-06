@@ -1,5 +1,5 @@
 import { request, requestFormData, API_BASE_URL } from "./client";
-import type { FramilyInfo } from "./types";
+import type { FramilyInfo, Role } from "./types";
 
 export const framilyApi = {
   connect: (framily_code: string) =>
@@ -38,7 +38,7 @@ export const framilyApi = {
   promote: (
     framily_code: string,
     username: string,
-    new_role: number,
+    new_role: Role,
   ) =>
     request<{ message: string }>("/framily/promote", {
       method: "POST",

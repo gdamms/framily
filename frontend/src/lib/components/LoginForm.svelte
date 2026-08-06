@@ -9,6 +9,7 @@
 
   let username: string = "";
   let password: string = "";
+  let rememberMe: boolean = true;
   let errorMessage: string = "";
   let isLoading: boolean = false;
 
@@ -24,8 +25,8 @@
     isLoading = true;
 
     try {
-      const response = await api.auth.login(username, password);
-      await authStore.setToken(response.token);
+      const response = await api.auth.login(username, password, rememberMe);
+      await authStore.setToken(response.token, rememberMe);
       await goto("/");
     } catch (error: any) {
       errorMessage = error.message || "Login failed";
@@ -38,11 +39,23 @@
 <Form title="Login" {errorMessage} submitHandler={handleSubmit}>
   <UsernameField bind:value={username} placeholder="Username or email" />
   <PasswordField bind:value={password} />
+  <label class="remember-me">
+    <input type="checkbox" bind:checked={rememberMe} />
+    Stay logged in
+  </label>
   <LoginButton />
   <p class="register-link">Don't have an account? <a href="/register">Register</a></p>
 </Form>
 
 <style>
+  .remember-me {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
   .register-link {
     text-align: center;
     margin-top: 1rem;

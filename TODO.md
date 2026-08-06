@@ -1,5 +1,5 @@
 - [ ] enhance the ui (probably done by myself as I have a better idea of what I want)
-- [ ] change role integer to enum string in database and code
+- [x] change role integer to enum string in database and code
 - [x] when the frame fetches a picture, it should be sent read to be displayed - the frame does not manage image rotation, croping, or resizin, it should only get the image and display it as is (with some security checks, like checking the image size and type) with it, it receive the next delay before fetching the next image
 - [x] add settings to the framily:
   - [x] add a setting to change the frame's display interval (in minutes)
@@ -11,11 +11,11 @@
 - [x] in the frame settings display the frame ip address, the frame should send its ip address on the wifi network using the status endpoint (allows to access the frame webinterface)
 - [x] the frame should send status periodically to the server (every fetch like the settings?) no only once at startup
 - [x] frame settings endpoint should not only return the next delay (maybe there is nothing else for now, might have changed) but a json with multiple settings (that contain the next delay) changes need to be done server side and frame side
-- [ ] as the frame is eink spectra6, a preprocessing should be apply to better display the images (contrast, brightness, etc...) a very adaptative preprocessing should be applied and configurable in the frame settings (one simple cursor in the settings to change the preprocess level, abstract to users), the real work is "how to preprocess the image". Sill have to be done server side
+- [x] as the frame is eink spectra6, a preprocessing should be apply to better display the images (contrast, brightness, etc...) a very adaptative preprocessing should be applied and configurable in the frame settings (one simple cursor in the settings to change the preprocess level, abstract to users), the real work is "how to preprocess the image". Sill have to be done server side
 - [x] when someone leaves a framily, all picture visibility between the user pictures and the framily should be removed (the user pictures should not be deleted, but the visibility to the framily should be removed)
 - [x] group frame status like ip and resolution in a section at the end of the frame settings page
 - [x] add a danger zone in the framily settings page to delete the framily (when trying to leave a framily while beeing the last admin, it is not possible, send a message to the user to delete the framily instead as they are the last admin)
 - [x] add a danger zone in the user settings page to delete the user account
 - [x] put settings into separate sections for the framily and the user settings pages
-- [ ] make user authentication longer (infinite, unless they untick the "stay logged in" when loging)
+- [x] make user authentication longer (infinite, unless they untick the "stay logged in" when loging)
 - [x] when the frame faces a 404 wrong framily token or id, the webinterface should display a message to tell that the framily might have been deleted so you might wanna reset recreate the framily. change how the frame reset works, it should not reset the wifi, password or url, but the id and auth token, recreate a new framily as if it was it first initialization. Plus, when clicking on reset, first send the server reponse (like when saving), then do what has to be done

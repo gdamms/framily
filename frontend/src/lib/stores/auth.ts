@@ -26,13 +26,18 @@ function getAuthTokenFromCookie(): string | null {
   return decodeURIComponent(cookie.slice(cookiePrefix.length));
 }
 
-function setAuthTokenCookie(token: string): void {
+function setAuthTokenCookie(token: string, persist: boolean): void {
   if (typeof document === "undefined") {
     return;
   }
 
   const secureFlag = window.location.protocol === "https:" ? "; Secure" : "";
-  document.cookie = `${AUTH_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; Max-Age=2592000; SameSite=Lax${secureFlag}`;
+  // Persistent ("stay logged in"): a long-lived cookie matching the
+  // infinite-expiry token from the backend. Otherwise: a session cookie
+  // (no Max-Age) so it's cleared when the browser closes, matching the
+  // short-lived token issued in that case.
+  const maxAge = persist ? "; Max-Age=315360000" : "";
+  document.cookie = `${AUTH_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/${maxAge}; SameSite=Lax${secureFlag}`;
 }
 
 function clearAuthTokenCookie(): void {
@@ -67,8 +72,8 @@ function createAuthStore() {
     subscribe: authState.subscribe,
     set: authState.set,
     update: authState.update,
-    setToken: async (token: string) => {
-      setAuthTokenCookie(token);
+    setToken: async (token: string, rememberMe: boolean = true) => {
+      setAuthTokenCookie(token, rememberMe);
       authState.update((state) => ({
         ...state,
         token,

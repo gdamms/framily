@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { api, type FramilyMember } from "$lib/api";
+  import { api, type FramilyMember, type Role } from "$lib/api";
   import { app } from "$lib/app";
   import ConfirmPopup from "./ConfirmPopup.svelte";
   import InvitePopup from "./InvitePopup.svelte";
@@ -16,7 +16,7 @@
   let { framilyCode, members, currentUsername, onChanged }: Props = $props();
 
   let isAdmin = $derived(
-    members.find((m) => m.username === currentUsername)?.role === 2,
+    members.find((m) => m.username === currentUsername)?.role === "admin",
   );
 
   let invitePopupOpen = $state(false);
@@ -25,13 +25,13 @@
   let confirmOpen = $state(false);
   let onConfirm: () => void = $state(() => {});
 
-  function roleName(role: number): string {
+  function roleName(role: Role): string {
     switch (role) {
-      case 0:
+      case "invited":
         return "Invited";
-      case 1:
+      case "member":
         return "Member";
-      case 2:
+      case "admin":
         return "Admin";
       default:
         return "Unknown";
@@ -51,7 +51,7 @@
     confirmOpen = true;
   }
 
-  async function setRole(username: string, newRole: number) {
+  async function setRole(username: string, newRole: Role) {
     error = "";
     try {
       await api.framily.promote(framilyCode, username, newRole);
@@ -98,13 +98,13 @@
         <span class="role-badge role-{member.role}">{roleName(member.role)}</span>
         {#if isAdmin && member.username !== currentUsername}
           <div class="member-actions">
-            {#if member.role === 1}
-              <button onclick={() => setRole(member.username, 2)}>Make admin</button>
-            {:else if member.role === 2}
-              <button onclick={() => setRole(member.username, 1)}>Demote</button>
+            {#if member.role === "member"}
+              <button onclick={() => setRole(member.username, "admin")}>Make admin</button>
+            {:else if member.role === "admin"}
+              <button onclick={() => setRole(member.username, "member")}>Demote</button>
             {/if}
             <button class="kick" onclick={() => confirmKick(member.username)}>
-              {member.role === 0 ? "Cancel invite" : "Kick"}
+              {member.role === "invited" ? "Cancel invite" : "Kick"}
             </button>
           </div>
         {/if}
@@ -185,17 +185,17 @@
     font-size: 0.8rem;
   }
 
-  .role-badge.role-0 {
+  .role-badge.role-invited {
     background-color: #ffc107;
     color: #333;
   }
 
-  .role-badge.role-1 {
+  .role-badge.role-member {
     background-color: #17a2b8;
     color: white;
   }
 
-  .role-badge.role-2 {
+  .role-badge.role-admin {
     background-color: #28a745;
     color: white;
   }

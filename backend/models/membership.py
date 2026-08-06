@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 
@@ -11,7 +11,7 @@ class Membership(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     framily_id = Column(Integer, ForeignKey("framilies.id", ondelete="CASCADE"), nullable=False)
-    role = Column(Integer, default=0, nullable=False)  # 0=invited, 1=member, 2=admin
+    role = Column(String(10), default="invited", nullable=False)  # invited, member, admin
     joined_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Unique constraint: one membership per user per framily

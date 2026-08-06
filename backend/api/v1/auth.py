@@ -83,8 +83,9 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_user)
 
-    # Create access token
-    access_token = create_access_token(data={"sub": str(db_user.id)})
+    # Create access token. New accounts stay logged in by default, same as
+    # the default for /login.
+    access_token = create_access_token(data={"sub": str(db_user.id)}, infinite=True)
     return {"token": access_token}
 
 
@@ -111,8 +112,12 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
             detail="Invalid credentials"
         )
 
-    # Create access token
-    access_token = create_access_token(data={"sub": str(db_user.id)})
+    # Create access token. Stays logged in indefinitely unless the user
+    # unticked "stay logged in", in which case it expires like a normal
+    # short-lived session.
+    access_token = create_access_token(
+        data={"sub": str(db_user.id)}, infinite=request.remember_me
+    )
     return {"token": access_token}
 
 

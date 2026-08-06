@@ -8,10 +8,14 @@ export const authApi = {
       body: JSON.stringify({ username, email, password }),
     }),
 
-  login: (usernameOrEmail: string, password: string) =>
+  login: (usernameOrEmail: string, password: string, rememberMe: boolean = true) =>
     request<TokenResponse>("/auth/login", {
       method: "POST",
-      body: JSON.stringify({ username_or_email: usernameOrEmail, password }),
+      body: JSON.stringify({
+        username_or_email: usernameOrEmail,
+        password,
+        remember_me: rememberMe,
+      }),
     }),
 
   me: () => request<UserInfo>("/auth/me"),

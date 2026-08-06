@@ -9,6 +9,7 @@ export type {
   FramilyPictureInfo,
   PictureFramilyInfo,
   PictureInfo,
+  Role,
 } from "./types";
 
 // Re-export error class

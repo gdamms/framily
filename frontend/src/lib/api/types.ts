@@ -2,6 +2,8 @@ export interface TokenResponse {
   token: string;
 }
 
+export type Role = "invited" | "member" | "admin";
+
 export interface UserInfo {
   username: string;
   email?: string;
@@ -14,7 +16,7 @@ export interface UserInfo {
 export interface UserFramilyInfo {
   code: string;
   name?: string | null;
-  role: number;
+  role: Role;
   member_count: number;
   picture_count: number;
   created_at: string;
@@ -23,7 +25,7 @@ export interface UserFramilyInfo {
 export interface FramilyMember {
   username: string;
   display_name?: string | null;
-  role: number;
+  role: Role;
 }
 
 export interface FramilyPictureInfo {

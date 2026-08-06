@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Literal, Optional, List
 
 Orientation = Literal["0", "90", "180", "270"]
+Role = Literal["invited", "member", "admin"]
 
 
 class FramilySettingsInfo(BaseModel):
@@ -48,13 +49,13 @@ class FramilyKickRequest(BaseModel):
 class FramilyPromoteRequest(BaseModel):
     framily_code: str = Field(..., min_length=8, max_length=8)
     username: str
-    new_role: int = Field(..., ge=0, le=2)
+    new_role: Role
 
 
 class FramilyUserInfo(BaseModel):
     username: str
     display_name: Optional[str] = None
-    role: int
+    role: Role
 
 
 class FramilyPictureInfo(BaseModel):

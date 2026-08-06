@@ -29,12 +29,12 @@ def get_membership(db: Session, user_id: int, framily_id: int) -> Optional[Membe
 
 def is_admin(membership: Optional[Membership]) -> bool:
     """Check if membership is admin role."""
-    return membership is not None and membership.role == 2
+    return membership is not None and membership.role == "admin"
 
 
 def is_member(membership: Optional[Membership]) -> bool:
     """Check if membership is member or admin role."""
-    return membership is not None and membership.role >= 1
+    return membership is not None and membership.role in ("member", "admin")
 
 
 def remove_user_picture_visibility(db: Session, user_id: int, framily_id: int) -> None:
@@ -68,7 +68,7 @@ def connect_framily(
     # Check if framily already has members
     existing_members = db.query(Membership).filter(
         Membership.framily_id == framily.id,
-        Membership.role >= 1  # Active members only
+        Membership.role.in_(["member", "admin"])  # Active members only
     ).count()
 
     if existing_members > 0:
@@ -89,7 +89,7 @@ def connect_framily(
     membership = Membership(
         user_id=current_user.id,
         framily_id=framily.id,
-        role=2  # Admin
+        role="admin"
     )
     db.add(membership)
     db.commit()
@@ -137,11 +137,11 @@ def invite_user(
             detail="User already invited or member"
         )
 
-    # Create invitation (role=0)
+    # Create invitation
     invitation = Membership(
         user_id=target_user.id,
         framily_id=framily.id,
-        role=0  # Invited
+        role="invited"
     )
     db.add(invitation)
     db.commit()
@@ -167,14 +167,14 @@ def join_framily(
 
     # Check for pending invitation
     membership = get_membership(db, current_user.id, framily.id)
-    if not membership or membership.role != 0:
+    if not membership or membership.role != "invited":
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No pending invitation found"
         )
 
     if request.accepted:
-        membership.role = 1  # Member
+        membership.role = "member"
         db.commit()
         db.refresh(membership)
         return MessageResponse(message="Invitation accepted")
@@ -199,17 +199,17 @@ def leave_framily(
         )
 
     membership = get_membership(db, current_user.id, framily.id)
-    if not membership or membership.role < 1:
+    if not membership or membership.role == "invited":
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Not a member of this framily"
         )
 
     # Check if last admin trying to leave
-    if membership.role == 2:
+    if membership.role == "admin":
         admin_count = db.query(Membership).filter(
             Membership.framily_id == framily.id,
-            Membership.role == 2
+            Membership.role == "admin"
         ).count()
 
         if admin_count == 1:
@@ -314,10 +314,10 @@ def promote_user(
         )
 
     # Check if demoting last admin
-    if target_membership.role == 2 and request.new_role < 2:
+    if target_membership.role == "admin" and request.new_role != "admin":
         admin_count = db.query(Membership).filter(
             Membership.framily_id == framily.id,
-            Membership.role == 2
+            Membership.role == "admin"
         ).count()
 
         if admin_count == 1:

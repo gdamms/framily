@@ -382,7 +382,7 @@ def list_pictures(
         current_user_framily_ids = {
             m.framily_id for m in db.query(Membership).filter(
                 Membership.user_id == current_user.id,
-                Membership.role >= 1
+                Membership.role.in_(["member", "admin"])
             ).all()
         }
 
@@ -408,10 +408,10 @@ def list_all_pictures(
     db: Session = Depends(get_db)
 ):
     """List all pictures visible to the current user across all their framilies."""
-    # Get all framilies user is a member of (role >= 1)
+    # Get all framilies user is a member of (member or admin)
     memberships = db.query(Membership).filter(
         Membership.user_id == current_user.id,
-        Membership.role >= 1
+        Membership.role.in_(["member", "admin"])
     ).all()
 
     framily_ids = [m.framily_id for m in memberships]
@@ -498,10 +498,10 @@ def get_picture_image(
         )
 
     # Check if user has access through any framily
-    # Get user's framily IDs (member role >= 1)
+    # Get user's framily IDs (member or admin)
     memberships = db.query(Membership).filter(
         Membership.user_id == current_user.id,
-        Membership.role >= 1
+        Membership.role.in_(["member", "admin"])
     ).all()
     user_framily_ids = {m.framily_id for m in memberships}
 
