@@ -64,7 +64,7 @@
     <LoginForm />
   {/if}
 {:else if dashboardPictures === undefined || user === undefined}
-  <div class="page">Loading...</div>
+  <div class="page loading">Loading...</div>
 {:else}
   <div class="page">
     <div class="content">
@@ -116,6 +116,12 @@
     background: #eee;
     display: flex;
     flex-direction: column;
+  }
+
+  .page.loading {
+    align-items: center;
+    justify-content: center;
+    color: #888;
   }
 
   .bottomBar {
