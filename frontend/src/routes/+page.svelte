@@ -5,33 +5,21 @@
     type PictureInfo,
     type UserInfo,
   } from "$lib/api";
-  import Framilies from "$lib/components/Framilies.svelte";
-  import Framily from "$lib/components/Framily.svelte";
-  import Galery from "$lib/components/Galery.svelte";
-  import Profile from "$lib/components/Profile.svelte";
-  import PictureView from "$lib/components/PictureView.svelte";
-  import UploadPopup from "$lib/components/UploadPopup.svelte";
+  import Dashboard from "$lib/pages/dashboard/Dashboard.svelte";
+  import Framily from "$lib/pages/framily/Framily.svelte";
+  import Profile from "$lib/pages/profile/Profile.svelte";
+  import PictureView from "$lib/pages/picture/PictureView.svelte";
+  import IconButton from "$lib/ui/IconButton.svelte";
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
-  import ImagePlus from "@lucide/svelte/icons/image-plus";
   import User from "@lucide/svelte/icons/user";
-  import Menu from "@lucide/svelte/icons/menu";
   import { onMount } from "svelte";
   import { app } from "$lib/app";
-  import ConnectFramilyPopup from "$lib/components/ConnectFramilyPopup.svelte";
 
   const appState = app.state;
 
   let user: UserInfo | undefined = $state();
   let framilies: UserFramilyInfo[] = $derived(user?.framilies ?? []);
   let dashboardPictures: PictureInfo[] | undefined = $state();
-  let uploadPopupOpen = $state(false);
-  let uploadDefaultCodes: string[] = $state([]);
-  let connectFramilyPopupOpen = $state(false);
-
-  function openUploadPopup(codes: string[]) {
-    uploadDefaultCodes = codes;
-    uploadPopupOpen = true;
-  }
 
   async function refreshUser() {
     if (!user) return;
@@ -49,69 +37,20 @@
   });
 </script>
 
-{#if dashboardPictures === undefined || framilies === undefined || user === undefined}
+{#if dashboardPictures === undefined || user === undefined}
   <div class="page">Loading...</div>
 {:else}
   <div class="page">
-    <UploadPopup
-      {framilies}
-      bind:isOpen={uploadPopupOpen}
-      framilyCodes={uploadDefaultCodes}
-    />
-    <ConnectFramilyPopup bind:isOpen={connectFramilyPopupOpen} />
     <div class="content">
       {#if $appState.page.page === "dashboard"}
-        <div class="dashboard-header">
-          Framily
-        </div>
-        <div class="dashboard-page">
-          <div class="dashboard-nav">
-            <button
-              class="button"
-              class:selected={$appState.page.section === "galery"}
-              onclick={() =>
-                app.navigate({ page: "dashboard", section: "galery" })}
-            >
-              Galery
-            </button>
-            <button
-              class="button"
-              class:selected={$appState.page.section === "framilies"}
-              onclick={() =>
-                app.navigate({ page: "dashboard", section: "framilies" })}
-            >
-              My framilies
-            </button>
-          </div>
-          <div class="dashboard-content">
-            {#if $appState.page.section === "galery"}
-              <button
-                class="add-picture"
-                onclick={() => openUploadPopup(framilies.map((f) => f.code))}
-              >
-                <ImagePlus size={16} />
-                Add picture
-              </button>
-              <Galery pictures={dashboardPictures} />
-            {:else if $appState.page.section === "framilies"}
-              <Framilies
-                {framilies}
-                onAddFramily={() => (connectFramilyPopupOpen = true)}
-              />
-            {/if}
-          </div>
-        </div>
+        <Dashboard {framilies} pictures={dashboardPictures} section={$appState.page.section} />
       {:else if $appState.page.page === "profile"}
-        <Profile
-          username={$appState.page.username}
-          currentUsername={user.username}
-          onAddPicture={() => openUploadPopup(framilies.map((f) => f.code))}
-        />
+        <Profile username={$appState.page.username} currentUsername={user.username} />
       {:else if $appState.page.page === "framily"}
         <Framily
           code={$appState.page.code}
           currentUsername={user.username}
-          onAddPicture={(code) => openUploadPopup([code])}
+          {framilies}
           onFramilyDeleted={refreshUser}
         />
       {:else if $appState.page.page === "picture"}
@@ -124,23 +63,19 @@
       {/if}
     </div>
     <div class="bottomBar">
-      <button
-        class="button"
+      <IconButton
+        icon={LayoutDashboard}
         onclick={() => app.navigate({ page: "dashboard", section: "galery" })}
-      >
-        <LayoutDashboard />
-      </button>
-      <button
-        class="button"
+      />
+      <IconButton
+        icon={User}
         onclick={() =>
           app.navigate({
             page: "profile",
             username: user!.username,
             section: "pictures",
           })}
-      >
-        <User />
-      </button>
+      />
     </div>
   </div>
 {/if}
@@ -155,23 +90,6 @@
     background: #eee;
     display: flex;
     flex-direction: column;
-  }
-
-  .dashboard-header {
-    padding: 0.5rem;
-    font-weight: bold;
-    font-size: 1.5rem;
-    text-align: center;
-  }
-
-  .button {
-    background: none;
-    border: none;
-    padding: 0.5rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
   .bottomBar {
@@ -191,54 +109,5 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-  }
-
-  .dashboard-page {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .dashboard-nav {
-    display: flex;
-    flex-direction: row;
-    padding: 0.5rem 0;
-    background: #eee;
-  }
-
-  .dashboard-nav .button {
-    padding: 0.5rem 1rem;
-    flex: 1;
-  }
-
-  .dashboard-nav .button.selected {
-    border-bottom: 2px solid #333;
-    font-weight: bold;
-  }
-
-  .dashboard-content {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .add-picture {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    align-self: flex-start;
-    background-color: #28a745;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    margin: 1rem 1rem 0;
   }
 </style>

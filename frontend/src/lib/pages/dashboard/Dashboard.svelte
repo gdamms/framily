@@ -1,0 +1,89 @@
+<script lang="ts">
+  import { type UserFramilyInfo, type PictureInfo } from "$lib/api";
+  import { app } from "$lib/app";
+  import { overlay } from "$lib/overlay";
+  import Galery from "$lib/components/Galery.svelte";
+  import Framilies from "$lib/pages/framilies/Framilies.svelte";
+  import TabBar from "$lib/ui/TabBar.svelte";
+  import UploadPopup from "$lib/popups/UploadPopup.svelte";
+  import ConnectFramilyPopup from "$lib/popups/ConnectFramilyPopup.svelte";
+  import ImagePlus from "@lucide/svelte/icons/image-plus";
+
+  interface Props {
+    framilies: UserFramilyInfo[];
+    pictures: PictureInfo[];
+    section: "galery" | "framilies";
+  }
+
+  let { framilies, pictures, section }: Props = $props();
+
+  const TABS = [
+    { id: "galery" as const, label: "Galery" },
+    { id: "framilies" as const, label: "My framilies" },
+  ];
+
+  function openUploadPopup() {
+    overlay.open(UploadPopup, { framilies, framilyCodes: framilies.map((f) => f.code) });
+  }
+</script>
+
+<div class="dashboard-header">Framily</div>
+<div class="dashboard-page">
+  <TabBar
+    tabs={TABS}
+    selected={section}
+    onSelect={(id) => app.navigate({ page: "dashboard", section: id })}
+  />
+  <div class="dashboard-content">
+    {#if section === "galery"}
+      <button class="add-picture" onclick={openUploadPopup}>
+        <ImagePlus size={16} />
+        Add picture
+      </button>
+      <Galery {pictures} />
+    {:else if section === "framilies"}
+      <Framilies {framilies} onAddFramily={() => overlay.open(ConnectFramilyPopup, {})} />
+    {/if}
+  </div>
+</div>
+
+<style>
+  .dashboard-header {
+    padding: 0.5rem;
+    font-weight: bold;
+    font-size: 1.5rem;
+    text-align: center;
+  }
+
+  .dashboard-page {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .dashboard-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .add-picture {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    align-self: flex-start;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    margin: 1rem 1rem 0;
+  }
+</style>

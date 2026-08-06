@@ -1,5 +1,6 @@
 <script lang="ts">
   import favicon from "$lib/assets/favicon.svg";
+  import Overlay from "$lib/ui/Overlay.svelte";
 
   let { children } = $props();
 </script>
@@ -10,6 +11,7 @@
 
 <main>
   {@render children()}
+  <Overlay />
 </main>
 
 <style>

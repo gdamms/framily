@@ -1,6 +1,6 @@
 <script lang="ts">
   import { api, type PictureInfo } from "$lib/api";
-  import Masonry from "./Masonry.svelte";
+  import Masonry from "$lib/ui/Masonry.svelte";
   import { app } from "$lib/app";
 
   interface Props {

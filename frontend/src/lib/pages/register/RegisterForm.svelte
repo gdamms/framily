@@ -1,0 +1,77 @@
+<script lang="ts">
+  import { goto } from "$app/navigation";
+  import Form from "$lib/ui/form/Form.svelte";
+  import UsernameField from "$lib/ui/form/UsernameField.svelte";
+  import EmailField from "$lib/ui/form/EmailField.svelte";
+  import PasswordField from "$lib/ui/form/PasswordField.svelte";
+  import ConfirmPasswordField from "$lib/ui/form/ConfirmPasswordField.svelte";
+  import Button from "$lib/ui/Button.svelte";
+  import { api } from "$lib/api/index";
+  import { authStore } from "$lib/stores/auth";
+
+  let username: string = "";
+  let email: string = "";
+  let password: string = "";
+  let confirmPassword: string = "";
+  let errorMessage: string = "";
+  let isLoading: boolean = false;
+
+  const handleSubmit = async () => {
+    errorMessage = "";
+
+    // Validation
+    if (!username || !email || !password || !confirmPassword) {
+      errorMessage = "All fields are required";
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      errorMessage = "Passwords do not match";
+      return;
+    }
+
+    if (password.length < 8) {
+      errorMessage = "Password must be at least 8 characters";
+      return;
+    }
+
+    if (username.length < 3 || username.length > 32) {
+      errorMessage = "Username must be 3-32 characters";
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      errorMessage = "Username can only contain letters, numbers, and underscores";
+      return;
+    }
+
+    isLoading = true;
+
+    try {
+      const response = await api.auth.register(username, email, password);
+      await authStore.setToken(response.token);
+      await goto("/");
+    } catch (error: any) {
+      errorMessage = error.message || "Registration failed";
+    } finally {
+      isLoading = false;
+    }
+  };
+</script>
+
+<Form title="Register" {errorMessage} submitHandler={handleSubmit}>
+  <UsernameField bind:value={username} />
+  <EmailField bind:value={email} />
+  <PasswordField bind:value={password} />
+  <ConfirmPasswordField bind:value={confirmPassword} />
+  <Button type="submit" disabled={isLoading}>{isLoading ? "Registering..." : "Register"}</Button>
+  <p class="login-link">Already have an account? <a href="/login">Login</a></p>
+</Form>
+
+<style>
+  .login-link {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+  }
+</style>
