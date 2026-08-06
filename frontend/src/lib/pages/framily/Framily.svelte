@@ -5,7 +5,7 @@
   import Members from "./Members.svelte";
   import FramilySettings from "./FramilySettings.svelte";
   import Avatar from "$lib/ui/Avatar.svelte";
-  import TabBar from "$lib/ui/TabBar.svelte";
+  import PageLayout from "$lib/ui/PageLayout.svelte";
   import { app } from "$lib/app";
   import { overlay } from "$lib/overlay";
   import UploadPopup from "$lib/popups/UploadPopup.svelte";
@@ -83,13 +83,14 @@
 </script>
 
 {#if framily === undefined}
-  <div class="framily-page">Loading...</div>
+  <div class="loading">Loading...</div>
 {:else if $appState.page.page !== "framily"}
-  <div class="framily-page">Framily not found</div>
+  <div class="loading">Framily not found</div>
 {:else}
-  <div class="framily-page">
+  {@const framilyPage = $appState.page}
+  {#snippet header()}
     <div class="framily-header">
-      <Avatar kind="framily" id={framily.code} label={framily.name ?? framily.code} editable={isAdmin} size={64} />
+      <Avatar kind="framily" id={framily!.code} label={framily!.name ?? framily!.code} editable={isAdmin} size={64} />
       <div class="framily-names">
         {#if isAdmin && editingName}
           <input
@@ -101,56 +102,57 @@
           />
         {:else if isAdmin}
           <button class="framily-name editable" onclick={startEditingName}>
-            <span>{framily.name}</span>
+            <span>{framily!.name}</span>
             <Pencil size={16} />
           </button>
         {:else}
-          <div class="framily-name">{framily.name}</div>
+          <div class="framily-name">{framily!.name}</div>
         {/if}
-        <div class="framily-code">@{framily.code}</div>
+        <div class="framily-code">@{framily!.code}</div>
       </div>
     </div>
-    <TabBar
-      tabs={TABS}
-      selected={$appState.page.section}
-      onSelect={(section) => app.navigate({ page: "framily", code: framily!.code, section })}
-    />
-    <div class="framily-content">
-      {#if $appState.page.section === "pictures"}
-        <button class="add-picture" onclick={openUploadPopup}>
-          <ImagePlus size={16} />
-          Add picture
-        </button>
-        <Galery {pictures} />
-      {:else if $appState.page.section === "members"}
-        <Members
-          framilyCode={framily.code}
-          members={framily.members}
-          {currentUsername}
-          onChanged={loadFramily}
-        />
-      {:else if $appState.page.section === "settings"}
-        <FramilySettings
-          {framily}
-          {currentUsername}
-          onChanged={loadFramily}
-          onDeleted={() => {
-            onFramilyDeleted?.();
-            app.navigate({ page: "dashboard", section: "framilies" });
-          }}
-        />
-      {/if}
-    </div>
-  </div>
+  {/snippet}
+
+  {#snippet content()}
+    {#if framilyPage.section === "pictures"}
+      <button class="add-picture" onclick={openUploadPopup}>
+        <ImagePlus size={16} />
+        Add picture
+      </button>
+      <Galery {pictures} />
+    {:else if framilyPage.section === "members"}
+      <Members
+        framilyCode={framily!.code}
+        members={framily!.members}
+        {currentUsername}
+        onChanged={loadFramily}
+      />
+    {:else if framilyPage.section === "settings"}
+      <FramilySettings
+        framily={framily!}
+        {currentUsername}
+        onChanged={loadFramily}
+        onDeleted={() => {
+          onFramilyDeleted?.();
+          app.navigate({ page: "dashboard", section: "framilies" });
+        }}
+      />
+    {/if}
+  {/snippet}
+
+  <PageLayout
+    {header}
+    tabs={TABS}
+    selected={framilyPage.section}
+    onSelect={(section) => app.navigate({ page: "framily", code: framily!.code, section })}
+    {content}
+  />
 {/if}
 
 <style>
-  .framily-page {
+  .loading {
     flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    padding: 1rem;
   }
 
   .framily-header {
@@ -199,15 +201,6 @@
   .framily-code {
     font-size: 14px;
     color: #666;
-  }
-
-  .framily-content {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
   }
 
   .add-picture {

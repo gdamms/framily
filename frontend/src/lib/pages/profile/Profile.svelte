@@ -7,7 +7,7 @@
   import Galery from "$lib/components/Galery.svelte";
   import Framilies from "$lib/pages/framilies/Framilies.svelte";
   import Avatar from "$lib/ui/Avatar.svelte";
-  import TabBar from "$lib/ui/TabBar.svelte";
+  import PageLayout from "$lib/ui/PageLayout.svelte";
   import Button from "$lib/ui/Button.svelte";
   import ConfirmPopup from "$lib/popups/ConfirmPopup.svelte";
   import UploadPopup from "$lib/popups/UploadPopup.svelte";
@@ -125,11 +125,11 @@
 </script>
 
 {#if !user}
-  <div class="profile">Loading...</div>
+  <div class="loading">Loading...</div>
 {:else}
-  <div class="profile">
+  {#snippet header()}
     <div class="profile-header">
-      <Avatar kind="user" id={user.username} label={user.display_name} editable={isOwnProfile} size={64} />
+      <Avatar kind="user" id={user!.username} label={user!.display_name} editable={isOwnProfile} size={64} />
       <div class="profile-names">
         {#if isOwnProfile && editingName}
           <input
@@ -141,94 +141,93 @@
           />
         {:else if isOwnProfile}
           <button class="profile-name editable" onclick={startEditingName}>
-            <span>{user.display_name}</span>
+            <span>{user!.display_name}</span>
             <Pencil size={16} />
           </button>
         {:else}
-          <div class="profile-name">{user.display_name}</div>
+          <div class="profile-name">{user!.display_name}</div>
         {/if}
-        <div class="profile-username">@{user.username}</div>
+        <div class="profile-username">@{user!.username}</div>
       </div>
     </div>
-    <TabBar tabs={TABS} selected={view} onSelect={(id) => (view = id)} />
-    <div class="profile-content">
-      {#if view === "pictures"}
-        {#if isOwnProfile}
-          <button class="add-picture" onclick={openUploadPopup}>
-            <ImagePlus size={16} />
-            Add picture
-          </button>
-        {/if}
-        <Galery {pictures} />
-      {:else if view === "framilies"}
-        <Framilies {framilies} />
-      {:else if view === "settings" && isOwnProfile}
-        <div class="settings">
-          <section class="section">
-            <h3 class="section-title">Account</h3>
-            <div class="setting">
-              <div class="setting-label">Username</div>
-              <div class="setting-value">@{user.username}</div>
-            </div>
-            {#if user.email}
-              <div class="setting">
-                <div class="setting-label">Email</div>
-                <div class="setting-value">{user.email}</div>
-              </div>
-            {/if}
-            {#if user.created_at}
-              <div class="setting">
-                <div class="setting-label">Member since</div>
-                <div class="setting-value">
-                  {formatDate(user.created_at)}
-                </div>
-              </div>
-            {/if}
-            <div class="setting">
-              <div class="setting-label">Logout</div>
-              <Button variant="secondary" class="logout-button" onclick={logout}>
-                <LogOut size={16} />
-                Logout
-              </Button>
-            </div>
-          </section>
+  {/snippet}
 
-          <section class="section danger-zone">
-            <h3 class="section-title">Danger zone</h3>
-
-            {#if deleteError}
-              <p class="error">{deleteError}</p>
-            {/if}
-
-            <div class="setting">
-              <div class="setting-label">Delete account</div>
-              <div class="setting-description">
-                Permanently deletes your account. Your uploaded pictures stay in
-                shared framilies but are no longer attributed to you.
-              </div>
-              <PasswordField bind:value={deletePassword} />
-              <button
-                class="delete-button"
-                disabled={deletingAccount}
-                onclick={startDeleteAccount}
-              >
-                Delete account
-              </button>
-            </div>
-          </section>
-        </div>
+  {#snippet content()}
+    {#if view === "pictures"}
+      {#if isOwnProfile}
+        <button class="add-picture" onclick={openUploadPopup}>
+          <ImagePlus size={16} />
+          Add picture
+        </button>
       {/if}
-    </div>
-  </div>
+      <Galery {pictures} />
+    {:else if view === "framilies"}
+      <Framilies {framilies} />
+    {:else if view === "settings" && isOwnProfile}
+      <div class="settings">
+        <section class="section">
+          <h3 class="section-title">Account</h3>
+          <div class="setting">
+            <div class="setting-label">Username</div>
+            <div class="setting-value">@{user!.username}</div>
+          </div>
+          {#if user!.email}
+            <div class="setting">
+              <div class="setting-label">Email</div>
+              <div class="setting-value">{user!.email}</div>
+            </div>
+          {/if}
+          {#if user!.created_at}
+            <div class="setting">
+              <div class="setting-label">Member since</div>
+              <div class="setting-value">
+                {formatDate(user!.created_at)}
+              </div>
+            </div>
+          {/if}
+          <div class="setting">
+            <div class="setting-label">Logout</div>
+            <Button variant="secondary" class="logout-button" onclick={logout}>
+              <LogOut size={16} />
+              Logout
+            </Button>
+          </div>
+        </section>
+
+        <section class="section danger-zone">
+          <h3 class="section-title">Danger zone</h3>
+
+          {#if deleteError}
+            <p class="error">{deleteError}</p>
+          {/if}
+
+          <div class="setting">
+            <div class="setting-label">Delete account</div>
+            <div class="setting-description">
+              Permanently deletes your account. Your uploaded pictures stay in
+              shared framilies but are no longer attributed to you.
+            </div>
+            <PasswordField bind:value={deletePassword} />
+            <button
+              class="delete-button"
+              disabled={deletingAccount}
+              onclick={startDeleteAccount}
+            >
+              Delete account
+            </button>
+          </div>
+        </section>
+      </div>
+    {/if}
+  {/snippet}
+
+  <PageLayout {header} tabs={TABS} selected={view} onSelect={(id) => (view = id)} {content} />
 {/if}
 
 <style>
-  .profile {
+  .loading {
     flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    padding: 1rem;
   }
 
   .profile-header {
@@ -271,15 +270,6 @@
   .profile-username {
     font-size: 14px;
     color: #666;
-  }
-
-  .profile-content {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
   }
 
   .add-picture {
