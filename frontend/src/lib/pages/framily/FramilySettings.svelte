@@ -2,6 +2,9 @@
   import { api, type FramilyInfo } from "$lib/api";
   import { overlay } from "$lib/overlay";
   import ConfirmPopup from "$lib/popups/ConfirmPopup.svelte";
+  import RectangleHorizontal from "@lucide/svelte/icons/rectangle-horizontal";
+  import RotateCcwSquare from "@lucide/svelte/icons/rotate-ccw-square";
+  import RotateCwSquare from "@lucide/svelte/icons/rotate-cw-square";
 
   interface Props {
     framily: FramilyInfo;
@@ -13,7 +16,8 @@
   let { framily, currentUsername, onChanged, onDeleted }: Props = $props();
 
   let isAdmin = $derived(
-    framily.members.find((m) => m.username === currentUsername)?.role === "admin",
+    framily.members.find((m) => m.username === currentUsername)?.role ===
+      "admin",
   );
 
   const ORIENTATIONS = ["0", "90", "180", "270"] as const;
@@ -52,14 +56,35 @@
     });
   }
 
-  async function setOrientation(orientation: (typeof ORIENTATIONS)[number]) {
-    if (orientation === framily.settings.orientation) return;
+  let rotationDeg = $state(Number(framily.settings.orientation));
+  $effect(() => {
+    rotationDeg = Number(framily.settings.orientation);
+  });
+
+  let savingOrientation = $state(false);
+
+  function cycleOrientation(direction: 1 | -1): (typeof ORIENTATIONS)[number] {
+    const currentIndex = ORIENTATIONS.indexOf(framily.settings.orientation);
+    const nextIndex =
+      (currentIndex + direction + ORIENTATIONS.length) % ORIENTATIONS.length;
+    return ORIENTATIONS[nextIndex];
+  }
+
+  async function rotateOrientation(direction: 1 | -1) {
+    if (savingOrientation) return;
     error = "";
+    const delta = direction * 90;
+    const orientation = cycleOrientation(direction);
+    rotationDeg += delta;
+    savingOrientation = true;
     try {
       await api.framily.updateSettings(framily.code, { orientation });
       onChanged();
     } catch (e: any) {
+      rotationDeg -= delta;
       error = e.message || "Failed to update orientation";
+    } finally {
+      savingOrientation = false;
     }
   }
 
@@ -95,7 +120,9 @@
     if (minutes === framily.settings.interval_minutes) return;
     savingInterval = true;
     try {
-      await api.framily.updateSettings(framily.code, { interval_minutes: minutes });
+      await api.framily.updateSettings(framily.code, {
+        interval_minutes: minutes,
+      });
       onChanged();
     } catch (e: any) {
       error = e.message || "Failed to update interval";
@@ -110,7 +137,9 @@
     if (level === framily.settings.preprocess_level) return;
     savingPreprocess = true;
     try {
-      await api.framily.updateSettings(framily.code, { preprocess_level: level });
+      await api.framily.updateSettings(framily.code, {
+        preprocess_level: level,
+      });
       onChanged();
     } catch (e: any) {
       error = e.message || "Failed to update image enhancement";
@@ -143,7 +172,9 @@
           <span class="unit">minutes</span>
         </div>
       {:else}
-        <div class="setting-value">{framily.settings.interval_minutes} minutes</div>
+        <div class="setting-value">
+          {framily.settings.interval_minutes} minutes
+        </div>
       {/if}
     </div>
 
@@ -151,15 +182,29 @@
       <div class="setting-label">Orientation</div>
       {#if isAdmin}
         <div class="orientation-row">
-          {#each ORIENTATIONS as orientation}
-            <button
-              class="orientation-button"
-              class:selected={framily.settings.orientation === orientation}
-              onclick={() => setOrientation(orientation)}
-            >
-              {orientation}°
-            </button>
-          {/each}
+          <button
+            class="rotate-button"
+            disabled={savingOrientation}
+            onclick={() => rotateOrientation(-1)}
+            aria-label="Rotate counter-clockwise"
+          >
+            <RotateCcwSquare size={20} />
+          </button>
+          <div
+            class="orientation-preview"
+            style={`transform: rotate(${rotationDeg}deg)`}
+          >
+            <RectangleHorizontal size={30} />
+          </div>
+          <button
+            class="rotate-button"
+            disabled={savingOrientation}
+            onclick={() => rotateOrientation(1)}
+            aria-label="Rotate clockwise"
+          >
+            <RotateCwSquare size={20} />
+          </button>
+          <span class="setting-value">{framily.settings.orientation}°</span>
         </div>
       {:else}
         <div class="setting-value">{framily.settings.orientation}°</div>
@@ -181,14 +226,17 @@
           <span>{framily.settings.show_uploader_name ? "On" : "Off"}</span>
         </label>
       {:else}
-        <div class="setting-value">{framily.settings.show_uploader_name ? "On" : "Off"}</div>
+        <div class="setting-value">
+          {framily.settings.show_uploader_name ? "On" : "Off"}
+        </div>
       {/if}
     </div>
 
     <div class="setting">
       <div class="setting-label">Show date</div>
       <div class="setting-description">
-        Displays the picture's upload date in the corner of each picture on the frame.
+        Displays the picture's upload date in the corner of each picture on the
+        frame.
       </div>
       {#if isAdmin}
         <label class="toggle-row">
@@ -200,15 +248,18 @@
           <span>{framily.settings.show_date ? "On" : "Off"}</span>
         </label>
       {:else}
-        <div class="setting-value">{framily.settings.show_date ? "On" : "Off"}</div>
+        <div class="setting-value">
+          {framily.settings.show_date ? "On" : "Off"}
+        </div>
       {/if}
     </div>
 
     <div class="setting">
       <div class="setting-label">Image enhancement</div>
       <div class="setting-description">
-        Automatically adjusts contrast and color so photos look punchier on the frame's e-ink
-        display. Higher looks more vivid; lower looks closer to the original photo.
+        Automatically adjusts contrast and color so photos look punchier on the
+        frame's e-ink display. Higher looks more vivid; lower looks closer to
+        the original photo.
       </div>
       {#if isAdmin}
         <div class="slider-row">
@@ -247,7 +298,11 @@
       <div class="setting-label">IP address</div>
       <div class="setting-value">
         {#if framily.ip_address}
-          <a href={`http://${framily.ip_address}`} target="_blank" rel="noreferrer">{framily.ip_address}</a>
+          <a
+            href={`http://${framily.ip_address}`}
+            target="_blank"
+            rel="noreferrer">{framily.ip_address}</a
+          >
         {:else}
           Not reported yet
         {/if}
@@ -266,7 +321,8 @@
       <div class="setting">
         <div class="setting-label">Delete framily</div>
         <div class="setting-description">
-          Permanently disbands this framily for all members. This cannot be undone.
+          Permanently disbands this framily for all members. This cannot be
+          undone.
         </div>
         <button class="delete-button" onclick={confirmDeleteFramily}>
           Delete framily
@@ -372,23 +428,42 @@
 
   .orientation-row {
     display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
   }
 
-  .orientation-button {
-    padding: 0.5rem 1rem;
-    border: 1px solid #ccc;
+  .rotate-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    border: none;
     border-radius: 6px;
     background: white;
     cursor: pointer;
+    color: #333;
   }
 
-  .orientation-button.selected {
-    background-color: #4593e7;
-    border-color: #4593e7;
-    color: white;
-    font-weight: bold;
+  .rotate-button:active:not(:disabled) {
+    color: #4593e7;
+  }
+
+  .rotate-button:disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .orientation-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4593e7;
+    transition: transform 0.3s ease;
+  }
+
+  .orientation-row .setting-value {
+    margin-left: 1rem;
+    opacity: 0.5;
   }
 
   .slider-row {
