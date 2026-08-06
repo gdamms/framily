@@ -1,5 +1,4 @@
 import { writable, type Writable } from "svelte/store";
-import type { PictureInfo } from "./api/types";
 
 export type DashboardPage = {
   page: "dashboard";
@@ -18,12 +17,7 @@ export type FramilyPage = {
   section: "pictures" | "members" | "settings";
 }
 
-export type PicturePage = {
-  page: "picture";
-  picture: PictureInfo;
-}
-
-export type Page = DashboardPage | ProfilePage | FramilyPage | PicturePage;
+export type Page = DashboardPage | ProfilePage | FramilyPage;
 
 export type AuthView = "login" | "register";
 

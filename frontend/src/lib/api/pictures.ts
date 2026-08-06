@@ -41,6 +41,15 @@ export const picturesApi = {
       },
     ),
 
+  updateDescription: (picture_id: string, description: string) =>
+    request<{ message: string; picture: PictureInfo }>(
+      "/pictures/description",
+      {
+        method: "PUT",
+        body: JSON.stringify({ picture_id, description }),
+      },
+    ),
+
   delete: (picture_id: string) => {
     const url = `/pictures/${picture_id}`;
     return request<{ message: string }>(url, {

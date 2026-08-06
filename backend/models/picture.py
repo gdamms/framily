@@ -27,6 +27,10 @@ class Picture(Base):
     uploaded_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     upload_date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     metadata_ = Column("metadata", JSON, default=dict)
+    # Optional caption set by the uploader (see schemas.picture.CAPTION_MAX_LENGTH
+    # for the enforced length limit). Empty/unset is stored as NULL, not "",
+    # so overlay code and the frontend can treat "no caption" uniformly.
+    description = Column(String(300), nullable=True)
 
     # Relationships
     uploader = relationship("User", back_populates="pictures")

@@ -8,7 +8,6 @@
   import Dashboard from "$lib/pages/dashboard/Dashboard.svelte";
   import Framily from "$lib/pages/framily/Framily.svelte";
   import Profile from "$lib/pages/profile/Profile.svelte";
-  import PictureView from "$lib/pages/picture/PictureView.svelte";
   import LoginForm from "$lib/pages/login/LoginForm.svelte";
   import RegisterForm from "$lib/pages/register/RegisterForm.svelte";
   import LoadingPage from "$lib/ui/LoadingPage.svelte";
@@ -72,22 +71,24 @@
   <div class="page">
     <div class="content">
       {#if $appState.page.page === "dashboard"}
-        <Dashboard {framilies} pictures={dashboardPictures} section={$appState.page.section} />
+        <Dashboard
+          {framilies}
+          pictures={dashboardPictures}
+          section={$appState.page.section}
+          currentUsername={user.username}
+        />
       {:else if $appState.page.page === "profile"}
-        <Profile username={$appState.page.username} currentUsername={user.username} />
+        <Profile
+          username={$appState.page.username}
+          currentUsername={user.username}
+          myFramilies={framilies}
+        />
       {:else if $appState.page.page === "framily"}
         <Framily
           code={$appState.page.code}
           currentUsername={user.username}
           {framilies}
           onFramilyDeleted={refreshUser}
-        />
-      {:else if $appState.page.page === "picture"}
-        <PictureView
-          picture={$appState.page.picture}
-          currentUsername={user.username}
-          myFramilies={framilies}
-          onClose={() => app.navigate({ page: "dashboard", section: "galery" })}
         />
       {/if}
     </div>

@@ -39,6 +39,7 @@ export interface FramilySettingsInfo {
   show_uploader_name: boolean;
   show_date: boolean;
   preprocess_level: number;
+  show_caption: boolean;
 }
 
 export interface FramilyInfo {
@@ -72,4 +73,7 @@ export interface PictureInfo {
   uploader_display_name?: string | null;
   upload_date: string;
   metadata: PictureMetadata | null;
+  description?: string | null;
 }
+
+export const CAPTION_MAX_LENGTH = 300;

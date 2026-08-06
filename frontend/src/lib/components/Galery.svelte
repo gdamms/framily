@@ -1,13 +1,20 @@
 <script lang="ts">
-  import { api, type PictureInfo } from "$lib/api";
+  import { api, type PictureInfo, type UserFramilyInfo } from "$lib/api";
   import Masonry from "$lib/ui/Masonry.svelte";
-  import { app } from "$lib/app";
+  import { overlay } from "$lib/overlay";
+  import PictureView from "$lib/pages/picture/PictureView.svelte";
 
   interface Props {
     pictures: PictureInfo[];
+    currentUsername: string;
+    myFramilies: UserFramilyInfo[];
   }
 
-  let { pictures }: Props = $props();
+  let { pictures, currentUsername, myFramilies }: Props = $props();
+
+  function openPicture(picture: PictureInfo) {
+    overlay.open(PictureView, { picture, currentUsername, myFramilies });
+  }
 
   function getAspectRatio(picture: PictureInfo): number | undefined {
     const { width, height } = picture.metadata ?? {};
@@ -21,7 +28,7 @@
     {#snippet children(picture: PictureInfo)}
       <button
         class="picture-button"
-        onclick={() => app.navigate({ page: "picture", picture })}
+        onclick={() => openPicture(picture)}
       >
         <img
           class="picture"

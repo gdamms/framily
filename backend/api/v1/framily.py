@@ -383,6 +383,7 @@ def get_framily_info(
             show_uploader_name=framily.settings.show_uploader_name if framily.settings else False,
             show_date=framily.settings.show_date if framily.settings else False,
             preprocess_level=framily.settings.preprocess_level if framily.settings else 50,
+            show_caption=framily.settings.show_caption if framily.settings else True,
         ),
         resolution_width=framily.resolution_width,
         resolution_height=framily.resolution_height,
@@ -432,6 +433,8 @@ def update_framily_settings(
             framily.settings.show_date = request.show_date
         if request.preprocess_level is not None:
             framily.settings.preprocess_level = request.preprocess_level
+        if request.show_caption is not None:
+            framily.settings.show_caption = request.show_caption
 
     db.commit()
 

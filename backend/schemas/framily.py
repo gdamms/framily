@@ -11,6 +11,7 @@ class FramilySettingsInfo(BaseModel):
     show_uploader_name: bool
     show_date: bool
     preprocess_level: int
+    show_caption: bool
 
 
 class FramilyUpdateSettingsRequest(BaseModel):
@@ -21,6 +22,7 @@ class FramilyUpdateSettingsRequest(BaseModel):
     show_uploader_name: Optional[bool] = None
     show_date: Optional[bool] = None
     preprocess_level: Optional[int] = Field(default=None, ge=0, le=100)
+    show_caption: Optional[bool] = None
 
 
 class FramilyConnectRequest(BaseModel):

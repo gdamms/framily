@@ -32,6 +32,7 @@ def build_picture_info(picture: Picture) -> dict:
         "uploader_display_name": picture.uploader.display_name if picture.uploader else None,
         "upload_date": picture.upload_date,
         "metadata": picture.metadata_ or {},
+        "description": picture.description,
     }
 
 

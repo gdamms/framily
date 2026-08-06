@@ -37,8 +37,12 @@ def generate_frame_token() -> str:
     return secrets.token_urlsafe(48)[:64]
 
 
-def _draw_corner_text(image: Image.Image, text: str, corner: str) -> Image.Image:
-    """Burn text into a corner of the image ("bottom-right" or "bottom-left")."""
+def _draw_corner_text(image: Image.Image, text: str, corner: str, bottom_margin: int = 0) -> Image.Image:
+    """Burn text into a corner of the image ("bottom-right" or "bottom-left").
+
+    `bottom_margin` shifts the text up from the bottom edge - used to keep it
+    clear of the caption bar (see draw_caption) when one is also being drawn.
+    """
     if image.mode not in ("RGB", "RGBA"):
         image = image.convert("RGBA")
 
@@ -49,7 +53,7 @@ def _draw_corner_text(image: Image.Image, text: str, corner: str) -> Image.Image
     bbox = draw.textbbox((0, 0), text, font=font)
     text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
     margin = round(font_size * 0.5)
-    y = image.height - text_h - margin - bbox[1]
+    y = image.height - text_h - margin - bbox[1] - bottom_margin
     if corner == "bottom-left":
         x = margin - bbox[0]
     else:
@@ -62,15 +66,62 @@ def _draw_corner_text(image: Image.Image, text: str, corner: str) -> Image.Image
     return image
 
 
-def draw_uploader_credit(image: Image.Image, uploader_name: str) -> Image.Image:
+def draw_uploader_credit(image: Image.Image, uploader_name: str, bottom_margin: int = 0) -> Image.Image:
     """Burn a credit into the bottom-right corner of the image."""
-    return _draw_corner_text(image, uploader_name, "bottom-right")
+    return _draw_corner_text(image, uploader_name, "bottom-right", bottom_margin)
 
 
-def draw_date(image: Image.Image, upload_date: datetime) -> Image.Image:
+def draw_date(image: Image.Image, upload_date: datetime, bottom_margin: int = 0) -> Image.Image:
     """Burn the picture's upload date into the bottom-left corner of the image."""
     text = upload_date.strftime("%d/%m/%Y")
-    return _draw_corner_text(image, text, "bottom-left")
+    return _draw_corner_text(image, text, "bottom-left", bottom_margin)
+
+
+def draw_caption(image: Image.Image, caption: str) -> tuple[Image.Image, int]:
+    """Burn a picture's caption into a semi-transparent bar across the bottom
+    of the image, wrapped to fit its width. Returns the resulting image and
+    the bar's height in pixels, so the uploader-credit/date corner overlays
+    can be shifted above it instead of overlapping the caption text."""
+    if image.mode != "RGBA":
+        image = image.convert("RGBA")
+
+    font_size = max(14, round(min(image.size) * 0.035))
+    font = ImageFont.load_default(size=font_size)
+    padding = round(font_size * 0.6)
+    max_width = image.width - 2 * padding
+
+    measure = ImageDraw.Draw(image)
+    words = caption.split()
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        if not current or measure.textbbox((0, 0), candidate, font=font)[2] <= max_width:
+            current = candidate
+        else:
+            lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+
+    line_height = font.getbbox("Ag")[3] + round(font_size * 0.25)
+    bar_height = line_height * len(lines) + padding * 2
+
+    bar = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    bar_draw = ImageDraw.Draw(bar)
+    bar_draw.rectangle(
+        [(0, image.height - bar_height), (image.width, image.height)],
+        fill=(0, 0, 0, 140),
+    )
+
+    y = image.height - bar_height + padding
+    for line in lines:
+        bbox = bar_draw.textbbox((0, 0), line, font=font)
+        x = (image.width - (bbox[2] - bbox[0])) / 2 - bbox[0]
+        bar_draw.text((x, y), line, font=font, fill="white")
+        y += line_height
+
+    return Image.alpha_composite(image, bar), bar_height
 
 
 def get_framily_by_frame_auth(db: Session, framily_code: str, frame_token: str) -> Framily:
@@ -219,6 +270,10 @@ def fetch_picture(request: FrameAuthRequest, db: Session = Depends(get_db)):
     # the frame device has no need to know about them.
     needs_credit = bool(framily.settings and framily.settings.show_uploader_name and uploader_name)
     needs_date = bool(framily.settings and framily.settings.show_date and picture.upload_date)
+    # Caption is only ever drawn if the picture actually has one set - an
+    # enabled setting with no caption on the picture draws nothing.
+    caption = (picture.description or "").strip() if framily.settings and framily.settings.show_caption else ""
+    needs_caption = bool(caption)
     # Adaptive contrast/saturation/gamma correction tuned for the panel's
     # 6-color gamut (see core/image_preprocess.py); like the overlays above,
     # this is applied here rather than on the frame and isn't exposed via
@@ -226,7 +281,10 @@ def fetch_picture(request: FrameAuthRequest, db: Session = Depends(get_db)):
     preprocess_level = framily.settings.preprocess_level if framily.settings else 0
     needs_preprocess = bool(preprocess_level)
 
-    if not needs_rotation and not needs_resize and not needs_credit and not needs_date and not needs_preprocess:
+    if (
+        not needs_rotation and not needs_resize and not needs_credit
+        and not needs_date and not needs_preprocess and not needs_caption
+    ):
         return StreamingResponse(
             s3_client.get_object(settings.S3_BUCKET, object_name).stream(32 * 1024),
             media_type=media_type,
@@ -262,11 +320,17 @@ def fetch_picture(request: FrameAuthRequest, db: Session = Depends(get_db)):
         # affected by the contrast/saturation correction.
         image = preprocess_for_eink(image, preprocess_level)
 
+    # Draw the caption first so its bar height can push the corner overlays
+    # up above it instead of overlapping the caption text.
+    caption_bar_height = 0
+    if needs_caption:
+        image, caption_bar_height = draw_caption(image, caption)
+
     if needs_credit:
-        image = draw_uploader_credit(image, uploader_name)
+        image = draw_uploader_credit(image, uploader_name, bottom_margin=caption_bar_height)
 
     if needs_date:
-        image = draw_date(image, picture.upload_date)
+        image = draw_date(image, picture.upload_date, bottom_margin=caption_bar_height)
 
     if needs_rotation:
         image = image.rotate(int(orientation), expand=True)

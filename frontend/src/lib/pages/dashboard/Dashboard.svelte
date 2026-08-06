@@ -13,9 +13,10 @@
     framilies: UserFramilyInfo[];
     pictures: PictureInfo[];
     section: "galery" | "framilies";
+    currentUsername: string;
   }
 
-  let { framilies, pictures, section }: Props = $props();
+  let { framilies, pictures, section, currentUsername }: Props = $props();
 
   const TABS = [
     { id: "galery" as const, label: "Galery" },
@@ -37,7 +38,7 @@
       <ImagePlus size={16} />
       Add picture
     </button>
-    <Galery {pictures} />
+    <Galery {pictures} {currentUsername} myFramilies={framilies} />
   {:else if section === "framilies"}
     <Framilies {framilies} onAddFramily={() => overlay.open(ConnectFramilyPopup, {})} />
   {/if}

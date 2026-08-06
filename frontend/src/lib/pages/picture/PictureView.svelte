@@ -1,8 +1,11 @@
 <script lang="ts">
+  import { tick, onDestroy } from "svelte";
   import { api, type PictureInfo, type UserFramilyInfo } from "$lib/api";
+  import { CAPTION_MAX_LENGTH } from "$lib/api/types";
   import X from "@lucide/svelte/icons/x";
   import Trash2 from "@lucide/svelte/icons/trash-2";
   import Plus from "@lucide/svelte/icons/plus";
+  import Pencil from "@lucide/svelte/icons/pencil";
   import { overlay } from "$lib/overlay";
   import ConfirmPopup from "$lib/popups/ConfirmPopup.svelte";
   import IconButton from "$lib/ui/IconButton.svelte";
@@ -12,10 +15,10 @@
     picture: PictureInfo;
     currentUsername: string;
     myFramilies: UserFramilyInfo[];
-    onClose: () => void;
+    close?: () => void;
   }
 
-  let { picture, currentUsername, myFramilies, onClose }: Props = $props();
+  let { picture, currentUsername, myFramilies, close = () => {} }: Props = $props();
 
   let framilies = $state(picture.framilies);
 
@@ -61,7 +64,7 @@
     error = "";
     try {
       await api.pictures.delete(picture.id);
-      onClose();
+      close();
     } catch (e: any) {
       error = e.message || "Failed to delete picture";
     }
@@ -73,34 +76,128 @@
       onConfirm: deleteEntirely,
     });
   }
+
+  let editingCaption = $state(false);
+  let captionDraft = $state("");
+  let captionInputEl: HTMLInputElement | undefined = $state();
+  let captionSaveTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  const CAPTION_SAVE_DEBOUNCE_MS = 500;
+
+  function startEditingCaption() {
+    if (!isUploader) return;
+    captionDraft = picture.description ?? "";
+    editingCaption = true;
+    tick().then(() => captionInputEl?.focus());
+  }
+
+  function scheduleCaptionSave() {
+    clearTimeout(captionSaveTimeout);
+    captionSaveTimeout = setTimeout(commitCaption, CAPTION_SAVE_DEBOUNCE_MS);
+  }
+
+  async function commitCaption() {
+    clearTimeout(captionSaveTimeout);
+    captionSaveTimeout = undefined;
+    const trimmed = captionDraft.trim();
+    if (trimmed === (picture.description ?? "")) return;
+    error = "";
+    try {
+      const response = await api.pictures.updateDescription(picture.id, trimmed);
+      // Mutate the picture prop in place (rather than local component state)
+      // so the caption stays up to date in whatever list handed us this
+      // picture object - otherwise reopening it later shows the stale value.
+      picture.description = response.picture.description ?? null;
+    } catch (e: any) {
+      error = e.message || "Failed to update caption";
+    }
+  }
+
+  function finishEditingCaption() {
+    commitCaption();
+    editingCaption = false;
+  }
+
+  function handleCaptionKeydown(event: KeyboardEvent) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      (event.target as HTMLInputElement).blur();
+    } else if (event.key === "Escape") {
+      clearTimeout(captionSaveTimeout);
+      captionSaveTimeout = undefined;
+      editingCaption = false;
+    }
+  }
+
+  onDestroy(() => {
+    // Flush a pending debounced edit if the popup gets closed mid-type -
+    // it's unmounted rather than blurred in that case, so blur never fires.
+    if (captionSaveTimeout) commitCaption();
+  });
 </script>
 
 <div class="picture-view">
-  <div class="top-bar">
-    <IconButton icon={X} onclick={onClose} />
-  </div>
-
-  <div class="image-wrapper">
-    <img
-      class="image"
-      src={api.pictures.getImageUrl(picture)}
-      alt="Uploaded by {picture.uploader_display_name || picture.uploader_username}"
-    />
-  </div>
-
   <div class="details">
     <div class="meta">
-      <span class="uploader"
-        >{picture.uploader_display_name || picture.uploader_username}</span
-      >
-      <span class="date">{formatDate(picture.upload_date)}</span>
+      <div class="meta-text">
+        <span class="uploader"
+          >{picture.uploader_display_name || picture.uploader_username}</span
+        >
+        <span class="date">{formatDate(picture.upload_date)}</span>
+      </div>
+      <div class="meta-actions">
+        {#if isUploader}
+          <IconButton icon={Trash2} variant="danger" label="Delete entirely" onclick={confirmDelete} />
+        {/if}
+        <IconButton icon={X} onclick={close} />
+      </div>
     </div>
 
     {#if error}
       <p class="error">{error}</p>
     {/if}
 
+    {#if isUploader || picture.description}
+      <div class="caption-section">
+        {#if editingCaption}
+          <input
+            class="caption-input"
+            bind:value={captionDraft}
+            bind:this={captionInputEl}
+            maxlength={CAPTION_MAX_LENGTH}
+            placeholder="Add a caption"
+            oninput={scheduleCaptionSave}
+            onblur={finishEditingCaption}
+            onkeydown={handleCaptionKeydown}
+          />
+        {:else if picture.description}
+          <button
+            class="caption editable"
+            class:readonly={!isUploader}
+            onclick={startEditingCaption}
+            disabled={!isUploader}
+          >
+            <span class="caption-text">{picture.description}</span>
+            {#if isUploader}
+              <Pencil size={14} />
+            {/if}
+          </button>
+        {:else}
+          <button class="caption-add" onclick={startEditingCaption}>
+            <Pencil size={14} />
+            Add a caption
+          </button>
+        {/if}
+      </div>
+    {/if}
+
     <div class="framily-chips">
+      {#if isUploader && addableFramilies.length > 0}
+        <button class="chip chip-add" onclick={() => (showAddPicker = !showAddPicker)}>
+          <Plus size={14} />
+          Add to framily
+        </button>
+      {/if}
       {#each framilies as framily}
         <span class="chip">
           {framily.name}
@@ -115,12 +212,6 @@
           {/if}
         </span>
       {/each}
-      {#if isUploader && addableFramilies.length > 0}
-        <button class="chip chip-add" onclick={() => (showAddPicker = !showAddPicker)}>
-          <Plus size={14} />
-          Add to framily
-        </button>
-      {/if}
     </div>
 
     {#if showAddPicker}
@@ -132,65 +223,67 @@
         {/each}
       </div>
     {/if}
+  </div>
 
-    {#if isUploader}
-      <button class="delete-button" onclick={confirmDelete}>
-        <Trash2 size={16} />
-        Delete entirely
-      </button>
-    {/if}
+  <div class="image-wrapper">
+    <img
+      class="image"
+      src={api.pictures.getImageUrl(picture)}
+      alt="Uploaded by {picture.uploader_display_name || picture.uploader_username}"
+    />
   </div>
 </div>
 
 <style>
   .picture-view {
-    position: fixed;
-    inset: 0;
-    background: #111;
     display: flex;
     flex-direction: column;
-    z-index: 500;
-  }
-
-  .top-bar {
-    display: flex;
-    justify-content: flex-end;
-    padding: 0.5rem;
-    color: white;
-  }
-
-  .top-bar :global(.icon-btn:hover) {
-    background-color: rgba(255, 255, 255, 0.15);
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
   }
 
   .image-wrapper {
-    flex: 1;
+    position: relative;
+    background: #111;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 0;
-    padding: 0.5rem;
   }
 
   .image {
     max-width: 100%;
-    max-height: 100%;
+    max-height: 60vh;
     object-fit: contain;
   }
 
   .details {
-    background: white;
-    border-radius: 12px 12px 0 0;
-    padding: 1rem;
+    box-sizing: border-box;
+    padding: 0.75rem 1rem;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.5rem;
+    background: white;
   }
 
   .meta {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 0.5rem;
+  }
+
+  .meta-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .meta-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex: 0 0 auto;
   }
 
   .uploader {
@@ -200,6 +293,7 @@
   .date {
     color: #666;
     font-size: 0.85rem;
+    white-space: nowrap;
   }
 
   .error {
@@ -207,9 +301,62 @@
     margin: 0;
   }
 
+  .caption-section {
+    display: flex;
+    min-width: 0;
+  }
+
+  .caption {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: #333;
+    font: inherit;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .caption.readonly {
+    cursor: default;
+  }
+
+  .caption-text {
+    white-space: nowrap;
+    overflow-x: auto;
+  }
+
+  .caption-add {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: #888;
+    font: inherit;
+    font-size: 0.9rem;
+  }
+
+  .caption-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.4rem 0;
+    border: none;
+    border-bottom: 2px solid #333;
+    font: inherit;
+    background: none;
+  }
+
   .framily-chips {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
     gap: 0.5rem;
   }
 
@@ -217,6 +364,8 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
+    flex: 0 0 auto;
+    white-space: nowrap;
     background: #e3f2fd;
     color: #1976d2;
     padding: 0.35rem 0.6rem;
@@ -242,11 +391,14 @@
 
   .add-picker {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
     gap: 0.5rem;
   }
 
   .add-option {
+    flex: 0 0 auto;
+    white-space: nowrap;
     background: #c8dadf;
     border: none;
     padding: 0.35rem 0.6rem;
@@ -254,16 +406,4 @@
     cursor: pointer;
   }
 
-  .delete-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    padding: 0.6rem;
-    cursor: pointer;
-  }
 </style>

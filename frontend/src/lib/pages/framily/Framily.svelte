@@ -120,7 +120,7 @@
         <ImagePlus size={16} />
         Add picture
       </button>
-      <Galery {pictures} />
+      <Galery {pictures} {currentUsername} myFramilies={framilies} />
     {:else if framilyPage.section === "members"}
       <Members
         framilyCode={framily!.code}

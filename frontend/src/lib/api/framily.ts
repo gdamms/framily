@@ -60,6 +60,7 @@ export const framilyApi = {
       show_uploader_name?: boolean;
       show_date?: boolean;
       preprocess_level?: number;
+      show_caption?: boolean;
     },
   ) =>
     request<{ message: string }>("/framily/settings", {

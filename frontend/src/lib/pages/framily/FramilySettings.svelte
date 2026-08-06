@@ -110,6 +110,17 @@
     }
   }
 
+  async function toggleShowCaption() {
+    const show_caption = !framily.settings.show_caption;
+    error = "";
+    try {
+      await api.framily.updateSettings(framily.code, { show_caption });
+      onChanged();
+    } catch (e: any) {
+      error = e.message || "Failed to update setting";
+    }
+  }
+
   async function saveInterval() {
     error = "";
     const minutes = Math.round(Number(intervalDraft));
@@ -250,6 +261,28 @@
       {:else}
         <div class="setting-value">
           {framily.settings.show_date ? "On" : "Off"}
+        </div>
+      {/if}
+    </div>
+
+    <div class="setting">
+      <div class="setting-label">Show caption</div>
+      <div class="setting-description">
+        Displays a picture's caption at the bottom of the frame, when it has
+        one set.
+      </div>
+      {#if isAdmin}
+        <label class="toggle-row">
+          <input
+            type="checkbox"
+            checked={framily.settings.show_caption}
+            onchange={toggleShowCaption}
+          />
+          <span>{framily.settings.show_caption ? "On" : "Off"}</span>
+        </label>
+      {:else}
+        <div class="setting-value">
+          {framily.settings.show_caption ? "On" : "Off"}
         </div>
       {/if}
     </div>

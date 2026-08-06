@@ -1,7 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
+CAPTION_MAX_LENGTH = 300
 
 
 class PictureMetadata(BaseModel):
@@ -24,6 +25,7 @@ class PictureInfo(BaseModel):
     uploader_display_name: Optional[str] = None
     upload_date: datetime
     metadata: Optional[PictureMetadata] = None
+    description: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -59,3 +61,9 @@ class AddVisibilityRequest(BaseModel):
 class RemoveVisibilityRequest(BaseModel):
     picture_id: str
     framily_codes: list[str]
+
+
+class UpdateDescriptionRequest(BaseModel):
+    picture_id: str
+    # Empty string clears the caption; stored as NULL server-side either way.
+    description: str = Field(default="", max_length=CAPTION_MAX_LENGTH)

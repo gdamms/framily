@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick } from "svelte";
-  import { api, type UserInfo } from "$lib/api";
+  import { api, type UserInfo, type UserFramilyInfo } from "$lib/api";
   import { authStore } from "$lib/stores/auth";
   import { authView } from "$lib/app";
   import { overlay } from "$lib/overlay";
@@ -21,9 +21,10 @@
   interface Props {
     username: string;
     currentUsername: string;
+    myFramilies: UserFramilyInfo[];
   }
 
-  let { username, currentUsername }: Props = $props();
+  let { username, currentUsername, myFramilies }: Props = $props();
 
   let isOwnProfile = $derived(username === currentUsername);
 
@@ -161,7 +162,7 @@
           Add picture
         </button>
       {/if}
-      <Galery {pictures} />
+      <Galery {pictures} {currentUsername} {myFramilies} />
     {:else if view === "framilies"}
       <Framilies {framilies} />
     {:else if view === "settings" && isOwnProfile}

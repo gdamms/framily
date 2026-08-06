@@ -15,6 +15,7 @@ from models import User, Framily, Picture, PictureVisibility, Membership
 from schemas.picture import (
     AddVisibilityRequest,
     RemoveVisibilityRequest,
+    UpdateDescriptionRequest,
     PictureUploadResponse,
     PictureListResponse,
     PictureMutationResponse,
@@ -46,7 +47,8 @@ def get_picture_info(picture: Picture, db: Session) -> dict:
         "uploader_username": picture.uploader.username if picture.uploader else "unknown",
         "uploader_display_name": picture.uploader.display_name if picture.uploader else None,
         "upload_date": picture.upload_date,
-        "metadata": picture.metadata_ or {}
+        "metadata": picture.metadata_ or {},
+        "description": picture.description,
     }
 
 
@@ -312,6 +314,37 @@ def remove_visibility(
         "message": f"Visibility removed from framilies: {', '.join(removed_framilies) if removed_framilies else 'none'}",
         "picture": get_picture_info(picture, db),
         "warning": "Picture has no visibility left" if remaining_visibility == 0 else None
+    }
+
+
+@router.put("/description", response_model=PictureMutationResponse, status_code=status.HTTP_200_OK)
+def update_picture_description(
+    request: UpdateDescriptionRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Set or clear a picture's caption. Uploader only."""
+    picture = db.query(Picture).filter(Picture.id == request.picture_id).first()
+    if not picture:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Picture not found"
+        )
+
+    if picture.uploaded_by != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the uploader can edit the caption"
+        )
+
+    picture.description = request.description.strip() or None
+
+    db.commit()
+    db.refresh(picture)
+
+    return {
+        "message": "Caption updated",
+        "picture": get_picture_info(picture, db)
     }
 
 

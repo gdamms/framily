@@ -52,6 +52,12 @@ class FramilySettings(Base):
     # 0 disables preprocessing entirely. Not exposed via /frame/settings -
     # the frame doesn't need to know this, it only ever sees the result.
     preprocess_level = Column(Integer, default=50, nullable=False)
+    # Whether to burn the picture's caption (see Picture.description) into
+    # the bottom of the image server-side before serving it to the frame
+    # (see /frame/fetch). Not exposed via /frame/settings - the frame
+    # doesn't need to know this. Defaults to enabled; a picture with no
+    # caption set never shows one, regardless of this setting.
+    show_caption = Column(Boolean, default=True, nullable=False)
 
     # Relationships
     framily = relationship("Framily", back_populates="settings")
