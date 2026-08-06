@@ -11,6 +11,7 @@
   import PictureView from "$lib/pages/picture/PictureView.svelte";
   import LoginForm from "$lib/pages/login/LoginForm.svelte";
   import RegisterForm from "$lib/pages/register/RegisterForm.svelte";
+  import LoadingPage from "$lib/ui/LoadingPage.svelte";
   import IconButton from "$lib/ui/IconButton.svelte";
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
   import User from "@lucide/svelte/icons/user";
@@ -64,7 +65,9 @@
     <LoginForm />
   {/if}
 {:else if dashboardPictures === undefined || user === undefined}
-  <div class="page loading">Loading...</div>
+  <div class="page">
+    <LoadingPage />
+  </div>
 {:else}
   <div class="page">
     <div class="content">
@@ -116,12 +119,6 @@
     background: #eee;
     display: flex;
     flex-direction: column;
-  }
-
-  .page.loading {
-    align-items: center;
-    justify-content: center;
-    color: #888;
   }
 
   .bottomBar {

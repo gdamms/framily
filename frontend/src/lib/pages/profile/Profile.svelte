@@ -8,6 +8,7 @@
   import Framilies from "$lib/pages/framilies/Framilies.svelte";
   import Avatar from "$lib/ui/Avatar.svelte";
   import PageLayout from "$lib/ui/PageLayout.svelte";
+  import LoadingPage from "$lib/ui/LoadingPage.svelte";
   import Button from "$lib/ui/Button.svelte";
   import ConfirmPopup from "$lib/popups/ConfirmPopup.svelte";
   import UploadPopup from "$lib/popups/UploadPopup.svelte";
@@ -125,7 +126,7 @@
 </script>
 
 {#if !user}
-  <div class="loading">Loading...</div>
+  <LoadingPage />
 {:else}
   {#snippet header()}
     <div class="profile-header">
@@ -225,11 +226,6 @@
 {/if}
 
 <style>
-  .loading {
-    flex: 1;
-    padding: 1rem;
-  }
-
   .profile-header {
     background: #eee;
     padding: 0 1rem;
@@ -237,6 +233,7 @@
     align-items: center;
     gap: 1rem;
     padding: 1rem;
+    width: 100%;
   }
 
   .profile-name {

@@ -258,8 +258,7 @@
       <div class="setting-label">Image enhancement</div>
       <div class="setting-description">
         Automatically adjusts contrast and color so photos look punchier on the
-        frame's e-ink display. Higher looks more vivid; lower looks closer to
-        the original photo.
+        frame's e-ink display.
       </div>
       {#if isAdmin}
         <div class="slider-row">

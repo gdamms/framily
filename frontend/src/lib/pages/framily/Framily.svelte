@@ -6,6 +6,7 @@
   import FramilySettings from "./FramilySettings.svelte";
   import Avatar from "$lib/ui/Avatar.svelte";
   import PageLayout from "$lib/ui/PageLayout.svelte";
+  import LoadingPage from "$lib/ui/LoadingPage.svelte";
   import { app } from "$lib/app";
   import { overlay } from "$lib/overlay";
   import UploadPopup from "$lib/popups/UploadPopup.svelte";
@@ -83,9 +84,9 @@
 </script>
 
 {#if framily === undefined}
-  <div class="loading">Loading...</div>
+  <LoadingPage />
 {:else if $appState.page.page !== "framily"}
-  <div class="loading">Framily not found</div>
+  <div class="message">Framily not found</div>
 {:else}
   {@const framilyPage = $appState.page}
   {#snippet header()}
@@ -150,7 +151,7 @@
 {/if}
 
 <style>
-  .loading {
+  .message {
     flex: 1;
     padding: 1rem;
   }
@@ -162,6 +163,7 @@
     align-items: center;
     gap: 1rem;
     padding: 1rem;
+    width: 100%;
   }
 
   .framily-names {
