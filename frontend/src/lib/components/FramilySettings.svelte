@@ -22,8 +22,14 @@
     intervalDraft = framily.settings.interval_minutes;
   });
 
+  let preprocessDraft = $state(framily.settings.preprocess_level);
+  $effect(() => {
+    preprocessDraft = framily.settings.preprocess_level;
+  });
+
   let error = $state("");
   let savingInterval = $state(false);
+  let savingPreprocess = $state(false);
 
   let deleteConfirmOpen = $state(false);
   let deleteError = $state("");
@@ -87,6 +93,21 @@
       error = e.message || "Failed to update interval";
     } finally {
       savingInterval = false;
+    }
+  }
+
+  async function savePreprocessLevel() {
+    error = "";
+    const level = Math.round(Number(preprocessDraft));
+    if (level === framily.settings.preprocess_level) return;
+    savingPreprocess = true;
+    try {
+      await api.framily.updateSettings(framily.code, { preprocess_level: level });
+      onChanged();
+    } catch (e: any) {
+      error = e.message || "Failed to update image enhancement";
+    } finally {
+      savingPreprocess = false;
     }
   }
 </script>
@@ -178,6 +199,30 @@
         </label>
       {:else}
         <div class="setting-value">{framily.settings.show_date ? "On" : "Off"}</div>
+      {/if}
+    </div>
+
+    <div class="setting">
+      <div class="setting-label">Image enhancement</div>
+      <div class="setting-description">
+        Automatically adjusts contrast and color so photos look punchier on the frame's e-ink
+        display. Higher looks more vivid; lower looks closer to the original photo.
+      </div>
+      {#if isAdmin}
+        <div class="slider-row">
+          <span class="slider-end">Natural</span>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            bind:value={preprocessDraft}
+            disabled={savingPreprocess}
+            onchange={savePreprocessLevel}
+          />
+          <span class="slider-end">Vivid</span>
+        </div>
+      {:else}
+        <div class="setting-value">{framily.settings.preprocess_level}%</div>
       {/if}
     </div>
   </section>
@@ -342,5 +387,23 @@
     border-color: #4593e7;
     color: white;
     font-weight: bold;
+  }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .slider-row input[type="range"] {
+    flex: 1;
+    cursor: pointer;
+    accent-color: #4593e7;
+  }
+
+  .slider-end {
+    color: #666;
+    font-size: 0.85rem;
+    white-space: nowrap;
   }
 </style>

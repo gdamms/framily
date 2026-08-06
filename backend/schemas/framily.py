@@ -9,6 +9,7 @@ class FramilySettingsInfo(BaseModel):
     interval_minutes: int
     show_uploader_name: bool
     show_date: bool
+    preprocess_level: int
 
 
 class FramilyUpdateSettingsRequest(BaseModel):
@@ -18,6 +19,7 @@ class FramilyUpdateSettingsRequest(BaseModel):
     interval_minutes: Optional[int] = Field(default=None, ge=1, le=1440)
     show_uploader_name: Optional[bool] = None
     show_date: Optional[bool] = None
+    preprocess_level: Optional[int] = Field(default=None, ge=0, le=100)
 
 
 class FramilyConnectRequest(BaseModel):

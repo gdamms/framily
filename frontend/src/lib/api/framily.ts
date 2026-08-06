@@ -59,6 +59,7 @@ export const framilyApi = {
       interval_minutes?: number;
       show_uploader_name?: boolean;
       show_date?: boolean;
+      preprocess_level?: number;
     },
   ) =>
     request<{ message: string }>("/framily/settings", {

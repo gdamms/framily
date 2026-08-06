@@ -35,8 +35,7 @@ class FramilySettings(Base):
     id = Column(Integer, primary_key=True, index=True)
     framily_id = Column(Integer, ForeignKey("framilies.id", ondelete="CASCADE"), unique=True, nullable=False)
     # Degrees to rotate a picture before serving it to the frame ("0", "90", "180", "270").
-    # Defaults to "90" to match the frame's previous hardcoded rotate-to-portrait behavior.
-    orientation = Column(String(3), default="90")
+    orientation = Column(String(3), default="0")
     interval_minutes = Column(Integer, default=5)  # Minutes between frame picture fetches
     # Whether to burn the <display name> credit into the bottom-right of
     # the image server-side before serving it to the frame (see /frame/fetch).
@@ -46,6 +45,13 @@ class FramilySettings(Base):
     # image server-side before serving it to the frame (see /frame/fetch).
     # Not exposed via /frame/settings - the frame doesn't need to know this.
     show_date = Column(Boolean, default=False, nullable=False)
+    # 0-100 strength of the adaptive contrast/saturation/gamma correction
+    # applied server-side before serving a picture to the frame (see
+    # core/image_preprocess.py and /frame/fetch) - a single knob abstracting
+    # away "how" the image is preprocessed for the panel's 6-color gamut.
+    # 0 disables preprocessing entirely. Not exposed via /frame/settings -
+    # the frame doesn't need to know this, it only ever sees the result.
+    preprocess_level = Column(Integer, default=50, nullable=False)
 
     # Relationships
     framily = relationship("Framily", back_populates="settings")

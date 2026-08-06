@@ -36,6 +36,7 @@ export interface FramilySettingsInfo {
   interval_minutes: number;
   show_uploader_name: boolean;
   show_date: boolean;
+  preprocess_level: number;
 }
 
 export interface FramilyInfo {

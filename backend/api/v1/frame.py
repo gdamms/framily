@@ -11,6 +11,7 @@ import string
 from core.database import get_db
 from core.config import settings
 from core.minio import s3_client
+from core.image_preprocess import preprocess_for_eink
 from models import User, Framily, FramilySettings, Membership, PictureVisibility
 from schemas.framily import MessageResponse
 from schemas.frame import (
@@ -201,8 +202,14 @@ def fetch_picture(request: FrameAuthRequest, db: Session = Depends(get_db)):
     # the frame device has no need to know about them.
     needs_credit = bool(framily.settings and framily.settings.show_uploader_name and uploader_name)
     needs_date = bool(framily.settings and framily.settings.show_date and picture.upload_date)
+    # Adaptive contrast/saturation/gamma correction tuned for the panel's
+    # 6-color gamut (see core/image_preprocess.py); like the overlays above,
+    # this is applied here rather than on the frame and isn't exposed via
+    # /frame/settings.
+    preprocess_level = framily.settings.preprocess_level if framily.settings else 0
+    needs_preprocess = bool(preprocess_level)
 
-    if not needs_rotation and not needs_resize and not needs_credit and not needs_date:
+    if not needs_rotation and not needs_resize and not needs_credit and not needs_date and not needs_preprocess:
         return StreamingResponse(
             s3_client.get_object(settings.S3_BUCKET, object_name).stream(32 * 1024),
             media_type=media_type,
@@ -230,6 +237,13 @@ def fetch_picture(request: FrameAuthRequest, db: Session = Depends(get_db)):
         left = (new_w - crop_w) // 2
         top = (new_h - crop_h) // 2
         image = image.crop((left, top, left + crop_w, top + crop_h))
+
+    if needs_preprocess:
+        # Run on the final (already resized/cropped) pixels so the adaptive
+        # statistics reflect exactly what the panel will render, and before
+        # the overlays below so their fixed white/black styling isn't
+        # affected by the contrast/saturation correction.
+        image = preprocess_for_eink(image, preprocess_level)
 
     if needs_credit:
         image = draw_uploader_credit(image, uploader_name)
