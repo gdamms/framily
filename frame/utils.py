@@ -33,6 +33,7 @@ DEFAULT_CONFIG = {
     "message": "",
     "pending_wifi_ssid": "",
     "pending_wifi_password": "",
+    "pending_delete": False,
 }
 
 # Default timeout for subprocess calls (mostly nmcli). Generous enough to
@@ -144,6 +145,7 @@ def load_config() -> dict:
         "message": config.get("message", ""),
         "pending_wifi_ssid": config.get("pending_wifi_ssid", ""),
         "pending_wifi_password": config.get("pending_wifi_password", ""),
+        "pending_delete": config.get("pending_delete", False),
     }
 
 def save_config(config: dict) -> None:

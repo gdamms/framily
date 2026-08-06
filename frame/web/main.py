@@ -69,21 +69,22 @@ def main():
 
     @app.route("/reset", methods=["POST"])
     def reset():
-        # Only forget the framily's id/token so the agent registers a fresh
-        # framily, as if this were the frame's first run. Wi-Fi credentials and
-        # the server URL are left untouched - the user shouldn't have to
-        # re-enter them just because the framily was deleted server-side.
-        logger.info("Framily reset requested (id/token only; Wi-Fi and server URL kept).")
+        # Only record the intent here - the agent service owns every actual
+        # network call to the server (same rule as /setup above), so it picks
+        # this up, deletes the framily server-side, and only then forgets the
+        # id/token locally so it registers a fresh framily, as if this were
+        # the frame's first run. Wi-Fi credentials and the server URL are
+        # left untouched - the user shouldn't have to re-enter them just
+        # because the framily was deleted.
+        logger.info("Framily reset requested; agent will delete it server-side.")
         config = load_config()
-        config["framily_code"] = ""
-        config["frame_token"] = ""
-        config["message"] = ""
+        config["pending_delete"] = True
         save_config(config)
         AGENT_RECHECK_PATH.touch(exist_ok=True)
 
         message = (
-            "Framily reset! If any framily was previously registered, it has been deleted. "
-            "You can now click on \"Setup Framily\" to validate the server URL and register a new framily."
+            "Framily reset requested! If a framily was previously registered, it is now being "
+            "deleted from the server. You can then click on \"Setup Framily\" to register a new one."
         )
         return {"status": "success", "message": message}, 200
 

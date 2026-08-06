@@ -41,6 +41,7 @@ logger = get_logger("agent")
 
 FRAME_CREATE_PATH = "/api/v1/frame/create"
 FRAME_CHECK_PATH = "/api/v1/frame/check"
+FRAME_DELETE_PATH = "/api/v1/frame/delete"
 FRAME_STATUS_PATH = "/api/v1/frame/status"
 FRAME_SETTINGS_PATH = "/api/v1/frame/settings"
 FRAME_FETCH_PATH = "/api/v1/frame/fetch"
@@ -494,6 +495,33 @@ def create_framily(config: dict) -> dict:
     return config
 
 
+def delete_framily(config: dict) -> dict:
+    """Delete the currently-registered framily server-side (cascades to its
+    memberships and picture visibilities), then forget local registration so
+    the frame behaves as if this were its first run. Called from
+    apply_pending_delete() when the web UI's Reset Framily action requests it."""
+    framily_code = config.get("framily_code", "")
+    frame_token = config.get("frame_token", "")
+    if framily_code and frame_token:
+        try:
+            _post(config.get("server_url", ""), FRAME_DELETE_PATH, {
+                "framily_code": framily_code,
+                "frame_token": frame_token,
+            })
+        except FrameApiError as e:
+            if not e.not_found:
+                raise
+            # Already gone server-side - nothing left to clean up.
+
+    config["framily_code"] = ""
+    config["frame_token"] = ""
+    config["message"] = ""
+    config["pending_delete"] = False
+    save_config(config)
+    logger.info("Framily deleted server-side and local registration cleared.")
+    return config
+
+
 def check_framily(config: dict) -> bool:
     response = _post(config.get("server_url", ""), FRAME_CHECK_PATH, {
         "framily_code": config.get("framily_code", ""),
@@ -606,6 +634,20 @@ def apply_pending_wifi(config: dict) -> dict:
     return config
 
 
+def apply_pending_delete(config: dict) -> dict:
+    """Act on a Reset Framily request from the web UI. Retries on the next
+    tick (via the caller's normal poll cadence) if the server can't be
+    reached right now, e.g. while still in hotspot mode."""
+    if not config.get("pending_delete"):
+        return config
+
+    try:
+        return delete_framily(config)
+    except FrameApiError as e:
+        logger.warning(f"Failed to delete framily server-side, will retry: {e}")
+        return config
+
+
 def run_wifi_session(config: dict) -> None:
     display_connecting_wifi()
 
@@ -694,6 +736,7 @@ def main_loop() -> None:
                     next_wifi_retry = time.monotonic() + HOTSPOT_WIFI_RETRY_SECONDS
                 last_mode = mode
                 config = apply_pending_wifi(config)
+                config = apply_pending_delete(config)
                 if time.monotonic() >= next_wifi_retry:
                     next_wifi_retry = time.monotonic() + HOTSPOT_WIFI_RETRY_SECONDS
                     retry_saved_wifi()
@@ -703,6 +746,7 @@ def main_loop() -> None:
             if mode == "wifi":
                 last_mode = mode
                 config = apply_pending_wifi(config)
+                config = apply_pending_delete(config)
                 run_wifi_session(config)
                 last_mode = None  # force a re-render / re-check next tick
                 continue

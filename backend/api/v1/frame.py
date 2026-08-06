@@ -12,6 +12,7 @@ from core.database import get_db
 from core.config import settings
 from core.minio import s3_client
 from core.image_preprocess import preprocess_for_eink
+from core.avatars import delete_avatar, FRAMILY_AVATAR_PREFIX
 from models import User, Framily, FramilySettings, Membership, PictureVisibility
 from schemas.framily import MessageResponse
 from schemas.frame import (
@@ -127,6 +128,22 @@ def check_framily(request: FrameAuthRequest, db: Session = Depends(get_db)):
     ).all()
 
     return FrameCheckResponse(initiated=len(members) > 0)
+
+
+@router.post("/delete", response_model=MessageResponse)
+def delete_framily(request: FrameAuthRequest, db: Session = Depends(get_db)):
+    """Delete a framily. Used by the frame device (e.g. its "Reset Framily"
+    action), authenticated via frame token instead of a user JWT. Cascade
+    deletes remove all memberships and picture visibilities along with it;
+    uploaded pictures themselves are left intact."""
+    framily = get_framily_by_frame_auth(db, request.framily_code, request.frame_token)
+
+    delete_avatar(FRAMILY_AVATAR_PREFIX, framily.code)
+
+    db.delete(framily)
+    db.commit()
+
+    return MessageResponse(message="Framily deleted.")
 
 
 @router.post("/status", response_model=MessageResponse)

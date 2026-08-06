@@ -1,4 +1,15 @@
-- [ ] enhance the ui (probably done by myself as I have a better idea of what I want)
+- [ ] make the frame in deep sleep when not fetching images (to reduce power consumption) make it wake up when the next fetch is due, and go back to deep sleep after fetching the image and displaying it. make this feature optional in the frame settings (default to enabled)
+- [ ] add descriptions to pictures (like a caption, with limited length) and display them on the frame (activable in the frame settings, default to enabled) DONT DISPLAY NO CAPTION IF NO CAPTION IS SET - might lead to a adaptation of the current Uploader name and date overlay that are displayed
+- [ ] enhance picture overview: (bug: when closing gets back to the dashboard, use popup instead) add caption section
+- [ ] when overviewing a picture, allow the user to draw a "focus area" on the picture: a rectangle (clamp to picture size) will be used to crop the picuture to the focus area (helps to manage horizontal pictures on vertical frames - and visversa). when croping, picture should be ALWAYS contain the focus area, if needed, add black bars to the picture. do not restric the size to the focus area, the crop should cover as much as possible of the picture while keeping the focus area in it
+- [ ] add a dark/light mode switch (default to light mode)
+- [ ] move the user settings to a burger on the top right: profile, settings, theme, logout (remove the settings tab from the user profile page)
+- [ ] in the settings page: change display name (even if can be change clicking on the name in the profile page), change password, change password, change theme (even if can be change clicking on the theme switch in the top right dropdown), delete account (danger zone)
+- [ ] public invite link to join a framily, an identified user that use this link will be added to the framily (the link should be unique to the framily, revokable and if remake, the old link should not work anymore)
+- [ ] disablable user registration (no idea what would be the good way to do this... should frames allow to create?)
+- [ ] add more data to the frame status endpoint (wifi strength, software version, ...)
+- [ ] add a way to manage framily random picture picking (rolling, random, queue, most recent more often, ...)
+- [x] enhance the ui (probably done by myself as I have a better idea of what I want)
 - [x] change role integer to enum string in database and code
 - [x] when the frame fetches a picture, it should be sent read to be displayed - the frame does not manage image rotation, croping, or resizin, it should only get the image and display it as is (with some security checks, like checking the image size and type) with it, it receive the next delay before fetching the next image
 - [x] add settings to the framily:
