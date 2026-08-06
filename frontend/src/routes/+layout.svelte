@@ -25,7 +25,7 @@
   }
 
   main {
-    height: 100vh;
+    height: 100dvh;
     background: #bbb;
   }
 </style>
