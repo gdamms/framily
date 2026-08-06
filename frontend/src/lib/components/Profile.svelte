@@ -222,6 +222,14 @@
 {/if}
 
 <style>
+  .profile {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
   .profile-header {
     background: #eee;
     padding: 0 1rem;
@@ -283,6 +291,9 @@
   }
 
   .profile-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 1rem;

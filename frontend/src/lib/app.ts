@@ -3,11 +3,7 @@ import type { PictureInfo } from "./api/types";
 
 export type DashboardPage = {
   page: "dashboard";
-}
-
-export type FramiliesPage = {
-  // The framilies of the user.
-  page: "framilies";
+  section: "galery" | "framilies";
 }
 
 export type ProfilePage = {
@@ -27,7 +23,7 @@ export type PicturePage = {
   picture: PictureInfo;
 }
 
-export type Page = DashboardPage | FramiliesPage | ProfilePage | FramilyPage | PicturePage;
+export type Page = DashboardPage | ProfilePage | FramilyPage | PicturePage;
 
 interface AppState {
   page: Page;
@@ -39,7 +35,7 @@ interface App {
 }
 
 const STORAGE_KEY = "framily:page";
-const DEFAULT_PAGE: Page = { page: "dashboard" };
+const DEFAULT_PAGE: Page = { page: "dashboard", section: "galery" };
 
 function loadStoredPage(): Page {
   if (typeof localStorage === "undefined") {

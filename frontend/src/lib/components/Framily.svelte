@@ -142,7 +142,7 @@
           onChanged={loadFramily}
           onDeleted={() => {
             onFramilyDeleted?.();
-            app.navigate({ page: "framilies" });
+            app.navigate({ page: "dashboard", section: "framilies" });
           }}
         />
       {/if}
@@ -153,9 +153,10 @@
 <style>
   .framily-page {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    overflow: hidden;
   }
 
   .framily-header {
@@ -226,6 +227,8 @@
 
   .framily-content {
     flex: 1;
+    min-height: 0;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 1rem;

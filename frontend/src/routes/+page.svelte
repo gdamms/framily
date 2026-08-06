@@ -12,7 +12,6 @@
   import PictureView from "$lib/components/PictureView.svelte";
   import UploadPopup from "$lib/components/UploadPopup.svelte";
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
-  import LayoutList from "@lucide/svelte/icons/layout-list";
   import ImagePlus from "@lucide/svelte/icons/image-plus";
   import User from "@lucide/svelte/icons/user";
   import Menu from "@lucide/svelte/icons/menu";
@@ -68,19 +67,43 @@
     </div>
     <div class="content">
       {#if $appState.page.page === "dashboard"}
-        <button
-          class="add-picture"
-          onclick={() => openUploadPopup(framilies.map((f) => f.code))}
-        >
-          <ImagePlus size={16} />
-          Add picture
-        </button>
-        <Galery pictures={dashboardPictures} />
-      {:else if $appState.page.page === "framilies"}
-        <Framilies
-          {framilies}
-          onAddFramily={() => (connectFramilyPopupOpen = true)}
-        />
+        <div class="dashboard-page">
+          <div class="dashboard-nav">
+            <button
+              class="button"
+              class:selected={$appState.page.section === "galery"}
+              onclick={() =>
+                app.navigate({ page: "dashboard", section: "galery" })}
+            >
+              Galery
+            </button>
+            <button
+              class="button"
+              class:selected={$appState.page.section === "framilies"}
+              onclick={() =>
+                app.navigate({ page: "dashboard", section: "framilies" })}
+            >
+              My framilies
+            </button>
+          </div>
+          <div class="dashboard-content">
+            {#if $appState.page.section === "galery"}
+              <button
+                class="add-picture"
+                onclick={() => openUploadPopup(framilies.map((f) => f.code))}
+              >
+                <ImagePlus size={16} />
+                Add picture
+              </button>
+              <Galery pictures={dashboardPictures} />
+            {:else if $appState.page.section === "framilies"}
+              <Framilies
+                {framilies}
+                onAddFramily={() => (connectFramilyPopupOpen = true)}
+              />
+            {/if}
+          </div>
+        </div>
       {:else if $appState.page.page === "profile"}
         <Profile
           username={$appState.page.username}
@@ -99,22 +122,18 @@
           picture={$appState.page.picture}
           currentUsername={user.username}
           myFramilies={framilies}
-          onClose={() => app.navigate({ page: "dashboard" })}
+          onClose={() =>
+            app.navigate({ page: "dashboard", section: "galery" })}
         />
       {/if}
     </div>
     <div class="bottomBar">
       <button
         class="button"
-        onclick={() => app.navigate({ page: "dashboard" })}
+        onclick={() =>
+          app.navigate({ page: "dashboard", section: "galery" })}
       >
         <LayoutDashboard />
-      </button>
-      <button
-        class="button"
-        onclick={() => app.navigate({ page: "framilies" })}
-      >
-        <LayoutList />
       </button>
       <button
         class="button"
@@ -180,6 +199,40 @@
 
   .content {
     flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dashboard-page {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .dashboard-nav {
+    display: flex;
+    flex-direction: row;
+    padding: 0.5rem 0;
+    background: #eee;
+  }
+
+  .dashboard-nav .button {
+    padding: 0.5rem 1rem;
+    flex: 1;
+  }
+
+  .dashboard-nav .button.selected {
+    border-bottom: 2px solid #333;
+    font-weight: bold;
+  }
+
+  .dashboard-content {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
