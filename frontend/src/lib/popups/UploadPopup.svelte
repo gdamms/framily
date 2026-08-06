@@ -54,6 +54,7 @@
       status.show(e.message || "Failed to upload", "error");
     } finally {
       fileInput.value = "";
+      fileInput.dispatchEvent(new Event("change"));
     }
   }
 </script>

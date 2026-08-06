@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
+
   interface Props {
     fileInput?: HTMLInputElement;
   }
@@ -8,15 +10,28 @@
   const INITIAL_TEXT = "Drag and drop your file here or click to select";
 
   let text = $state(INITIAL_TEXT);
+  let previewUrl: string | null = $state(null);
 
-  async function handleSelect() {
+  function handleSelect() {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      previewUrl = null;
+    }
+
     if (fileInput && fileInput.files && fileInput.files.length > 0) {
       const file = fileInput.files[0];
       text = `${file.name}`;
+      previewUrl = URL.createObjectURL(file);
     } else {
       text = INITIAL_TEXT;
     }
   }
+
+  onDestroy(() => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+  });
 </script>
 
 <input
@@ -29,9 +44,13 @@
 <label for="file">
   <div class="box">
     <div class="inner">
-      <div class="text">
-        {text}
-      </div>
+      {#if previewUrl}
+        <img class="preview" src={previewUrl} alt="Selected file preview" />
+      {:else}
+        <div class="text">
+          {text}
+        </div>
+      {/if}
     </div>
   </div>
 </label>
@@ -76,5 +95,12 @@
     font-size: 16px;
     color: #333;
     margin-bottom: 10px;
+  }
+
+  .preview {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 5px;
+    object-fit: contain;
   }
 </style>
