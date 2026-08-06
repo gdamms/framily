@@ -9,17 +9,21 @@
   import Framily from "$lib/pages/framily/Framily.svelte";
   import Profile from "$lib/pages/profile/Profile.svelte";
   import PictureView from "$lib/pages/picture/PictureView.svelte";
+  import LoginForm from "$lib/pages/login/LoginForm.svelte";
+  import RegisterForm from "$lib/pages/register/RegisterForm.svelte";
   import IconButton from "$lib/ui/IconButton.svelte";
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
   import User from "@lucide/svelte/icons/user";
-  import { onMount } from "svelte";
-  import { app } from "$lib/app";
+  import { app, authView } from "$lib/app";
+  import { authStore } from "$lib/stores/auth";
 
   const appState = app.state;
+  const auth = authStore;
 
   let user: UserInfo | undefined = $state();
   let framilies: UserFramilyInfo[] = $derived(user?.framilies ?? []);
   let dashboardPictures: PictureInfo[] | undefined = $state();
+  let hasLoaded = $state(false);
 
   async function refreshUser() {
     if (!user) return;
@@ -27,17 +31,39 @@
     user = response.user;
   }
 
-  onMount(async () => {
+  async function loadApp() {
     const me = await api.auth.me();
     const response = await api.user.getInfo(me.username);
     user = response.user;
 
     const picturesResponse = await api.pictures.listAll();
     dashboardPictures = picturesResponse.pictures;
+  }
+
+  $effect(() => {
+    if ($auth.isAuthenticated) {
+      if (!hasLoaded) {
+        hasLoaded = true;
+        // A stale/invalid cookie fails here with a 401; the api client already
+        // clears the auth store in that case, which flips us back to the
+        // login screen - just swallow the rejection so it doesn't surface.
+        loadApp().catch(() => {});
+      }
+    } else {
+      hasLoaded = false;
+      user = undefined;
+      dashboardPictures = undefined;
+    }
   });
 </script>
 
-{#if dashboardPictures === undefined || user === undefined}
+{#if !$auth.isAuthenticated}
+  {#if $authView === "register"}
+    <RegisterForm />
+  {:else}
+    <LoginForm />
+  {/if}
+{:else if dashboardPictures === undefined || user === undefined}
   <div class="page">Loading...</div>
 {:else}
   <div class="page">

@@ -1,19 +1,21 @@
 <script lang="ts">
   import { tick } from "svelte";
-  import { goto } from "$app/navigation";
   import { api, type UserInfo } from "$lib/api";
   import { authStore } from "$lib/stores/auth";
+  import { authView } from "$lib/app";
   import { overlay } from "$lib/overlay";
   import Galery from "$lib/components/Galery.svelte";
   import Framilies from "$lib/pages/framilies/Framilies.svelte";
   import Avatar from "$lib/ui/Avatar.svelte";
   import TabBar from "$lib/ui/TabBar.svelte";
+  import Button from "$lib/ui/Button.svelte";
   import ConfirmPopup from "$lib/popups/ConfirmPopup.svelte";
   import UploadPopup from "$lib/popups/UploadPopup.svelte";
   import PasswordField from "$lib/ui/form/PasswordField.svelte";
   import { formatDate } from "$lib/date";
   import Pencil from "@lucide/svelte/icons/pencil";
   import ImagePlus from "@lucide/svelte/icons/image-plus";
+  import LogOut from "@lucide/svelte/icons/log-out";
 
   interface Props {
     username: string;
@@ -75,6 +77,11 @@
   let deleteError = $state("");
   let deletingAccount = $state(false);
 
+  function logout() {
+    authStore.clearToken();
+    authView.set("login");
+  }
+
   function startDeleteAccount() {
     deleteError = "";
     if (!deletePassword) {
@@ -93,7 +100,7 @@
     try {
       await api.user.deleteAccount(deletePassword);
       authStore.clearToken();
-      await goto("/login");
+      authView.set("login");
     } catch (e: any) {
       deleteError = e.message || "Failed to delete account";
     } finally {
@@ -177,6 +184,13 @@
                 </div>
               </div>
             {/if}
+            <div class="setting">
+              <div class="setting-label">Logout</div>
+              <Button variant="secondary" class="logout-button" onclick={logout}>
+                <LogOut size={16} />
+                Logout
+              </Button>
+            </div>
           </section>
 
           <section class="section danger-zone">
@@ -345,6 +359,10 @@
     border-radius: 6px;
     padding: 0.5rem 1rem;
     cursor: pointer;
+  }
+
+  :global(.logout-button) {
+    align-self: flex-start;
   }
 
   .delete-button:disabled {

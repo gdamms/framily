@@ -25,6 +25,8 @@ export type PicturePage = {
 
 export type Page = DashboardPage | ProfilePage | FramilyPage | PicturePage;
 
+export type AuthView = "login" | "register";
+
 interface AppState {
   page: Page;
 }
@@ -33,6 +35,10 @@ interface App {
   state: Writable<AppState>;
   navigate: (page: Page) => void;
 }
+
+// Which unauthenticated screen to show. Not persisted: on every load we want
+// to start from the login form, and it's reset once the user is authenticated.
+export const authView: Writable<AuthView> = writable("login");
 
 const STORAGE_KEY = "framily:page";
 const DEFAULT_PAGE: Page = { page: "dashboard", section: "galery" };

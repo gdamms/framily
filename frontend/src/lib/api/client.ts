@@ -1,4 +1,3 @@
-import { goto } from "$app/navigation";
 import { authStore } from "$lib/stores/auth";
 
 const API_BASE_URL =
@@ -17,8 +16,6 @@ export class ApiError extends Error {
   }
 }
 
-let isRedirectingToLogin = false;
-
 function toHeadersRecord(headers?: HeadersInit): Record<string, string> {
   if (!headers) {
     return {};
@@ -35,18 +32,9 @@ function toHeadersRecord(headers?: HeadersInit): Record<string, string> {
   return { ...headers };
 }
 
-function redirectToLoginOnUnauthorized(status: number): void {
-  if (
-    status === 401
-    && typeof window !== "undefined"
-    && window.location.pathname !== "/login"
-    && !isRedirectingToLogin
-  ) {
+function clearAuthOnUnauthorized(status: number): void {
+  if (status === 401) {
     authStore.clearToken();
-    isRedirectingToLogin = true;
-    void goto("/login").finally(() => {
-      isRedirectingToLogin = false;
-    });
   }
 }
 
@@ -91,7 +79,7 @@ async function requestInternal<T>(
   });
 
   if (!response.ok) {
-    redirectToLoginOnUnauthorized(response.status);
+    clearAuthOnUnauthorized(response.status);
     const message = await buildErrorMessage(response);
     throw new ApiError(
       response.status,

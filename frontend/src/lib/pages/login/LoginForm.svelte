@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
   import Form from "$lib/ui/form/Form.svelte";
   import UsernameField from "$lib/ui/form/UsernameField.svelte";
   import PasswordField from "$lib/ui/form/PasswordField.svelte";
   import Button from "$lib/ui/Button.svelte";
   import { api } from "$lib/api/index";
   import { authStore } from "$lib/stores/auth";
+  import { authView } from "$lib/app";
 
   let username: string = "";
   let password: string = "";
@@ -27,7 +27,6 @@
     try {
       const response = await api.auth.login(username, password, rememberMe);
       await authStore.setToken(response.token, rememberMe);
-      await goto("/");
     } catch (error: any) {
       errorMessage = error.message || "Login failed";
     } finally {
@@ -44,7 +43,12 @@
     Stay logged in
   </label>
   <Button type="submit" disabled={isLoading}>{isLoading ? "Logging in..." : "Login"}</Button>
-  <p class="register-link">Don't have an account? <a href="/register">Register</a></p>
+  <p class="register-link">
+    Don't have an account?
+    <button type="button" class="link-button" onclick={() => authView.set("register")}>
+      Register
+    </button>
+  </p>
 </Form>
 
 <style>
@@ -60,5 +64,15 @@
     text-align: center;
     margin-top: 1rem;
     font-size: 0.9rem;
+  }
+
+  .link-button {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: #4593e7;
+    text-decoration: underline;
+    cursor: pointer;
   }
 </style>

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
   import Form from "$lib/ui/form/Form.svelte";
   import UsernameField from "$lib/ui/form/UsernameField.svelte";
   import EmailField from "$lib/ui/form/EmailField.svelte";
@@ -8,6 +7,7 @@
   import Button from "$lib/ui/Button.svelte";
   import { api } from "$lib/api/index";
   import { authStore } from "$lib/stores/auth";
+  import { authView } from "$lib/app";
 
   let username: string = "";
   let email: string = "";
@@ -50,7 +50,6 @@
     try {
       const response = await api.auth.register(username, email, password);
       await authStore.setToken(response.token);
-      await goto("/");
     } catch (error: any) {
       errorMessage = error.message || "Registration failed";
     } finally {
@@ -65,7 +64,12 @@
   <PasswordField bind:value={password} />
   <ConfirmPasswordField bind:value={confirmPassword} />
   <Button type="submit" disabled={isLoading}>{isLoading ? "Registering..." : "Register"}</Button>
-  <p class="login-link">Already have an account? <a href="/login">Login</a></p>
+  <p class="login-link">
+    Already have an account?
+    <button type="button" class="link-button" onclick={() => authView.set("login")}>
+      Login
+    </button>
+  </p>
 </Form>
 
 <style>
@@ -73,5 +77,15 @@
     text-align: center;
     margin-top: 1rem;
     font-size: 0.9rem;
+  }
+
+  .link-button {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: #4593e7;
+    text-decoration: underline;
+    cursor: pointer;
   }
 </style>
