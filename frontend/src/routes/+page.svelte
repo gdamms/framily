@@ -59,14 +59,11 @@
       framilyCodes={uploadDefaultCodes}
     />
     <ConnectFramilyPopup bind:isOpen={connectFramilyPopupOpen} />
-    <div class="topBar">
-      <div class="title">Framily</div>
-      <button class="button">
-        <Menu />
-      </button>
-    </div>
     <div class="content">
       {#if $appState.page.page === "dashboard"}
+        <div class="dashboard-header">
+          Framily
+        </div>
         <div class="dashboard-page">
           <div class="dashboard-nav">
             <button
@@ -122,16 +119,14 @@
           picture={$appState.page.picture}
           currentUsername={user.username}
           myFramilies={framilies}
-          onClose={() =>
-            app.navigate({ page: "dashboard", section: "galery" })}
+          onClose={() => app.navigate({ page: "dashboard", section: "galery" })}
         />
       {/if}
     </div>
     <div class="bottomBar">
       <button
         class="button"
-        onclick={() =>
-          app.navigate({ page: "dashboard", section: "galery" })}
+        onclick={() => app.navigate({ page: "dashboard", section: "galery" })}
       >
         <LayoutDashboard />
       </button>
@@ -162,6 +157,13 @@
     flex-direction: column;
   }
 
+  .dashboard-header {
+    padding: 0.5rem;
+    font-weight: bold;
+    font-size: 1.5rem;
+    text-align: center;
+  }
+
   .button {
     background: none;
     border: none;
@@ -170,16 +172,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-  }
-
-  .topBar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem;
-    width: 100%;
-    box-sizing: border-box;
-    background: #eee;
   }
 
   .bottomBar {
@@ -191,10 +183,6 @@
     padding: 0.5rem;
     border-top: 1px solid #ccc;
     background: #eee;
-  }
-
-  .hidden {
-    display: none;
   }
 
   .content {
