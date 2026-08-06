@@ -27,12 +27,14 @@ from utils import (
     get_active_connection,
     get_hotspot,
     get_ip_address,
+    get_wifi,
     load_config,
     make_qr,
     save_config,
     save_message,
     set_wifi,
     start_hotspot,
+    start_wifi,
 )
 
 logger = get_logger("agent")
@@ -56,6 +58,12 @@ MAX_CONSECUTIVE_FAILURES = 4
 # How often we re-check network state / pending config while not in a
 # steady fetch loop (hotspot mode, waiting for framily members, transitions).
 UNSTEADY_POLL_SECONDS = 5
+
+# While parked in hotspot mode waiting for credentials, how often to retry
+# the already-saved Wi-Fi profile (if any). Handles a transient outage (e.g.
+# router reboot) recovering on its own without the user having to
+# re-provision through the setup UI.
+HOTSPOT_WIFI_RETRY_SECONDS = 5 * 60
 
 # Set by the recheck watcher whenever config.json or agent.recheck changes,
 # so the agent can react to a Wi-Fi credentials submission or a NetworkManager
@@ -652,8 +660,26 @@ def determine_mode() -> str | None:
     return None
 
 
+def retry_saved_wifi() -> None:
+    """Called periodically while parked in hotspot mode. If the Wi-Fi profile
+    already has credentials saved from a previous setup, try bringing it up -
+    the outage that pushed us into hotspot mode might have been transient
+    (e.g. the router rebooting) and Wi-Fi could be back even though nobody
+    submitted new credentials. Falls straight back to hotspot if it doesn't
+    pan out, so the setup UI never goes dark."""
+    ssid, _ = get_wifi()
+    if not ssid:
+        return
+    logger.info(f"Hotspot mode: retrying saved Wi-Fi network '{ssid}'.")
+    start_wifi()
+    if determine_mode() != "wifi":
+        logger.info("Retry failed, staying in hotspot mode.")
+        start_hotspot()
+
+
 def main_loop() -> None:
     last_mode = None
+    next_wifi_retry = 0.0
     while True:
         try:
             config = load_config()
@@ -665,8 +691,12 @@ def main_loop() -> None:
             if mode == "hotspot":
                 if last_mode != "hotspot":
                     display_hotspot()
+                    next_wifi_retry = time.monotonic() + HOTSPOT_WIFI_RETRY_SECONDS
                 last_mode = mode
                 config = apply_pending_wifi(config)
+                if time.monotonic() >= next_wifi_retry:
+                    next_wifi_retry = time.monotonic() + HOTSPOT_WIFI_RETRY_SECONDS
+                    retry_saved_wifi()
                 wait_for_recheck(UNSTEADY_POLL_SECONDS)
                 continue
 
