@@ -2,9 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from core.security import verify_password
+from core.avatars import delete_avatar, USER_AVATAR_PREFIX
 from api.v1.auth import get_current_user
 from models import User, Framily, Picture, Membership, PictureVisibility
-from schemas.user import ProfileUpdate, UserInfo, UserInfoResponse, UserFramilyInfo
+from schemas.user import ProfileUpdate, UserInfo, UserInfoResponse, UserFramilyInfo, DeleteAccountRequest
+from schemas.framily import MessageResponse
 
 router = APIRouter(
     prefix="/user",
@@ -131,3 +134,50 @@ def update_profile(
     db.refresh(current_user)
 
     return UserInfoResponse(user=build_user_info(current_user, current_user, db))
+
+
+@router.post("/delete", response_model=MessageResponse)
+def delete_account(
+    request: DeleteAccountRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Permanently delete the current user's account. Requires re-entering
+    the password. Blocked if the user is the sole admin of any framily -
+    they must promote another admin or delete the framily first, same as
+    leaving a framily."""
+    if not verify_password(request.password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password"
+        )
+
+    admin_memberships = db.query(Membership).filter(
+        Membership.user_id == current_user.id,
+        Membership.role == 2
+    ).all()
+
+    sole_admin_of = []
+    for membership in admin_memberships:
+        admin_count = db.query(Membership).filter(
+            Membership.framily_id == membership.framily_id,
+            Membership.role == 2
+        ).count()
+        if admin_count == 1:
+            sole_admin_of.append(membership.framily.name or membership.framily.code)
+
+    if sole_admin_of:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "You're the last admin of: " + ", ".join(sole_admin_of)
+                + ". Promote another member first, or delete those framilies if you want to disband them."
+            )
+        )
+
+    delete_avatar(USER_AVATAR_PREFIX, current_user.username)
+
+    db.delete(current_user)
+    db.commit()
+
+    return MessageResponse(message="Account deleted")

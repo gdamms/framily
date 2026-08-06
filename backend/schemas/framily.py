@@ -8,6 +8,7 @@ class FramilySettingsInfo(BaseModel):
     orientation: Orientation
     interval_minutes: int
     show_uploader_name: bool
+    show_date: bool
 
 
 class FramilyUpdateSettingsRequest(BaseModel):
@@ -16,6 +17,7 @@ class FramilyUpdateSettingsRequest(BaseModel):
     orientation: Optional[Orientation] = None
     interval_minutes: Optional[int] = Field(default=None, ge=1, le=1440)
     show_uploader_name: Optional[bool] = None
+    show_date: Optional[bool] = None
 
 
 class FramilyConnectRequest(BaseModel):
@@ -66,6 +68,7 @@ class FramilyInfoResponse(BaseModel):
     settings: FramilySettingsInfo
     resolution_width: Optional[int] = None
     resolution_height: Optional[int] = None
+    ip_address: Optional[str] = None
 
 
 class FramilyDeleteRequest(BaseModel):

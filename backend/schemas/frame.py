@@ -25,6 +25,7 @@ class FrameCheckResponse(BaseModel):
 class FrameStatusRequest(FrameAuthRequest):
     resolution_width: Optional[int] = None
     resolution_height: Optional[int] = None
+    ip_address: Optional[str] = Field(default=None, max_length=45)
 
 
 class FrameSettingsResponse(BaseModel):

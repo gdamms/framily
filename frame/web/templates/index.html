@@ -145,9 +145,10 @@
         </form>
         <div class="danger-zone">
             <h2>Danger Zone</h2>
-            <p>Resetting the configuration will erase all saved settings.</p>
-            <form action="/reset" method="post">
-                <button type="submit">Reset Configuration</button>
+            <p>Resetting the frame will forget its framily and create a new one. This action cannot be undone.</p>
+            <div id="reset-status" class="message" hidden></div>
+            <form id="reset-form" action="/reset" method="post">
+                <button id="reset-submit" type="submit">Reset Framily</button>
             </form>
         </div>
         <p><a href="/logs" target="_blank">View debug log</a></p>
@@ -200,6 +201,36 @@
                 showStatus(`Could not reach the frame: ${err}`, false);
                 setupSubmit.disabled = false;
                 setupSubmit.textContent = 'Setup Framily';
+            }
+        });
+
+        const resetForm = document.getElementById('reset-form');
+        const resetStatus = document.getElementById('reset-status');
+        const resetSubmit = document.getElementById('reset-submit');
+
+        function showResetStatus(text, success) {
+            initialMessage?.setAttribute('hidden', '');
+
+            resetStatus.textContent = text;
+            resetStatus.classList.remove('message-success', 'message-error');
+            resetStatus.classList.add(success ? 'message-success' : 'message-error');
+            resetStatus.hidden = false;
+        }
+
+        resetForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            resetSubmit.disabled = true;
+            resetSubmit.textContent = 'Resetting...';
+
+            try {
+                const response = await fetch(resetForm.action, { method: 'POST' });
+                const data = await response.json();
+                showResetStatus(data.message || 'Framily reset.', response.ok);
+            } catch (err) {
+                showResetStatus(`Could not reach the frame: ${err}`, false);
+            } finally {
+                resetSubmit.disabled = false;
+                resetSubmit.textContent = 'Reset Framily';
             }
         });
     </script>

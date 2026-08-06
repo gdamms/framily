@@ -13,9 +13,10 @@
     code: string;
     currentUsername: string;
     onAddPicture?: (framilyCode: string) => void;
+    onFramilyDeleted?: () => void;
   }
 
-  let { code, currentUsername, onAddPicture }: Props = $props();
+  let { code, currentUsername, onAddPicture, onFramilyDeleted }: Props = $props();
 
   let appState = app.state;
 
@@ -135,7 +136,15 @@
           onChanged={loadFramily}
         />
       {:else if $appState.page.section === "settings"}
-        <FramilySettings {framily} {currentUsername} onChanged={loadFramily} />
+        <FramilySettings
+          {framily}
+          {currentUsername}
+          onChanged={loadFramily}
+          onDeleted={() => {
+            onFramilyDeleted?.();
+            app.navigate({ page: "framilies" });
+          }}
+        />
       {/if}
     </div>
   </div>

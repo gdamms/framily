@@ -22,6 +22,7 @@ from utils import (
     clear_message,
     get_active_connection,
     get_hotspot,
+    get_ip_address,
     load_config,
     make_qr,
     save_config,
@@ -59,9 +60,14 @@ recheck_event = threading.Event()
 
 
 class FrameApiError(Exception):
-    def __init__(self, message: str, transient: bool = True):
+    def __init__(self, message: str, transient: bool = True, not_found: bool = False):
         super().__init__(message)
         self.transient = transient
+        # True when the server responded 404, i.e. the framily_code/frame_token
+        # pair is no longer valid (most likely the framily was deleted). Callers
+        # use this to point the user at the web UI's reset button instead of a
+        # generic connectivity error.
+        self.not_found = not_found
 
 
 def acquire_lock():
@@ -192,9 +198,27 @@ def _post(server_url: str, path: str, payload: dict, timeout: float = 10):
 
     if not response.ok:
         transient = response.status_code >= 500
-        raise FrameApiError(f"Request failed ({response.status_code}): {response.text}", transient=transient)
+        not_found = response.status_code == 404
+        raise FrameApiError(
+            f"Request failed ({response.status_code}): {response.text}",
+            transient=transient,
+            not_found=not_found,
+        )
 
     return response
+
+
+def _terminal_failure_message(default: str, e: FrameApiError) -> str:
+    """Message to persist when a session gives up for good. A 404 means the
+    framily_code/frame_token pair the frame is holding is no longer valid on
+    the server (most likely the framily was deleted) - point the user at the
+    web UI's reset button instead of a generic error."""
+    if e.not_found:
+        return (
+            "This framily no longer exists on the server - it may have been "
+            "deleted. Use the Reset Framily button below to register a new one."
+        )
+    return default
 
 
 def retry_transient(func, *args, max_attempts=MAX_CONSECUTIVE_FAILURES, **kwargs):
@@ -254,6 +278,7 @@ def report_status(config: dict) -> None:
         "frame_token": config.get("frame_token", ""),
         "resolution_width": epd_info.get("width"),
         "resolution_height": epd_info.get("height"),
+        "ip_address": get_ip_address() or None,
     }
     try:
         _post(config.get("server_url", ""), FRAME_STATUS_PATH, payload)
@@ -293,7 +318,7 @@ def fetch_image(config: dict) -> None:
             "frame_token": config.get("frame_token", ""),
         })
     except FrameApiError as e:
-        raise FrameApiError(f"Error fetching picture: {e}", transient=e.transient) from e
+        raise FrameApiError(f"Error fetching picture: {e}", transient=e.transient, not_found=e.not_found) from e
 
     if response.status_code == 204:
         logger.info("No pictures available for this framily.")
@@ -318,22 +343,16 @@ def run_fetch_loop(config: dict) -> None:
             consecutive_failures += 1
             logger.warning(f"Fetch failed ({consecutive_failures}/{MAX_CONSECUTIVE_FAILURES}): {e}")
             if not e.transient or consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
-                save_message(f"Failed to fetch picture: {e}")
+                save_message(_terminal_failure_message(f"Failed to fetch picture: {e}", e))
                 return
 
+        report_status(config)
         interval_minutes = fetch_settings(config)
         wait_for_recheck(interval_minutes * 60)
         config = load_config()
 
 
 def apply_pending_wifi(config: dict) -> dict:
-    if config.get("pending_wifi_reset"):
-        logger.info("Clearing stored Wi-Fi credentials (reset requested).")
-        config["pending_wifi_reset"] = False
-        save_config(config)
-        set_wifi("", "", start=False)
-        return config
-
     ssid = config.get("pending_wifi_ssid", "")
     password = config.get("pending_wifi_password", "")
     if not ssid:
@@ -374,7 +393,7 @@ def run_wifi_session(config: dict) -> None:
             consecutive_check_failures += 1
             logger.warning(f"check_framily failed ({consecutive_check_failures}/{MAX_CONSECUTIVE_FAILURES}): {e}")
             if not e.transient or consecutive_check_failures >= MAX_CONSECUTIVE_FAILURES:
-                save_message(f"Framily does not exist or token is invalid: {e}")
+                save_message(_terminal_failure_message(f"Framily does not exist or token is invalid: {e}", e))
                 start_hotspot()
                 return
             initiated = False

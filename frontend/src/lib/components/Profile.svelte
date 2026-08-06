@@ -1,9 +1,14 @@
 <script lang="ts">
   import { tick } from "svelte";
+  import { goto } from "$app/navigation";
   import { api, type UserInfo } from "$lib/api";
+  import { authStore } from "$lib/stores/auth";
   import Galery from "./Galery.svelte";
   import Framilies from "./Framilies.svelte";
   import Avatar from "./Avatar.svelte";
+  import ConfirmPopup from "./ConfirmPopup.svelte";
+  import PasswordField from "./PasswordField.svelte";
+  import { formatDate } from "$lib/date";
   import Pencil from "@lucide/svelte/icons/pencil";
   import ImagePlus from "@lucide/svelte/icons/image-plus";
 
@@ -49,6 +54,35 @@
       (event.target as HTMLInputElement).blur();
     } else if (event.key === "Escape") {
       editingName = false;
+    }
+  }
+
+  let deletePassword = $state("");
+  let deleteError = $state("");
+  let deleteConfirmOpen = $state(false);
+  let deletingAccount = $state(false);
+
+  function startDeleteAccount() {
+    deleteError = "";
+    if (!deletePassword) {
+      deleteError = "Enter your password to confirm.";
+      return;
+    }
+    deleteConfirmOpen = true;
+  }
+
+  async function deleteAccount() {
+    deleteError = "";
+    deletingAccount = true;
+    try {
+      await api.user.deleteAccount(deletePassword);
+      authStore.clearToken();
+      await goto("/login");
+    } catch (e: any) {
+      deleteError = e.message || "Failed to delete account";
+    } finally {
+      deletingAccount = false;
+      deletePassword = "";
     }
   }
 
@@ -130,7 +164,58 @@
       {:else if view === "framilies"}
         <Framilies {framilies} />
       {:else if view === "settings" && isOwnProfile}
-        <div class="settings">Settings content goes here</div>
+        <ConfirmPopup
+          bind:isOpen={deleteConfirmOpen}
+          prompt="Delete your account? This cannot be undone."
+          onConfirm={deleteAccount}
+        />
+        <div class="settings">
+          <section class="section">
+            <h3 class="section-title">Account</h3>
+            <div class="setting">
+              <div class="setting-label">Username</div>
+              <div class="setting-value">@{user.username}</div>
+            </div>
+            {#if user.email}
+              <div class="setting">
+                <div class="setting-label">Email</div>
+                <div class="setting-value">{user.email}</div>
+              </div>
+            {/if}
+            {#if user.created_at}
+              <div class="setting">
+                <div class="setting-label">Member since</div>
+                <div class="setting-value">
+                  {formatDate(user.created_at)}
+                </div>
+              </div>
+            {/if}
+          </section>
+
+          <section class="section danger-zone">
+            <h3 class="section-title">Danger zone</h3>
+
+            {#if deleteError}
+              <p class="error">{deleteError}</p>
+            {/if}
+
+            <div class="setting">
+              <div class="setting-label">Delete account</div>
+              <div class="setting-description">
+                Permanently deletes your account. Your uploaded pictures stay in
+                shared framilies but are no longer attributed to you.
+              </div>
+              <PasswordField bind:value={deletePassword} />
+              <button
+                class="delete-button"
+                disabled={deletingAccount}
+                onclick={startDeleteAccount}
+              >
+                Delete account
+              </button>
+            </div>
+          </section>
+        </div>
       {/if}
     </div>
   </div>
@@ -216,5 +301,74 @@
     padding: 0.5rem 1rem;
     cursor: pointer;
     margin: 0 1rem;
+  }
+
+  .settings {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .section-title {
+    margin: 0;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #666;
+  }
+
+  .danger-zone .section-title {
+    color: #dc3545;
+  }
+
+  .setting {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .setting-label {
+    font-weight: bold;
+  }
+
+  .setting-value {
+    color: #333;
+  }
+
+  .setting-description {
+    color: #666;
+    font-size: 0.85rem;
+    margin: -0.25rem 0 0;
+  }
+
+  .error {
+    color: #dc3545;
+    margin: 0;
+  }
+
+  .delete-button {
+    align-self: flex-start;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+  }
+
+  .delete-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 </style>

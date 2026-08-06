@@ -3,8 +3,9 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from core.database import get_db
+from core.avatars import delete_avatar, FRAMILY_AVATAR_PREFIX
 from api.v1.auth import get_current_user
-from models import User, Framily, Membership
+from models import User, Framily, Membership, Picture, PictureVisibility
 from schemas.framily import (
     FramilyConnectRequest, FramilyInviteRequest, FramilyJoinRequest,
     FramilyLeaveRequest, FramilyKickRequest, FramilyPictureInfo, FramilyPromoteRequest,
@@ -34,6 +35,19 @@ def is_admin(membership: Optional[Membership]) -> bool:
 def is_member(membership: Optional[Membership]) -> bool:
     """Check if membership is member or admin role."""
     return membership is not None and membership.role >= 1
+
+
+def remove_user_picture_visibility(db: Session, user_id: int, framily_id: int) -> None:
+    """Remove visibility between a user's pictures and a framily, without
+    deleting the pictures themselves. Called when the user leaves or is
+    kicked, since their pictures shouldn't keep showing up on a frame they're
+    no longer part of."""
+    db.query(PictureVisibility).filter(
+        PictureVisibility.framily_id == framily_id,
+        PictureVisibility.picture_id.in_(
+            db.query(Picture.id).filter(Picture.uploaded_by == user_id)
+        )
+    ).delete(synchronize_session=False)
 
 
 @router.post("/connect", response_model=MessageResponse)
@@ -206,6 +220,7 @@ def leave_framily(
 
     # Delete membership
     db.delete(membership)
+    remove_user_picture_visibility(db, current_user.id, framily.id)
     db.commit()
 
     return MessageResponse(message="Left framily")
@@ -255,6 +270,7 @@ def kick_user(
         )
 
     db.delete(target_membership)
+    remove_user_picture_visibility(db, target_user.id, framily.id)
     db.commit()
 
     return MessageResponse(message="User kicked")
@@ -365,9 +381,11 @@ def get_framily_info(
             orientation=framily.settings.orientation if framily.settings else "0",
             interval_minutes=framily.settings.interval_minutes if framily.settings else 5,
             show_uploader_name=framily.settings.show_uploader_name if framily.settings else False,
+            show_date=framily.settings.show_date if framily.settings else False,
         ),
         resolution_width=framily.resolution_width,
         resolution_height=framily.resolution_height,
+        ip_address=framily.ip_address,
     )
 
 
@@ -409,6 +427,8 @@ def update_framily_settings(
             framily.settings.interval_minutes = request.interval_minutes
         if request.show_uploader_name is not None:
             framily.settings.show_uploader_name = request.show_uploader_name
+        if request.show_date is not None:
+            framily.settings.show_date = request.show_date
 
     db.commit()
 
@@ -436,6 +456,8 @@ def delete_framily(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin permission required."
         )
+
+    delete_avatar(FRAMILY_AVATAR_PREFIX, framily.code)
 
     db.delete(framily)
     db.commit()

@@ -4,6 +4,7 @@
   import Trash2 from "@lucide/svelte/icons/trash-2";
   import Plus from "@lucide/svelte/icons/plus";
   import ConfirmPopup from "./ConfirmPopup.svelte";
+  import { formatDate } from "$lib/date";
 
   interface Props {
     picture: PictureInfo;
@@ -92,7 +93,7 @@
       <span class="uploader"
         >{picture.uploader_display_name || picture.uploader_username}</span
       >
-      <span class="date">{new Date(picture.upload_date).toLocaleDateString()}</span>
+      <span class="date">{formatDate(picture.upload_date)}</span>
     </div>
 
     {#if error}

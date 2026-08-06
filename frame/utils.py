@@ -33,7 +33,6 @@ DEFAULT_CONFIG = {
     "message": "",
     "pending_wifi_ssid": "",
     "pending_wifi_password": "",
-    "pending_wifi_reset": False,
 }
 
 # Default timeout for subprocess calls (mostly nmcli). Generous enough to
@@ -114,6 +113,16 @@ def start_hotspot():
     run(['nmcli', 'connection', 'up', CON_HOTSPOT])
 
 
+def get_ip_address() -> str:
+    """Current IP address on WLAN_IF, or "" if it can't be determined (e.g.
+    not associated to a network yet)."""
+    output = run(['ip', '-br', 'addr', 'show', WLAN_IF], timeout=5)
+    parts = output.split()
+    if len(parts) < 3:
+        return ""
+    return parts[2].split('/')[0]
+
+
 def get_active_connection() -> str:
     """Name of the currently active connection on WLAN_IF (empty if none)."""
     return run(['nmcli', '-t', '-f', 'NAME', 'connection', 'show', '--active'], timeout=5).split("\n")[0]
@@ -135,16 +144,11 @@ def load_config() -> dict:
         "message": config.get("message", ""),
         "pending_wifi_ssid": config.get("pending_wifi_ssid", ""),
         "pending_wifi_password": config.get("pending_wifi_password", ""),
-        "pending_wifi_reset": config.get("pending_wifi_reset", False),
     }
 
 def save_config(config: dict) -> None:
     with open(CONFIG_PATH, "w") as f:
         json.dump(config, f, indent=2)
-
-
-def reset_config() -> None:
-    save_config(DEFAULT_CONFIG)
 
 
 def make_qr(data: str, size: int = 150) -> Image.Image:

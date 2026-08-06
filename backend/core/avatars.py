@@ -11,6 +11,9 @@ from core.minio import s3_client
 ALLOWED_AVATAR_FORMATS = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5MB
 
+USER_AVATAR_PREFIX = "profile_pictures"
+FRAMILY_AVATAR_PREFIX = "framily_avatars"
+
 _EXTENSIONS = ["jpg", "png", "webp", "gif"]
 _CONTENT_TYPES = {
     "jpg": "image/jpeg",

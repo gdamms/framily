@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from io import BytesIO
+from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 import secrets
 import string
@@ -34,12 +35,11 @@ def generate_frame_token() -> str:
     return secrets.token_urlsafe(48)[:64]
 
 
-def draw_uploader_credit(image: Image.Image, uploader_name: str) -> Image.Image:
-    """Burn a "by <name>" credit into the bottom-right corner of the image."""
+def _draw_corner_text(image: Image.Image, text: str, corner: str) -> Image.Image:
+    """Burn text into a corner of the image ("bottom-right" or "bottom-left")."""
     if image.mode not in ("RGB", "RGBA"):
         image = image.convert("RGBA")
 
-    text = f"by {uploader_name}"
     font_size = max(12, round(min(image.size) * 0.03))
     font = ImageFont.load_default(size=font_size)
 
@@ -47,14 +47,28 @@ def draw_uploader_credit(image: Image.Image, uploader_name: str) -> Image.Image:
     bbox = draw.textbbox((0, 0), text, font=font)
     text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
     margin = round(font_size * 0.5)
-    x = image.width - text_w - margin - bbox[0]
     y = image.height - text_h - margin - bbox[1]
+    if corner == "bottom-left":
+        x = margin - bbox[0]
+    else:
+        x = image.width - text_w - margin - bbox[0]
 
     draw.text(
         (x, y), text, font=font,
         fill="white", stroke_width=max(1, font_size // 12), stroke_fill="black"
     )
     return image
+
+
+def draw_uploader_credit(image: Image.Image, uploader_name: str) -> Image.Image:
+    """Burn a credit into the bottom-right corner of the image."""
+    return _draw_corner_text(image, uploader_name, "bottom-right")
+
+
+def draw_date(image: Image.Image, upload_date: datetime) -> Image.Image:
+    """Burn the picture's upload date into the bottom-left corner of the image."""
+    text = upload_date.strftime("%d/%m/%Y")
+    return _draw_corner_text(image, text, "bottom-left")
 
 
 def get_framily_by_frame_auth(db: Session, framily_code: str, frame_token: str) -> Framily:
@@ -93,13 +107,7 @@ def create_framily(request: FrameCreateRequest, db: Session = Depends(get_db)):
     db.refresh(framily)
 
     # Create default settings
-    framily_settings = FramilySettings(
-        framily_id=framily.id,
-        picture_duration=10,
-        shuffle_mode="random",
-        transition_effect="fade",
-        overlays=[]
-    )
+    framily_settings = FramilySettings(framily_id=framily.id)
     db.add(framily_settings)
     db.commit()
 
@@ -122,15 +130,19 @@ def check_framily(request: FrameAuthRequest, db: Session = Depends(get_db)):
 
 @router.post("/status", response_model=MessageResponse)
 def update_status(request: FrameStatusRequest, db: Session = Depends(get_db)):
-    """Report frame status information. Currently just the display resolution,
-    reported separately from /frame/create since it isn't known until the
-    e-ink driver has initialized."""
+    """Report frame status information: display resolution and the frame's
+    current IP address on the Wi-Fi network (so the web UI can be reached
+    directly). Reported separately from /frame/create since none of this is
+    known until the e-ink driver has initialized and Wi-Fi is connected, and
+    the frame re-reports it on every fetch cycle since the IP can change."""
     framily = get_framily_by_frame_auth(db, request.framily_code, request.frame_token)
 
     if request.resolution_width is not None:
         framily.resolution_width = request.resolution_width
     if request.resolution_height is not None:
         framily.resolution_height = request.resolution_height
+    if request.ip_address is not None:
+        framily.ip_address = request.ip_address
 
     db.commit()
 
@@ -184,12 +196,13 @@ def fetch_picture(request: FrameAuthRequest, db: Session = Depends(get_db)):
     orientation = framily.settings.orientation if framily.settings else "0"
     needs_rotation = bool(orientation and orientation != "0")
     needs_resize = bool(framily.resolution_width and framily.resolution_height)
-    # The uploader-credit overlay is burned into the image server-side; it's
-    # intentionally not exposed via /frame/settings - the frame device has no
-    # need to know about it.
+    # The uploader-credit and date overlays are burned into the image
+    # server-side; they're intentionally not exposed via /frame/settings -
+    # the frame device has no need to know about them.
     needs_credit = bool(framily.settings and framily.settings.show_uploader_name and uploader_name)
+    needs_date = bool(framily.settings and framily.settings.show_date and picture.upload_date)
 
-    if not needs_rotation and not needs_resize and not needs_credit:
+    if not needs_rotation and not needs_resize and not needs_credit and not needs_date:
         return StreamingResponse(
             s3_client.get_object(settings.S3_BUCKET, object_name).stream(32 * 1024),
             media_type=media_type,
@@ -220,6 +233,9 @@ def fetch_picture(request: FrameAuthRequest, db: Session = Depends(get_db)):
 
     if needs_credit:
         image = draw_uploader_credit(image, uploader_name)
+
+    if needs_date:
+        image = draw_date(image, picture.upload_date)
 
     if needs_rotation:
         image = image.rotate(int(orientation), expand=True)

@@ -11,6 +11,12 @@ export const userApi = {
       body: JSON.stringify(data),
     }),
 
+  deleteAccount: (password: string) =>
+    request<{ message: string }>("/user/delete", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    }),
+
   uploadAvatar: (username: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);

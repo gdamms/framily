@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 import uuid
 from io import BytesIO
 from typing import Optional
-from PIL import Image
+from PIL import Image, ImageOps
 
 from core.database import get_db
 from core.config import settings
@@ -119,6 +119,10 @@ async def upload_picture(
 
     # Convert image to a consistent format (PNG) for storage.
     image = Image.open(BytesIO(content))
+    # Bake the EXIF orientation tag into the pixel data before we drop the
+    # EXIF block on save below, otherwise portrait phone photos end up
+    # stored sideways with no way to recover the correct orientation.
+    image = ImageOps.exif_transpose(image)
     if image.mode not in ("RGB", "RGBA"):
         image = image.convert("RGBA")
     width, height = image.size

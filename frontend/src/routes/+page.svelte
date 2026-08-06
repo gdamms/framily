@@ -34,6 +34,12 @@
     uploadPopupOpen = true;
   }
 
+  async function refreshUser() {
+    if (!user) return;
+    const response = await api.user.getInfo(user.username);
+    user = response.user;
+  }
+
   onMount(async () => {
     const me = await api.auth.me();
     const response = await api.user.getInfo(me.username);
@@ -86,6 +92,7 @@
           code={$appState.page.code}
           currentUsername={user.username}
           onAddPicture={(code) => openUploadPopup([code])}
+          onFramilyDeleted={refreshUser}
         />
       {:else if $appState.page.page === "picture"}
         <PictureView

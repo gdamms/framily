@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.avatars import save_avatar, stream_avatar, delete_avatar
+from core.avatars import save_avatar, stream_avatar, delete_avatar, USER_AVATAR_PREFIX, FRAMILY_AVATAR_PREFIX
 from api.v1.auth import get_current_user
 from api.v1.framily import get_membership, is_admin, is_member
 from models import User, Framily
@@ -11,10 +11,6 @@ router = APIRouter(
     prefix="/avatars",
     tags=["avatars"],
 )
-
-
-USER_AVATAR_PREFIX = "profile_pictures"
-FRAMILY_AVATAR_PREFIX = "framily_avatars"
 
 
 @router.post("/user")

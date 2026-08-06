@@ -10,6 +10,10 @@ class ProfileUpdate(BaseModel):
     email: Optional[str] = None
 
 
+class DeleteAccountRequest(BaseModel):
+    password: str
+
+
 class UserFramilyInfo(BaseModel):
     code: str
     name: Optional[str] = None

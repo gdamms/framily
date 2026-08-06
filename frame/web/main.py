@@ -7,7 +7,6 @@ from utils import (
     WEB_PORT,
     WEB_ADDRESS,
     load_config,
-    reset_config,
     save_config,
     get_wifi,
 )
@@ -70,13 +69,23 @@ def main():
 
     @app.route("/reset", methods=["POST"])
     def reset():
-        logger.info("Configuration reset requested.")
-        reset_config()
+        # Only forget the framily's id/token so the agent registers a fresh
+        # framily, as if this were the frame's first run. Wi-Fi credentials and
+        # the server URL are left untouched - the user shouldn't have to
+        # re-enter them just because the framily was deleted server-side.
+        logger.info("Framily reset requested (id/token only; Wi-Fi and server URL kept).")
         config = load_config()
-        config["pending_wifi_reset"] = True
+        config["framily_code"] = ""
+        config["frame_token"] = ""
+        config["message"] = ""
         save_config(config)
         AGENT_RECHECK_PATH.touch(exist_ok=True)
-        return {"status": "success"}, 200
+
+        message = (
+            "Framily reset! The frame will register a new framily with the server. "
+            "You can close this page and follow the instructions on the frame."
+        )
+        return {"status": "success", "message": message}, 200
 
     @app.route("/logs")
     def logs():

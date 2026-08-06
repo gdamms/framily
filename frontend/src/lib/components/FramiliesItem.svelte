@@ -13,6 +13,8 @@
 
   let { framily }: Props = $props();
 
+  let error = $state("");
+
   async function acceptInvite(code: string) {
     await api.framily.join(code, true);
   }
@@ -22,7 +24,12 @@
   }
 
   async function leave(code: string) {
-    await api.framily.leave(code);
+    error = "";
+    try {
+      await api.framily.leave(code);
+    } catch (e: any) {
+      error = e.message || "Failed to leave framily";
+    }
   }
 
   let confirmOpen = $state(false);
@@ -47,6 +54,9 @@
 </script>
 
 <ConfirmPopup bind:isOpen={confirmOpen} {onCancel} {onConfirm} />
+{#if error}
+  <p class="error">{error}</p>
+{/if}
 <div
   class="framily"
   onclick={() =>
@@ -112,6 +122,11 @@
 </div>
 
 <style>
+  .error {
+    color: #dc3545;
+    margin: 0 0 0.5rem;
+  }
+
   .framily {
     display: flex;
     justify-content: space-between;
