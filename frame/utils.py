@@ -151,9 +151,12 @@ def save_config(config: dict) -> None:
         json.dump(config, f, indent=2)
 
 
-def make_qr(data: str, size: int = 150) -> Image.Image:
-    qr = qrcode.make(data, border=0)
-    return qr.resize((size, size))
+def make_qr(data: str, size: int = 190) -> Image.Image:
+    # A small quiet-zone border (not 0) keeps the code reliably scannable by
+    # phone cameras. NEAREST resize keeps module edges crisp - any blurring
+    # would get dithered into speckles by the e-ink panel's 6-color quantizer.
+    qr = qrcode.make(data, border=2)
+    return qr.resize((size, size), Image.NEAREST)
 
 def save_message(message: str) -> None:
     config = load_config()

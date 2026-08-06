@@ -1,7 +1,11 @@
 import fcntl
 import json
+import os
+import tempfile
 import threading
 import time
+from pathlib import Path
+from typing import Callable
 
 import requests
 from PIL import Image, ImageDraw, ImageFont
@@ -121,13 +125,115 @@ def wait_for_recheck(timeout: float) -> None:
     recheck_event.clear()
 
 
-# --- Display ---------------------------------------------------------------
+# --- Display -----------------------------------------------------------------
+#
+# The panel is a 6-color e-ink display (black/white/yellow/red/blue/green) -
+# any color outside that exact palette gets dithered into speckles, so all
+# drawing here sticks to pure BLACK/WHITE plus BLUE as a single accent.
+# Every screen is built for the panel's native landscape canvas and laid out
+# as a group of blocks whose total height is measured first, then centered -
+# rather than fixed y-offsets - so it stays centered regardless of font
+# metrics, and shrink-to-fit text so a long SSID/password/URL/code never
+# overflows.
+
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+BLUE = (0, 0, 255)
+
+_FONT_CACHE: dict[tuple[str, int], ImageFont.FreeTypeFont] = {}
+
+
+def _font(weight: str, size: int) -> ImageFont.FreeTypeFont:
+    key = (weight, size)
+    if key not in _FONT_CACHE:
+        name = "DejaVuSans-Bold.ttf" if weight == "bold" else "DejaVuSans.ttf"
+        _FONT_CACHE[key] = ImageFont.truetype(name, size)
+    return _FONT_CACHE[key]
+
+
+def _fit_font(draw, text, weight, max_width, max_size, min_size=14):
+    """Largest font size (down to min_size) that keeps text within max_width."""
+    size = max_size
+    while size > min_size:
+        font = _font(weight, size)
+        if draw.textlength(text, font=font) <= max_width:
+            return font
+        size -= 2
+    return _font(weight, min_size)
+
+
+def _text_height(draw, text, font):
+    bbox = draw.multiline_textbbox((0, 0), text, font=font, align="center")
+    return bbox[3] - bbox[1]
+
+
+def _draw_top(draw, text, font, y, cx, fill=BLACK):
+    """Draw text horizontally centered on cx, top edge at y. Returns its height."""
+    draw.multiline_text((cx, y), text, font=font, fill=fill, anchor="ma", align="center")
+    return _text_height(draw, text, font)
+
+
+def _fitted_lines_height(draw, lines, weight, max_width, max_size, gap=6, min_size=14):
+    """Each line gets its own shrink-to-fit font, so e.g. a long password
+    doesn't force a short SSID line down to the same tiny size."""
+    fonts = [_fit_font(draw, line, weight, max_width, max_size, min_size) for line in lines]
+    heights = [_text_height(draw, line, font) for line, font in zip(lines, fonts)]
+    return fonts, sum(heights) + gap * (len(lines) - 1)
+
+
+def _draw_fitted_lines(draw, lines, fonts, y, cx, gap=6):
+    for line, font in zip(lines, fonts):
+        y += _draw_top(draw, line, font, y, cx) + gap
+    return y
+
+
+def _wifi_icon(draw, cx, cy, size=100, fill=BLACK, width=7):
+    dot_r = size * 0.09
+    draw.ellipse((cx - dot_r, cy - dot_r, cx + dot_r, cy + dot_r), fill=fill)
+    for r in (size * 0.42, size * 0.68, size * 0.94):
+        bbox = (cx - r, cy - r, cx + r, cy + r)
+        draw.arc(bbox, start=215, end=325, fill=fill, width=width)
+
+
+def _photo_icon(draw, cx, cy, size=100, fill=BLACK, width=6):
+    w, h = size, size * 0.72
+    left, top = cx - w / 2, cy - h / 2
+    draw.rounded_rectangle((left, top, left + w, top + h), radius=8, outline=fill, width=width)
+    sun_r = h * 0.16
+    draw.ellipse(
+        (left + w * 0.18 - sun_r, top + h * 0.28 - sun_r, left + w * 0.18 + sun_r, top + h * 0.28 + sun_r),
+        outline=fill, width=max(2, width - 2),
+    )
+    draw.line(
+        (left + w * 0.08, top + h * 0.92, left + w * 0.4, top + h * 0.55, left + w * 0.62, top + h * 0.78,
+         left + w * 0.8, top + h * 0.6, left + w * 0.95, top + h * 0.85),
+        fill=fill, width=width, joint="curve",
+    )
+
 
 def _new_canvas():
     epd_info = json.loads(EPD_INFO_PATH.read_text())
     width, height = epd_info["width"], epd_info["height"]
-    img = Image.new("RGB", (height, width), "white")
+    img = Image.new("RGB", (width, height), WHITE)
     return img, ImageDraw.Draw(img)
+
+
+def _write_epd_image(write: Callable[[Path], object]) -> None:
+    """Write via a temp file in the same directory, then atomically rename it
+    over EPD_IMAGE_PATH. epd/main.py's watcher already treats a moved-in file
+    as the render trigger (see its on_moved handling) - writing in place
+    instead would let it catch the file mid-write (empty/truncated) and try
+    to render a partial image."""
+    fd, tmp_name = tempfile.mkstemp(dir=EPD_IMAGE_PATH.parent, suffix=EPD_IMAGE_PATH.suffix)
+    os.close(fd)
+    tmp_path = Path(tmp_name)
+    try:
+        write(tmp_path)
+        os.chmod(tmp_path, 0o644)
+        tmp_path.replace(EPD_IMAGE_PATH)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
 
 
 def display_hotspot():
@@ -139,52 +245,178 @@ def display_hotspot():
         server_url = f"https://{HOTSPOT_DOMAIN}/"
     else:
         server_url = f"http://{HOTSPOT_DOMAIN}:{WEB_PORT}/"
-    wifi_qr_data = f"WIFI:T:WPA;S:{ssid};P:{password};;"
-
-    wifi_qr = make_qr(wifi_qr_data)
-    url_qr = make_qr(server_url)
 
     img, draw = _new_canvas()
-    font = ImageFont.truetype("DejaVuSans.ttf", 30)
-    margin = 50
+    width, height = img.size
+    cx = width // 2
+    margin = 60
+    col_w = (width - margin * 2) / 2
+    left_cx = margin + col_w / 2
+    right_cx = margin + col_w + col_w / 2
+    detail_max_width = col_w - 40
 
-    draw.text((margin, 50), "Connect to the Pi", font=font, fill="black")
-    img.paste(wifi_qr, (margin, 100))
-    draw.text(
-        (margin + wifi_qr.width + 40, 100),
-        f"SSID:\n{ssid}\n\nPassword:\n{password}",
-        font=font,
-        fill="black",
+    title_font = _font("bold", 34)
+    sub_font = _font("bold", 22)
+    title = "Set Up Your Frame"
+    left_sub = "1. Scan to join Wi-Fi"
+    right_sub = "2. Scan to finish setup"
+    left_lines = [f"SSID: {ssid}", f"Password: {password}"]
+    right_lines = [server_url]
+
+    qr_size = 190
+    gap_after_title = 16
+    gap_after_rule = 22
+    gap_after_sub = 16
+    gap_after_qr = 20
+    detail_gap = 6
+
+    title_h = _text_height(draw, title, title_font)
+    sub_h = _text_height(draw, left_sub, sub_font)
+    left_fonts, left_detail_h = _fitted_lines_height(draw, left_lines, "regular", detail_max_width, 22, gap=detail_gap)
+    right_fonts, right_detail_h = _fitted_lines_height(draw, right_lines, "regular", detail_max_width, 22, gap=detail_gap)
+    detail_h = max(left_detail_h, right_detail_h)
+
+    total_h = (
+        title_h + gap_after_title + 2 + gap_after_rule
+        + sub_h + gap_after_sub + qr_size + gap_after_qr + detail_h
     )
+    y = (height - total_h) / 2
 
-    draw.text((margin, 100 + wifi_qr.height + 40), "Open this URL", font=font, fill="black")
-    draw.text((margin, 100 + wifi_qr.height + 90), server_url, font=font, fill="black")
-    img.paste(url_qr, (margin, 100 + wifi_qr.height + 140))
+    y += _draw_top(draw, title, title_font, y, cx) + gap_after_title
+    draw.line((margin + 20, y, width - margin - 20, y), fill=BLUE, width=3)
+    y += 2 + gap_after_rule
 
-    img.save(EPD_IMAGE_PATH)
+    sub_y = y
+    _draw_top(draw, left_sub, sub_font, sub_y, left_cx)
+    _draw_top(draw, right_sub, sub_font, sub_y, right_cx)
+    y += sub_h + gap_after_sub
+
+    qr_y = y
+    wifi_qr = make_qr(f"WIFI:T:WPA;S:{ssid};P:{password};;", qr_size)
+    url_qr = make_qr(server_url, qr_size)
+    img.paste(wifi_qr, (int(left_cx - qr_size / 2), int(qr_y)))
+    img.paste(url_qr, (int(right_cx - qr_size / 2), int(qr_y)))
+    for col_cx in (left_cx, right_cx):
+        draw.rectangle(
+            (col_cx - qr_size / 2 - 1, qr_y - 1, col_cx + qr_size / 2 + 1, qr_y + qr_size + 1),
+            outline=BLACK, width=1,
+        )
+    y += qr_size + gap_after_qr
+
+    _draw_fitted_lines(draw, left_lines, left_fonts, y, left_cx, gap=detail_gap)
+    _draw_fitted_lines(draw, right_lines, right_fonts, y, right_cx, gap=detail_gap)
+
+    draw.line((width / 2, sub_y - 4, width / 2, y + detail_h + 4), fill=BLACK, width=1)
+
+    _write_epd_image(img.save)
 
 
 def display_connecting_wifi():
     img, draw = _new_canvas()
-    font = ImageFont.truetype("DejaVuSans.ttf", 30)
-    draw.text((50, 50), "Connecting to Wi-Fi...", font=font, fill="black")
-    img.save(EPD_IMAGE_PATH)
+    width, height = img.size
+    cx, cy = width // 2, height // 2
+
+    title_font = _font("bold", 32)
+    sub_font = _font("regular", 20)
+    title = "Connecting to Wi-Fi"
+    sub = "This should only take a moment..."
+
+    icon_size = 100
+    gap_icon_title = 34
+    gap_title_sub = 14
+    title_h = _text_height(draw, title, title_font)
+    sub_h = _text_height(draw, sub, sub_font)
+
+    total_h = icon_size + gap_icon_title + title_h + gap_title_sub + sub_h
+    top = cy - total_h / 2
+
+    _wifi_icon(draw, cx, top + icon_size * 0.75, size=icon_size)
+
+    y = top + icon_size + gap_icon_title
+    y += _draw_top(draw, title, title_font, y, cx) + gap_title_sub
+    _draw_top(draw, sub, sub_font, y, cx)
+
+    _write_epd_image(img.save)
 
 
 def display_framily_info(config: dict):
+    framily_code = config.get("framily_code", "")
+
     img, draw = _new_canvas()
-    font = ImageFont.truetype("DejaVuSans.ttf", 30)
-    draw.text((50, 50), "Framily Code:", font=font, fill="black")
-    draw.text((50, 100), config.get("framily_code", ""), font=font, fill="black")
-    img.save(EPD_IMAGE_PATH)
+    width, height = img.size
+    cx, cy = width // 2, height // 2
+
+    label = "FRAMILY CODE"
+    spaced_code = " ".join(framily_code)
+    hint = "Open the Framily app and join with this code"
+    status = "Waiting for a member to join..."
+
+    label_font = _font("bold", 22)
+    code_font = _fit_font(draw, spaced_code, "bold", width - 240, 100, min_size=48)
+    hint_font = _font("regular", 24)
+    status_font = _font("regular", 20)
+
+    label_h = _text_height(draw, label, label_font)
+    code_bbox = draw.textbbox((0, 0), spaced_code, font=code_font)
+    code_w, code_h = code_bbox[2] - code_bbox[0], code_bbox[3] - code_bbox[1]
+    pad_x, pad_y = 55, 32
+    box_w, box_h = code_w + pad_x * 2, code_h + pad_y * 2
+    hint_h = _text_height(draw, hint, hint_font)
+    status_h = _text_height(draw, status, status_font)
+
+    gap1, gap2, gap3 = 22, 34, 14
+    total_h = label_h + gap1 + box_h + gap2 + hint_h + gap3 + status_h
+    y = cy - total_h / 2
+
+    y += _draw_top(draw, label, label_font, y, cx) + gap1
+
+    box_top = y
+    draw.rounded_rectangle(
+        (cx - box_w / 2, box_top, cx + box_w / 2, box_top + box_h), radius=18, outline=BLUE, width=4
+    )
+    draw.text((cx, box_top + box_h / 2), spaced_code, font=code_font, fill=BLACK, anchor="mm")
+    y += box_h + gap2
+
+    y += _draw_top(draw, hint, hint_font, y, cx) + gap3
+    _draw_top(draw, status, status_font, y, cx)
+
+    _write_epd_image(img.save)
 
 
 def display_upload_first_image(config: dict):
-    img, draw = _new_canvas()
-    font = ImageFont.truetype("DejaVuSans.ttf", 30)
     framily_code = config.get("framily_code", "")
-    draw.text((50, 50), f"Framily {framily_code}:\nWaiting for first image...", font=font, fill="black")
-    img.save(EPD_IMAGE_PATH)
+
+    img, draw = _new_canvas()
+    width, height = img.size
+    cx, cy = width // 2, height // 2
+
+    badge = f"FRAMILY  {framily_code}" if framily_code else ""
+    title = "Waiting for your first photo"
+    sub = "Upload one from the Framily app"
+
+    badge_font = _font("bold", 18)
+    title_font = _font("bold", 30)
+    sub_font = _font("regular", 20)
+
+    icon_size = 100
+    gap_icon_title = 30
+    gap_title_sub = 12
+    title_h = _text_height(draw, title, title_font)
+    sub_h = _text_height(draw, sub, sub_font)
+
+    total_h = icon_size + gap_icon_title + title_h + gap_title_sub + sub_h
+    top = cy - total_h / 2 + (18 if badge else 0)
+
+    if badge:
+        _draw_top(draw, badge, badge_font, 28, cx)
+
+    _photo_icon(draw, cx, top + icon_size / 2, size=icon_size)
+
+    y = top + icon_size + gap_icon_title
+    y += _draw_top(draw, title, title_font, y, cx) + gap_title_sub
+    _draw_top(draw, sub, sub_font, y, cx)
+
+    _write_epd_image(img.save)
 
 
 # --- Backend API -------------------------------------------------------------
@@ -311,20 +543,25 @@ def fetch_settings(config: dict) -> float:
     return clamped
 
 
-def fetch_image(config: dict) -> None:
+def fetch_image(config: dict, retries: int = MAX_CONSECUTIVE_FAILURES) -> None:
     try:
         response = _post(config.get("server_url", ""), FRAME_FETCH_PATH, {
             "framily_code": config.get("framily_code", ""),
             "frame_token": config.get("frame_token", ""),
         })
     except FrameApiError as e:
-        raise FrameApiError(f"Error fetching picture: {e}", transient=e.transient, not_found=e.not_found) from e
+        if retries > 0:
+            logger.warning(f"Fetch failed ({retries} retries left): {e}")
+            return fetch_image(config, retries - 1)
+        else:
+            logger.error(f"Fetch failed after {MAX_CONSECUTIVE_FAILURES} retries: {e}")
+            raise FrameApiError(f"Error fetching picture: {e}", transient=e.transient, not_found=e.not_found) from e
 
     if response.status_code == 204:
         logger.info("No pictures available for this framily.")
         display_upload_first_image(config)
     else:
-        EPD_IMAGE_PATH.write_bytes(response.content)
+        _write_epd_image(lambda p: p.write_bytes(response.content))
         logger.info("Picture fetched and saved successfully.")
     clear_message()
 
@@ -334,17 +571,12 @@ def fetch_image(config: dict) -> None:
 def run_fetch_loop(config: dict) -> None:
     """Runs until a non-transient failure or MAX_CONSECUTIVE_FAILURES
     consecutive transient failures give up on the session."""
-    consecutive_failures = 0
     while True:
         try:
             fetch_image(config)
-            consecutive_failures = 0
         except FrameApiError as e:
-            consecutive_failures += 1
-            logger.warning(f"Fetch failed ({consecutive_failures}/{MAX_CONSECUTIVE_FAILURES}): {e}")
-            if not e.transient or consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
-                save_message(_terminal_failure_message(f"Failed to fetch picture: {e}", e))
-                return
+            save_message(_terminal_failure_message(f"Failed to fetch picture: {e}", e))
+            return
 
         report_status(config)
         interval_minutes = fetch_settings(config)

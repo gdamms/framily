@@ -82,8 +82,8 @@ def main():
         AGENT_RECHECK_PATH.touch(exist_ok=True)
 
         message = (
-            "Framily reset! The frame will register a new framily with the server. "
-            "You can close this page and follow the instructions on the frame."
+            "Framily reset! If any framily was previously registered, it has been deleted. "
+            "You can now click on \"Setup Framily\" to validate the server URL and register a new framily."
         )
         return {"status": "success", "message": message}, 200
 
