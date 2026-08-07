@@ -31,8 +31,9 @@ DEFAULT_CONFIG = {
     "framily_code": "",
     "frame_token": "",
     "message": "",
-    "pending_wifi_ssid": "",
-    "pending_wifi_password": "",
+    "wifi_ssid": "",
+    "wifi_password": "",
+    "wifi_should_update": False,
     "pending_delete": False,
 }
 
@@ -143,8 +144,9 @@ def load_config() -> dict:
         "framily_code": config.get("framily_code", ""),
         "frame_token": config.get("frame_token", ""),
         "message": config.get("message", ""),
-        "pending_wifi_ssid": config.get("pending_wifi_ssid", ""),
-        "pending_wifi_password": config.get("pending_wifi_password", ""),
+        "wifi_ssid": config.get("wifi_ssid", ""),
+        "wifi_password": config.get("wifi_password", ""),
+        "wifi_should_update": config.get("wifi_should_update", False),
         "pending_delete": config.get("pending_delete", False),
     }
 

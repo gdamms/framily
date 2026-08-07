@@ -620,16 +620,21 @@ def run_fetch_loop(config: dict) -> None:
         config = load_config()
 
 
-def apply_pending_wifi(config: dict) -> dict:
-    ssid = config.get("pending_wifi_ssid", "")
-    password = config.get("pending_wifi_password", "")
+def apply_wifi_update(config: dict) -> dict:
+    """Push wifi_ssid/wifi_password to NetworkManager if the web UI flagged
+    them as changed. Unlike the old pending_wifi_* fields, the credentials
+    stay in the config after being applied - only the flag is cleared."""
+    if not config.get("wifi_should_update"):
+        return config
+
+    ssid = config.get("wifi_ssid", "")
+    password = config.get("wifi_password", "")
+    config["wifi_should_update"] = False
+    save_config(config)
     if not ssid:
         return config
 
-    logger.info(f"Applying pending Wi-Fi credentials for SSID '{ssid}'.")
-    config["pending_wifi_ssid"] = ""
-    config["pending_wifi_password"] = ""
-    save_config(config)
+    logger.info(f"Applying updated Wi-Fi credentials for SSID '{ssid}'.")
     set_wifi(ssid, password)
     return config
 
@@ -735,7 +740,7 @@ def main_loop() -> None:
                     display_hotspot()
                     next_wifi_retry = time.monotonic() + HOTSPOT_WIFI_RETRY_SECONDS
                 last_mode = mode
-                config = apply_pending_wifi(config)
+                config = apply_wifi_update(config)
                 config = apply_pending_delete(config)
                 if time.monotonic() >= next_wifi_retry:
                     next_wifi_retry = time.monotonic() + HOTSPOT_WIFI_RETRY_SECONDS
@@ -745,7 +750,7 @@ def main_loop() -> None:
 
             if mode == "wifi":
                 last_mode = mode
-                config = apply_pending_wifi(config)
+                config = apply_wifi_update(config)
                 config = apply_pending_delete(config)
                 run_wifi_session(config)
                 last_mode = None  # force a re-render / re-check next tick

@@ -8,7 +8,6 @@ from utils import (
     WEB_ADDRESS,
     load_config,
     save_config,
-    get_wifi,
 )
 
 logger = get_logger("web")
@@ -31,13 +30,12 @@ def main():
     @app.route("/")
     def index():
         config = load_config()
-        ssid, password = get_wifi()
         message = config.get("message", "")
 
         return flask.render_template(
             "index.html",
-            ssid=ssid,
-            password=password,
+            ssid=config.get("wifi_ssid", ""),
+            password=config.get("wifi_password", ""),
             message=message,
             url=config['server_url'],
         )
@@ -49,14 +47,11 @@ def main():
         password = data.get("password", "")
         url = data.get("url", "")
 
-        # Just record the intent here. The agent service owns every actual
-        # NetworkManager mutation (it's the only writer), so it picks this
-        # up and performs the Wi-Fi switch itself - this route never blocks
-        # on nmcli.
         config = load_config()
         config["server_url"] = url
-        config["pending_wifi_ssid"] = ssid
-        config["pending_wifi_password"] = password
+        config["wifi_ssid"] = ssid
+        config["wifi_password"] = password
+        config["wifi_should_update"] = True
         save_config(config)
         AGENT_RECHECK_PATH.touch(exist_ok=True)
         logger.info(f"Setup submitted: server_url={url!r}, ssid={ssid!r}")
@@ -69,9 +64,7 @@ def main():
 
     @app.route("/reset", methods=["POST"])
     def reset():
-        # Only record the intent here - the agent service owns every actual
-        # network call to the server (same rule as /setup above), so it picks
-        # this up, deletes the framily server-side, and only then forgets the
+        # Deletes the framily server-side, and only then forgets the
         # id/token locally so it registers a fresh framily, as if this were
         # the frame's first run. Wi-Fi credentials and the server URL are
         # left untouched - the user shouldn't have to re-enter them just

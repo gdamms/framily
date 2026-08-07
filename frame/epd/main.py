@@ -84,18 +84,14 @@ class EPDImageHandler(FileSystemEventHandler):
 
 
 def main():
-    print('main')
     epd = epd7in3e.EPD()
-    print('epd')
     event_handler = EPDImageHandler(epd)
-    print('event handler')
+
     try:
         epd.init()
-        print('init')
 
         # Save display info for other processes to read.
         write_epd_info(epd)
-        print('write info')
 
         # Draw once at startup when the image is already present, and seed
         # the handler's hash from it so the first file-system event after
@@ -107,11 +103,6 @@ def main():
         else:
             logger.info(f"Image file '{EPD_IMAGE_PATH}' not found. Waiting for it to appear...")
     except epd7in3e.EPDBusyTimeoutError as e:
-        # Previously this hung the process forever with zero log output,
-        # since it happens inside a vendor busy-wait loop with no timeout -
-        # systemd never saw a failure to restart from. Now it's a clean,
-        # logged exit so Restart=on-failure gets a chance to recover (a
-        # fresh process re-toggles the hardware RST pin on init).
         logger.error(f"EPD startup failed: {e}")
         raise SystemExit(1) from e
 
