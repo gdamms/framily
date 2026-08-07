@@ -242,14 +242,14 @@
   .picture-view {
     display: flex;
     flex-direction: column;
-    background: white;
+    background: var(--color-bg-surface);
     border-radius: 12px;
     overflow: hidden;
   }
 
   .image-wrapper {
     position: relative;
-    background: #111;
+    background: var(--color-media-bg);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -267,7 +267,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    background: white;
+    background: var(--color-bg-surface);
   }
 
   .meta {
@@ -295,13 +295,13 @@
   }
 
   .date {
-    color: #666;
+    color: var(--color-text-secondary);
     font-size: 0.85rem;
     white-space: nowrap;
   }
 
   .error {
-    color: #dc3545;
+    color: var(--color-danger);
     margin: 0;
   }
 
@@ -319,7 +319,7 @@
     border: none;
     padding: 0;
     cursor: pointer;
-    color: #333;
+    color: var(--color-text);
     font: inherit;
     min-width: 0;
     max-width: 100%;
@@ -342,7 +342,7 @@
     border: none;
     padding: 0;
     cursor: pointer;
-    color: #888;
+    color: var(--color-text-muted);
     font: inherit;
     font-size: 0.9rem;
   }
@@ -352,9 +352,10 @@
     box-sizing: border-box;
     padding: 0.4rem 0;
     border: none;
-    border-bottom: 2px solid #333;
+    border-bottom: 2px solid var(--color-text);
     font: inherit;
     background: none;
+    color: var(--color-text);
   }
 
   .framily-chips {
@@ -370,8 +371,8 @@
     gap: 0.35rem;
     flex: 0 0 auto;
     white-space: nowrap;
-    background: #e3f2fd;
-    color: #1976d2;
+    background: var(--color-chip-bg);
+    color: var(--color-chip-text);
     padding: 0.35rem 0.6rem;
     border-radius: 999px;
     font-size: 0.85rem;
@@ -388,8 +389,8 @@
   }
 
   .chip-add {
-    background: #eee;
-    color: #333;
+    background: var(--color-bg-page);
+    color: var(--color-text);
     cursor: pointer;
   }
 
@@ -403,7 +404,7 @@
   .add-option {
     flex: 0 0 auto;
     white-space: nowrap;
-    background: #c8dadf;
+    background: var(--color-dropzone-bg);
     border: none;
     padding: 0.35rem 0.6rem;
     border-radius: 6px;

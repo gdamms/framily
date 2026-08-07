@@ -15,6 +15,11 @@ class DeleteAccountRequest(BaseModel):
     password: str
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8)
+
+
 class UserFramilyInfo(BaseModel):
     code: str
     name: Optional[str] = None

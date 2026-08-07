@@ -226,7 +226,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    background-color: #f4fdff;
+    background-color: var(--color-bg-surface-alt);
+    color: var(--color-text);
     padding: 20px;
     border-radius: 10px;
     gap: 16px;
@@ -259,7 +260,7 @@
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    box-shadow: 0 0 0 9999px rgba(255, 255, 255, 0.28);
+    box-shadow: 0 0 0 9999px var(--color-crop-handle-shadow);
     outline: 2px solid white;
     outline-offset: -2px;
   }
@@ -278,7 +279,7 @@
     margin: -8px;
     border-radius: 50%;
     background: white;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 1px 3px var(--color-crop-overlay-shadow);
     touch-action: none;
   }
 

@@ -55,7 +55,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    background-color: #f4fdff;
+    background-color: var(--color-bg-surface-alt);
+    color: var(--color-text);
     padding: 20px;
     border-radius: 10px;
     gap: 20px;

@@ -125,8 +125,8 @@
     justify-content: center;
     gap: 0.5rem;
     align-self: flex-start;
-    background-color: #28a745;
-    color: white;
+    background-color: var(--color-success);
+    color: var(--color-text-inverse);
     border: none;
     border-radius: 6px;
     padding: 0.5rem 1rem;
@@ -134,7 +134,7 @@
   }
 
   .error {
-    color: #dc3545;
+    color: var(--color-danger);
     margin: 0;
   }
 
@@ -149,10 +149,10 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 0.75rem;
-    background: white;
+    background: var(--color-bg-surface);
     padding: 1rem;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px var(--color-shadow);
   }
 
   .member-identity {
@@ -174,7 +174,7 @@
   }
 
   .member-username {
-    color: #666;
+    color: var(--color-text-secondary);
   }
 
   .role-badge {
@@ -184,18 +184,18 @@
   }
 
   .role-badge.role-invited {
-    background-color: #ffc107;
-    color: #333;
+    background-color: var(--color-warning);
+    color: #222;
   }
 
   .role-badge.role-member {
-    background-color: #17a2b8;
-    color: white;
+    background-color: var(--color-info);
+    color: var(--color-text-inverse);
   }
 
   .role-badge.role-admin {
-    background-color: #28a745;
-    color: white;
+    background-color: var(--color-success);
+    color: var(--color-text-inverse);
   }
 
   .member-actions {
@@ -210,11 +210,11 @@
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.85rem;
-    background-color: #007bff;
-    color: white;
+    background-color: var(--color-accent-blue);
+    color: var(--color-text-inverse);
   }
 
   .member-actions .kick {
-    background-color: #dc3545;
+    background-color: var(--color-danger);
   }
 </style>

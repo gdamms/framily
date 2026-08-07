@@ -86,7 +86,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    background-color: #f4fdff;
+    background-color: var(--color-bg-surface-alt);
+    color: var(--color-text);
     padding: 20px;
     border-radius: 10px;
     gap: 20px;
@@ -105,15 +106,16 @@
 
   .framily-label {
     padding: 10px 20px;
-    background-color: #c8dadf;
+    background-color: var(--color-dropzone-bg);
+    color: var(--color-text);
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
   }
 
   .framily-checkbox:checked + .framily-label {
-    background-color: #4593e7;
-    color: white;
+    background-color: var(--color-primary);
+    color: var(--color-text-inverse);
   }
 
   .buttons {

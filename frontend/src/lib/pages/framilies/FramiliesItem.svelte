@@ -131,7 +131,7 @@
 
 <style>
   .error {
-    color: #dc3545;
+    color: var(--color-danger);
     margin: 0 0 0.5rem;
   }
 
@@ -139,11 +139,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: white;
+    background: var(--color-bg-surface);
     padding: 1rem;
     text-align: left;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px var(--color-shadow);
   }
 
   .framily-identity {
@@ -164,7 +164,7 @@
   }
 
   .framily-code {
-    color: #666;
+    color: var(--color-text-secondary);
   }
 
   .framily-actions {

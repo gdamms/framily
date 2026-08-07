@@ -35,7 +35,7 @@
   .backdrop {
     position: fixed;
     inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: var(--color-overlay-backdrop);
     display: flex;
     justify-content: center;
     align-items: center;

@@ -20,9 +20,12 @@
   .text-field {
     padding: 0.5rem;
     border: 0;
-    border-bottom: 1px solid #ccc;
+    border-bottom: 1px solid var(--color-border);
     border-radius: 4px;
     width: 100%;
     box-sizing: border-box;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
   }
 </style>

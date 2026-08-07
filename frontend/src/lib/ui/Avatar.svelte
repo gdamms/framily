@@ -123,7 +123,7 @@
 
   .avatar,
   .avatar-img {
-    outline: 2px solid #ffffff;
+    outline: 2px solid var(--color-avatar-ring);
     outline-offset: -3px;
   }
 
@@ -150,8 +150,8 @@
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    background-color: #007bff;
-    color: white;
+    background-color: var(--color-accent-blue);
+    color: var(--color-text-inverse);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -168,8 +168,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
-    background: rgba(0, 0, 0, 0.35);
+    color: var(--color-text-inverse);
+    background: var(--color-avatar-overlay);
     opacity: 0;
     transition: opacity 0.15s ease;
   }

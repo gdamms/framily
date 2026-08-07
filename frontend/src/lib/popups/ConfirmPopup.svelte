@@ -40,7 +40,8 @@
     flex-direction: column;
     align-items: center;
     gap: 1rem;
-    background: white;
+    background: var(--color-bg-surface);
+    color: var(--color-text);
     padding: 1.5rem;
     border-radius: 10px;
   }

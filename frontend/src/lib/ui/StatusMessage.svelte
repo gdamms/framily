@@ -20,17 +20,17 @@
   }
 
   .status-info {
-    background-color: #c8dadf;
-    color: #333;
+    background-color: var(--color-dropzone-bg);
+    color: var(--color-text);
   }
 
   .status-error {
-    background-color: #e74c3c;
-    color: white;
+    background-color: var(--color-status-error-bg);
+    color: var(--color-text-inverse);
   }
 
   .status-success {
-    background-color: #2ecc71;
-    color: white;
+    background-color: var(--color-status-success-bg);
+    color: var(--color-text-inverse);
   }
 </style>

@@ -3,9 +3,10 @@
 
   interface Props {
     value?: string;
+    placeholder?: string;
   }
 
-  let { value = $bindable("") }: Props = $props();
+  let { value = $bindable(""), placeholder = "Enter your password" }: Props = $props();
 </script>
 
-<TextField type="password" placeholder="Enter your password" bind:value required />
+<TextField type="password" {placeholder} bind:value required />

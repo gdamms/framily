@@ -2,11 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.security import verify_password
+from core.security import verify_password, hash_password
 from core.avatars import delete_avatar, USER_AVATAR_PREFIX
 from api.v1.auth import get_current_user
 from models import User, Framily, Picture, Membership, PictureVisibility
-from schemas.user import ProfileUpdate, UserInfo, UserInfoResponse, UserFramilyInfo, DeleteAccountRequest
+from schemas.user import (
+    ProfileUpdate,
+    UserInfo,
+    UserInfoResponse,
+    UserFramilyInfo,
+    DeleteAccountRequest,
+    ChangePasswordRequest,
+)
 from schemas.framily import MessageResponse
 
 router = APIRouter(
@@ -136,6 +143,25 @@ def update_profile(
     db.refresh(current_user)
 
     return UserInfoResponse(user=build_user_info(current_user, current_user, db))
+
+
+@router.post("/change-password", response_model=MessageResponse)
+def change_password(
+    request: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Change the current user's password. Requires re-entering the current password."""
+    if not verify_password(request.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password"
+        )
+
+    current_user.hashed_password = hash_password(request.new_password)
+    db.commit()
+
+    return MessageResponse(message="Password changed")
 
 
 @router.post("/delete", response_model=MessageResponse)

@@ -17,6 +17,12 @@ export const userApi = {
       body: JSON.stringify({ password }),
     }),
 
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ message: string }>("/user/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    }),
+
   uploadAvatar: (username: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);

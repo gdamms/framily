@@ -33,9 +33,11 @@
     max-width: 400px;
     margin: 0 auto;
     padding: 2rem;
-    border: 1px solid #ccc;
+    border: 1px solid var(--color-border);
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px var(--color-shadow);
+    background: var(--color-bg-surface);
+    color: var(--color-text);
   }
 
   h2 {
@@ -50,7 +52,7 @@
   }
 
   .error {
-    color: red;
+    color: var(--color-danger);
     text-align: center;
     margin-top: 1rem;
   }

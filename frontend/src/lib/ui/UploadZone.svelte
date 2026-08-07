@@ -57,7 +57,7 @@
 
 <style>
   .box {
-    background-color: #c8dadf;
+    background-color: var(--color-dropzone-bg);
     padding: 10px;
     border-radius: 10px;
     transition:
@@ -71,7 +71,7 @@
     align-items: center;
     justify-content: center;
     padding: 30px;
-    border: 2px dashed #92b0b3;
+    border: 2px dashed var(--color-dropzone-border);
     border-radius: 10px;
     transition: padding 0.1s ease;
     min-width: 100px;
@@ -80,7 +80,7 @@
 
   .box:hover {
     padding: 20px;
-    background-color: #f4fdff;
+    background-color: var(--color-dropzone-bg-hover);
   }
 
   .box:hover .inner {
@@ -93,7 +93,7 @@
 
   .text {
     font-size: 16px;
-    color: #333;
+    color: var(--color-text);
     margin-bottom: 10px;
   }
 

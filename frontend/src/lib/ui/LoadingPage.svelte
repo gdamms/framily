@@ -24,6 +24,6 @@
     align-items: center;
     justify-content: center;
     padding: 1rem;
-    color: #888;
+    color: var(--color-text-muted);
   }
 </style>

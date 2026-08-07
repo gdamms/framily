@@ -1,22 +1,15 @@
 <script lang="ts">
   import { tick } from "svelte";
   import { api, type UserInfo, type UserFramilyInfo } from "$lib/api";
-  import { authStore } from "$lib/stores/auth";
-  import { authView } from "$lib/app";
-  import { overlay } from "$lib/overlay";
   import Galery from "$lib/components/Galery.svelte";
   import Framilies from "$lib/pages/framilies/Framilies.svelte";
   import Avatar from "$lib/ui/Avatar.svelte";
   import PageLayout from "$lib/ui/PageLayout.svelte";
   import LoadingPage from "$lib/ui/LoadingPage.svelte";
-  import Button from "$lib/ui/Button.svelte";
-  import ConfirmPopup from "$lib/popups/ConfirmPopup.svelte";
   import UploadPopup from "$lib/popups/UploadPopup.svelte";
-  import PasswordField from "$lib/ui/form/PasswordField.svelte";
-  import { formatDate } from "$lib/date";
+  import { overlay } from "$lib/overlay";
   import Pencil from "@lucide/svelte/icons/pencil";
   import ImagePlus from "@lucide/svelte/icons/image-plus";
-  import LogOut from "@lucide/svelte/icons/log-out";
 
   interface Props {
     username: string;
@@ -31,16 +24,13 @@
   let user: UserInfo | undefined = $state();
   let pictures = $derived(user?.pictures ?? []);
   let framilies = $derived(user?.framilies ?? []);
-  type View = "pictures" | "framilies" | "settings";
+  type View = "pictures" | "framilies";
   let view: View = $state("pictures");
 
-  const TABS = $derived(
-    [
-      { id: "pictures" as const, label: "Pictures" },
-      { id: "framilies" as const, label: "Framilies" },
-      ...(isOwnProfile ? [{ id: "settings" as const, label: "Settings" }] : []),
-    ],
-  );
+  const TABS = [
+    { id: "pictures" as const, label: "Pictures" },
+    { id: "framilies" as const, label: "Framilies" },
+  ];
 
   function openUploadPopup() {
     overlay.open(UploadPopup, {
@@ -76,42 +66,6 @@
       (event.target as HTMLInputElement).blur();
     } else if (event.key === "Escape") {
       editingName = false;
-    }
-  }
-
-  let deletePassword = $state("");
-  let deleteError = $state("");
-  let deletingAccount = $state(false);
-
-  function logout() {
-    authStore.clearToken();
-    authView.set("login");
-  }
-
-  function startDeleteAccount() {
-    deleteError = "";
-    if (!deletePassword) {
-      deleteError = "Enter your password to confirm.";
-      return;
-    }
-    overlay.open(ConfirmPopup, {
-      prompt: "Delete your account? This cannot be undone.",
-      onConfirm: deleteAccount,
-    });
-  }
-
-  async function deleteAccount() {
-    deleteError = "";
-    deletingAccount = true;
-    try {
-      await api.user.deleteAccount(deletePassword);
-      authStore.clearToken();
-      authView.set("login");
-    } catch (e: any) {
-      deleteError = e.message || "Failed to delete account";
-    } finally {
-      deletingAccount = false;
-      deletePassword = "";
     }
   }
 
@@ -174,61 +128,6 @@
       <Galery {pictures} {currentUsername} {myFramilies} onPictureChanged={loadUser} />
     {:else if view === "framilies"}
       <Framilies {framilies} onFramilyChanged={loadUser} />
-    {:else if view === "settings" && isOwnProfile}
-      <div class="settings">
-        <section class="section">
-          <h3 class="section-title">Account</h3>
-          <div class="setting">
-            <div class="setting-label">Username</div>
-            <div class="setting-value">@{user!.username}</div>
-          </div>
-          {#if user!.email}
-            <div class="setting">
-              <div class="setting-label">Email</div>
-              <div class="setting-value">{user!.email}</div>
-            </div>
-          {/if}
-          {#if user!.created_at}
-            <div class="setting">
-              <div class="setting-label">Member since</div>
-              <div class="setting-value">
-                {formatDate(user!.created_at)}
-              </div>
-            </div>
-          {/if}
-          <div class="setting">
-            <div class="setting-label">Logout</div>
-            <Button variant="secondary" class="logout-button" onclick={logout}>
-              <LogOut size={16} />
-              Logout
-            </Button>
-          </div>
-        </section>
-
-        <section class="section danger-zone">
-          <h3 class="section-title">Danger zone</h3>
-
-          {#if deleteError}
-            <p class="error">{deleteError}</p>
-          {/if}
-
-          <div class="setting">
-            <div class="setting-label">Delete account</div>
-            <div class="setting-description">
-              Permanently deletes your account. Your uploaded pictures stay in
-              shared framilies but are no longer attributed to you.
-            </div>
-            <PasswordField bind:value={deletePassword} />
-            <button
-              class="delete-button"
-              disabled={deletingAccount}
-              onclick={startDeleteAccount}
-            >
-              Delete account
-            </button>
-          </div>
-        </section>
-      </div>
     {/if}
   {/snippet}
 
@@ -237,7 +136,7 @@
 
 <style>
   .profile-header {
-    background: #eee;
+    background: var(--color-bg-page);
     padding: 0 1rem;
     display: flex;
     align-items: center;
@@ -268,15 +167,16 @@
     font-weight: bold;
     font-family: inherit;
     border: none;
-    border-bottom: 2px solid #333;
+    border-bottom: 2px solid var(--color-text);
     background: none;
+    color: var(--color-text);
     padding: 0;
     max-width: 100%;
   }
 
   .profile-username {
     font-size: 14px;
-    color: #666;
+    color: var(--color-text-secondary);
   }
 
   .add-picture {
@@ -285,85 +185,12 @@
     justify-content: center;
     gap: 0.5rem;
     align-self: flex-start;
-    background-color: #28a745;
-    color: white;
+    background-color: var(--color-success);
+    color: var(--color-text-inverse);
     border: none;
     border-radius: 6px;
     padding: 0.5rem 1rem;
     cursor: pointer;
     margin: 0 1rem;
-  }
-
-  .settings {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
-  }
-
-  .section {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .section-title {
-    margin: 0;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: #666;
-  }
-
-  .danger-zone .section-title {
-    color: #dc3545;
-  }
-
-  .setting {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    background: white;
-    padding: 1rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  .setting-label {
-    font-weight: bold;
-  }
-
-  .setting-value {
-    color: #333;
-  }
-
-  .setting-description {
-    color: #666;
-    font-size: 0.85rem;
-    margin: -0.25rem 0 0;
-  }
-
-  .error {
-    color: #dc3545;
-    margin: 0;
-  }
-
-  .delete-button {
-    align-self: flex-start;
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-  }
-
-  :global(.logout-button) {
-    align-self: flex-start;
-  }
-
-  .delete-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
   }
 </style>

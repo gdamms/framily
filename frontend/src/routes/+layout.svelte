@@ -1,6 +1,12 @@
 <script lang="ts">
   import favicon from "$lib/assets/favicon.svg";
   import Overlay from "$lib/ui/Overlay.svelte";
+  import "$lib/theme.css";
+  import { themeStore } from "$lib/stores/theme";
+
+  // Imported for its side effect: keeps <html data-theme> in sync with the
+  // stored preference/system setting for the lifetime of the app.
+  void themeStore;
 
   let { children } = $props();
 </script>
@@ -19,13 +25,14 @@
     margin: 0;
     padding: 0;
     font-family: Arial, sans-serif;
-    background-color: #f5f5f5;
+    background-color: var(--color-bg);
+    color: var(--color-text);
     display: flex;
     flex-direction: column;
   }
 
   main {
     height: 100dvh;
-    background: #bbb;
+    background: var(--color-bg-outer);
   }
 </style>

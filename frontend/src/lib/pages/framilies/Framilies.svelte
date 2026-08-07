@@ -38,8 +38,8 @@
     justify-content: center;
     gap: 0.5rem;
     align-self: flex-start;
-    background-color: #28a745;
-    color: white;
+    background-color: var(--color-success);
+    color: var(--color-text-inverse);
     border: none;
     border-radius: 6px;
     padding: 0.5rem 1rem;

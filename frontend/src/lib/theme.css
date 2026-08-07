@@ -1,0 +1,103 @@
+/* Theme tokens. `data-theme` is set on <html> by src/lib/stores/theme.ts,
+   resolved from the user's stored preference (system/light/dark). Light
+   values live on the bare :root as the default so the app still looks right
+   before JS has run. */
+:root {
+  color-scheme: light;
+
+  --color-bg: #f5f5f5;
+  --color-bg-outer: #bbb;
+  --color-bg-page: #eee;
+  --color-bg-surface: #ffffff;
+  --color-bg-surface-alt: #f4fdff;
+  --color-bg-secondary: #e2e8ec;
+  --color-bg-secondary-hover: #d3dbe0;
+  --color-bg-hover: rgba(0, 0, 0, 0.06);
+
+  --color-border: #ccc;
+  --color-shadow: rgba(0, 0, 0, 0.1);
+  --color-overlay-backdrop: rgba(0, 0, 0, 0.5);
+
+  --color-text: #333;
+  --color-text-secondary: #666;
+  --color-text-muted: #888;
+  --color-text-inverse: #fff;
+
+  --color-primary: #4593e7;
+  --color-primary-hover: #327bcf;
+  --color-success: #28a745;
+  --color-danger: #dc3545;
+  --color-danger-hover: #c22836;
+  --color-warning: #ffc107;
+  --color-info: #17a2b8;
+  --color-accent-blue: #007bff;
+
+  --color-chip-bg: #e3f2fd;
+  --color-chip-text: #1976d2;
+
+  --color-dropzone-bg: #c8dadf;
+  --color-dropzone-border: #92b0b3;
+  --color-dropzone-bg-hover: #f4fdff;
+
+  --color-status-error-bg: #e74c3c;
+  --color-status-success-bg: #2ecc71;
+
+  --color-media-bg: #111;
+  --color-avatar-ring: #ffffff;
+  --color-avatar-overlay: rgba(0, 0, 0, 0.35);
+  --color-crop-handle-shadow: rgba(255, 255, 255, 0.28);
+  --color-crop-overlay-shadow: rgba(0, 0, 0, 0.4);
+
+  --color-theme-toggle-bg: #222;
+  --color-theme-toggle-icon: #f5f5f5;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-bg: #121212;
+  --color-bg-outer: #000;
+  --color-bg-page: #1c1c1c;
+  --color-bg-surface: #262626;
+  --color-bg-surface-alt: #20262a;
+  --color-bg-secondary: #333a40;
+  --color-bg-secondary-hover: #3f474e;
+  --color-bg-hover: rgba(255, 255, 255, 0.08);
+
+  --color-border: #3d3d3d;
+  --color-shadow: rgba(0, 0, 0, 0.4);
+  --color-overlay-backdrop: rgba(0, 0, 0, 0.7);
+
+  --color-text: #e8e8e8;
+  --color-text-secondary: #aaa;
+  --color-text-muted: #888;
+  --color-text-inverse: #fff;
+
+  --color-primary: #5aa3f0;
+  --color-primary-hover: #78b4f4;
+  --color-success: #34c95e;
+  --color-danger: #e5566a;
+  --color-danger-hover: #ef7080;
+  --color-warning: #ffca4b;
+  --color-info: #2bb8cc;
+  --color-accent-blue: #4a95e0;
+
+  --color-chip-bg: #1c3a52;
+  --color-chip-text: #7ec1f5;
+
+  --color-dropzone-bg: #2c3a3e;
+  --color-dropzone-border: #55686d;
+  --color-dropzone-bg-hover: #20262a;
+
+  --color-status-error-bg: #c0392b;
+  --color-status-success-bg: #219150;
+
+  --color-media-bg: #0a0a0a;
+  --color-avatar-ring: #262626;
+  --color-avatar-overlay: rgba(0, 0, 0, 0.5);
+  --color-crop-handle-shadow: rgba(255, 255, 255, 0.2);
+  --color-crop-overlay-shadow: rgba(0, 0, 0, 0.6);
+
+  --color-theme-toggle-bg: #f5f5f5;
+  --color-theme-toggle-icon: #121212;
+}

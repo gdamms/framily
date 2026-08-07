@@ -8,7 +8,7 @@ export type DashboardPage = {
 export type ProfilePage = {
   page: "profile";
   username: string;
-  section: "pictures" | "framilies" | "settings";
+  section: "pictures" | "framilies";
 }
 
 export type FramilyPage = {
@@ -17,7 +17,11 @@ export type FramilyPage = {
   section: "pictures" | "members" | "settings";
 }
 
-export type Page = DashboardPage | ProfilePage | FramilyPage;
+export type SettingsPage = {
+  page: "settings";
+}
+
+export type Page = DashboardPage | ProfilePage | FramilyPage | SettingsPage;
 
 export type AuthView = "login" | "register";
 

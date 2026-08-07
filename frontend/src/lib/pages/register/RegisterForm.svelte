@@ -84,7 +84,7 @@
     border: none;
     padding: 0;
     font: inherit;
-    color: #4593e7;
+    color: var(--color-primary);
     text-decoration: underline;
     cursor: pointer;
   }

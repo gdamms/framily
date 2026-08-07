@@ -46,6 +46,6 @@
 
   .tab.selected {
     font-weight: bold;
-    border-bottom: 2px solid #333;
+    border-bottom: 2px solid var(--color-text);
   }
 </style>

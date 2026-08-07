@@ -373,7 +373,7 @@
   }
 
   .error {
-    color: #dc3545;
+    color: var(--color-danger);
     margin: 0;
   }
 
@@ -388,17 +388,17 @@
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    color: #666;
+    color: var(--color-text-secondary);
   }
 
   .danger-zone .section-title {
-    color: #dc3545;
+    color: var(--color-danger);
   }
 
   .delete-button {
     align-self: flex-start;
-    background-color: #dc3545;
-    color: white;
+    background-color: var(--color-danger);
+    color: var(--color-text-inverse);
     border: none;
     border-radius: 6px;
     padding: 0.5rem 1rem;
@@ -409,10 +409,10 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    background: white;
+    background: var(--color-bg-surface);
     padding: 1rem;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px var(--color-shadow);
   }
 
   .setting-label {
@@ -420,11 +420,11 @@
   }
 
   .setting-value {
-    color: #333;
+    color: var(--color-text);
   }
 
   .setting-description {
-    color: #666;
+    color: var(--color-text-secondary);
     font-size: 0.85rem;
     margin: -0.25rem 0 0;
   }
@@ -455,7 +455,7 @@
   }
 
   .unit {
-    color: #666;
+    color: var(--color-text-secondary);
   }
 
   .orientation-row {
@@ -471,13 +471,13 @@
     padding: 0.5rem;
     border: none;
     border-radius: 6px;
-    background: white;
+    background: var(--color-bg-surface);
     cursor: pointer;
-    color: #333;
+    color: var(--color-text);
   }
 
   .rotate-button:active:not(:disabled) {
-    color: #4593e7;
+    color: var(--color-primary);
   }
 
   .rotate-button:disabled {
@@ -489,7 +489,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #4593e7;
+    color: var(--color-primary);
     transition: transform 0.3s ease;
   }
 
@@ -507,11 +507,11 @@
   .slider-row input[type="range"] {
     flex: 1;
     cursor: pointer;
-    accent-color: #4593e7;
+    accent-color: var(--color-primary);
   }
 
   .slider-end {
-    color: #666;
+    color: var(--color-text-secondary);
     font-size: 0.85rem;
     white-space: nowrap;
   }

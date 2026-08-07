@@ -8,10 +8,12 @@
   import Dashboard from "$lib/pages/dashboard/Dashboard.svelte";
   import Framily from "$lib/pages/framily/Framily.svelte";
   import Profile from "$lib/pages/profile/Profile.svelte";
+  import Settings from "$lib/pages/settings/Settings.svelte";
   import LoginForm from "$lib/pages/login/LoginForm.svelte";
   import RegisterForm from "$lib/pages/register/RegisterForm.svelte";
   import LoadingPage from "$lib/ui/LoadingPage.svelte";
   import IconButton from "$lib/ui/IconButton.svelte";
+  import BurgerMenu from "$lib/ui/BurgerMenu.svelte";
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
   import User from "@lucide/svelte/icons/user";
   import { app, authView } from "$lib/app";
@@ -74,6 +76,9 @@
   </div>
 {:else}
   <div class="page">
+    <div class="burger-container">
+      <BurgerMenu currentUsername={user.username} />
+    </div>
     <div class="content">
       {#if $appState.page.page === "dashboard"}
         <Dashboard
@@ -97,6 +102,8 @@
           {framilies}
           onFramilyDeleted={refreshUser}
         />
+      {:else if $appState.page.page === "settings"}
+        <Settings user={user!} onChanged={refreshUser} />
       {/if}
     </div>
     <div class="bottomBar">
@@ -123,10 +130,18 @@
     max-width: 800px;
     margin: 0 auto;
     height: 100%;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    background: #eee;
+    box-shadow: 0 0 10px var(--color-shadow);
+    background: var(--color-bg-page);
+    color: var(--color-text);
     display: flex;
     flex-direction: column;
+  }
+
+  .burger-container {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 100;
   }
 
   .bottomBar {
@@ -136,8 +151,8 @@
     justify-content: space-around;
     align-items: center;
     padding: 0.5rem;
-    border-top: 1px solid #ccc;
-    background: #eee;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-bg-page);
   }
 
   .content {

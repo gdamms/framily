@@ -161,7 +161,7 @@
   }
 
   .framily-header {
-    background: #eee;
+    background: var(--color-bg-page);
     padding: 0 1rem;
     display: flex;
     align-items: center;
@@ -198,15 +198,16 @@
     font-weight: bold;
     font-family: inherit;
     border: none;
-    border-bottom: 2px solid #333;
+    border-bottom: 2px solid var(--color-text);
     background: none;
+    color: var(--color-text);
     padding: 0;
     max-width: 100%;
   }
 
   .framily-code {
     font-size: 14px;
-    color: #666;
+    color: var(--color-text-secondary);
   }
 
   .add-picture {
@@ -215,8 +216,8 @@
     justify-content: center;
     gap: 0.5rem;
     align-self: flex-start;
-    background-color: #28a745;
-    color: white;
+    background-color: var(--color-success);
+    color: var(--color-text-inverse);
     border: none;
     border-radius: 6px;
     padding: 0.5rem 1rem;
