@@ -8,12 +8,18 @@
     pictures: PictureInfo[];
     currentUsername: string;
     myFramilies: UserFramilyInfo[];
+    onPictureChanged?: () => void;
   }
 
-  let { pictures, currentUsername, myFramilies }: Props = $props();
+  let { pictures, currentUsername, myFramilies, onPictureChanged }: Props = $props();
 
   function openPicture(picture: PictureInfo) {
-    overlay.open(PictureView, { picture, currentUsername, myFramilies });
+    overlay.open(PictureView, {
+      picture,
+      currentUsername,
+      myFramilies,
+      onChanged: onPictureChanged,
+    });
   }
 
   function getAspectRatio(picture: PictureInfo): number | undefined {

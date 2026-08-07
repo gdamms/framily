@@ -10,24 +10,38 @@
 
   interface Props {
     framily: UserFramilyInfo;
+    onChanged?: () => void;
   }
 
-  let { framily }: Props = $props();
+  let { framily, onChanged }: Props = $props();
 
   let error = $state("");
 
   async function acceptInvite(code: string) {
-    await api.framily.join(code, true);
+    error = "";
+    try {
+      await api.framily.join(code, true);
+      onChanged?.();
+    } catch (e: any) {
+      error = e.message || "Failed to accept invite";
+    }
   }
 
   async function declineInvite(code: string) {
-    await api.framily.join(code, false);
+    error = "";
+    try {
+      await api.framily.join(code, false);
+      onChanged?.();
+    } catch (e: any) {
+      error = e.message || "Failed to decline invite";
+    }
   }
 
   async function leave(code: string) {
     error = "";
     try {
       await api.framily.leave(code);
+      onChanged?.();
     } catch (e: any) {
       error = e.message || "Failed to leave framily";
     }

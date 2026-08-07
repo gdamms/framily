@@ -6,9 +6,10 @@
   interface Props {
     framilies: UserFramilyInfo[];
     onAddFramily?: () => void;
+    onFramilyChanged?: () => void;
   }
 
-  let { framilies, onAddFramily }: Props = $props();
+  let { framilies, onAddFramily, onFramilyChanged }: Props = $props();
 </script>
 
 <div class="framilies">
@@ -19,7 +20,7 @@
     </button>
   {/if}
   {#each framilies as framily}
-    <FramiliesItem {framily} />
+    <FramiliesItem {framily} onChanged={onFramilyChanged} />
   {/each}
 </div>
 

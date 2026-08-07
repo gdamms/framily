@@ -10,10 +10,11 @@
   interface Props {
     framilies?: UserFramilyInfo[];
     framilyCodes?: string[];
+    onUploaded?: () => void;
     close?: () => void;
   }
 
-  let { framilies = [], framilyCodes = [], close = () => {} }: Props = $props();
+  let { framilies = [], framilyCodes = [], onUploaded, close = () => {} }: Props = $props();
 
   let fileInput: HTMLInputElement | undefined = $state();
 
@@ -50,6 +51,7 @@
     try {
       await api.pictures.upload(selectedFramilyCodes, file);
       status.show("Upload successful", "success");
+      onUploaded?.();
     } catch (e: any) {
       status.show(e.message || "Failed to upload", "error");
     } finally {

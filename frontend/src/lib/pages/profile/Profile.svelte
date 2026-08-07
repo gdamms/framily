@@ -43,7 +43,11 @@
   );
 
   function openUploadPopup() {
-    overlay.open(UploadPopup, { framilies, framilyCodes: framilies.map((f) => f.code) });
+    overlay.open(UploadPopup, {
+      framilies,
+      framilyCodes: framilies.map((f) => f.code),
+      onUploaded: loadUser,
+    });
   }
 
   let editingName = $state(false);
@@ -111,6 +115,11 @@
     }
   }
 
+  async function loadUser() {
+    const response = await api.user.getInfo(username);
+    user = response.user;
+  }
+
   $effect(() => {
     // Re-fetch whenever `username` changes - this component instance is
     // reused across profile navigations (e.g. own profile -> a member's
@@ -162,9 +171,9 @@
           Add picture
         </button>
       {/if}
-      <Galery {pictures} {currentUsername} {myFramilies} />
+      <Galery {pictures} {currentUsername} {myFramilies} onPictureChanged={loadUser} />
     {:else if view === "framilies"}
-      <Framilies {framilies} />
+      <Framilies {framilies} onFramilyChanged={loadUser} />
     {:else if view === "settings" && isOwnProfile}
       <div class="settings">
         <section class="section">

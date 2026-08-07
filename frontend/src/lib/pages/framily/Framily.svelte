@@ -77,7 +77,11 @@
 
   function openUploadPopup() {
     if (!framily) return;
-    overlay.open(UploadPopup, { framilies, framilyCodes: [framily.code] });
+    overlay.open(UploadPopup, {
+      framilies,
+      framilyCodes: [framily.code],
+      onUploaded: loadFramily,
+    });
   }
 
   onMount(loadFramily);
@@ -120,7 +124,7 @@
         <ImagePlus size={16} />
         Add picture
       </button>
-      <Galery {pictures} {currentUsername} myFramilies={framilies} />
+      <Galery {pictures} {currentUsername} myFramilies={framilies} onPictureChanged={loadFramily} />
     {:else if framilyPage.section === "members"}
       <Members
         framilyCode={framily!.code}

@@ -31,6 +31,11 @@
     user = response.user;
   }
 
+  async function refreshPictures() {
+    const picturesResponse = await api.pictures.listAll();
+    dashboardPictures = picturesResponse.pictures;
+  }
+
   async function loadApp() {
     const me = await api.auth.me();
     const response = await api.user.getInfo(me.username);
@@ -76,6 +81,8 @@
           pictures={dashboardPictures}
           section={$appState.page.section}
           currentUsername={user.username}
+          onPicturesChanged={refreshPictures}
+          onFramiliesChanged={refreshUser}
         />
       {:else if $appState.page.page === "profile"}
         <Profile

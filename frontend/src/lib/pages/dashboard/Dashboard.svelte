@@ -14,9 +14,11 @@
     pictures: PictureInfo[];
     section: "galery" | "framilies";
     currentUsername: string;
+    onPicturesChanged?: () => void;
+    onFramiliesChanged?: () => void;
   }
 
-  let { framilies, pictures, section, currentUsername }: Props = $props();
+  let { framilies, pictures, section, currentUsername, onPicturesChanged, onFramiliesChanged }: Props = $props();
 
   const TABS = [
     { id: "galery" as const, label: "Galery" },
@@ -24,7 +26,11 @@
   ];
 
   function openUploadPopup() {
-    overlay.open(UploadPopup, { framilies, framilyCodes: framilies.map((f) => f.code) });
+    overlay.open(UploadPopup, {
+      framilies,
+      framilyCodes: framilies.map((f) => f.code),
+      onUploaded: onPicturesChanged,
+    });
   }
 </script>
 
@@ -38,9 +44,13 @@
       <ImagePlus size={16} />
       Add picture
     </button>
-    <Galery {pictures} {currentUsername} myFramilies={framilies} />
+    <Galery {pictures} {currentUsername} myFramilies={framilies} onPictureChanged={onPicturesChanged} />
   {:else if section === "framilies"}
-    <Framilies {framilies} onAddFramily={() => overlay.open(ConnectFramilyPopup, {})} />
+    <Framilies
+      {framilies}
+      onAddFramily={() => overlay.open(ConnectFramilyPopup, { onSuccess: onFramiliesChanged })}
+      onFramilyChanged={onFramiliesChanged}
+    />
   {/if}
 {/snippet}
 

@@ -15,10 +15,11 @@
     picture: PictureInfo;
     currentUsername: string;
     myFramilies: UserFramilyInfo[];
+    onChanged?: () => void;
     close?: () => void;
   }
 
-  let { picture, currentUsername, myFramilies, close = () => {} }: Props = $props();
+  let { picture, currentUsername, myFramilies, onChanged, close = () => {} }: Props = $props();
 
   let framilies = $state(picture.framilies);
 
@@ -44,6 +45,7 @@
     try {
       await api.pictures.removeVisibility(picture.id, [code]);
       framilies = framilies.filter((f) => f.code !== code);
+      onChanged?.();
     } catch (e: any) {
       error = e.message || "Failed to remove from framily";
     }
@@ -55,6 +57,7 @@
       await api.pictures.addVisibility(picture.id, [framily.code]);
       framilies = [...framilies, { code: framily.code, name: framily.name ?? framily.code }];
       showAddPicker = false;
+      onChanged?.();
     } catch (e: any) {
       error = e.message || "Failed to add to framily";
     }
@@ -64,6 +67,7 @@
     error = "";
     try {
       await api.pictures.delete(picture.id);
+      onChanged?.();
       close();
     } catch (e: any) {
       error = e.message || "Failed to delete picture";
