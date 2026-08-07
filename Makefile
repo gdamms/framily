@@ -1,9 +1,11 @@
-.PHONY: help setup start stop restart startd clean start-prod start-prodd stop-prod
+.PHONY: help setup start stop restart startd clean start-prod start-prodd stop-prod start-demo start-demod stop-demo
 
 DEV_COMPOSE_FILE=config/compose/docker-compose.dev.yml
 PROD_COMPOSE_FILE=config/compose/docker-compose.prod.yml
+DEMO_COMPOSE_FILE=config/compose/docker-compose.demo.yml
 DEV_ENV_FILE=config/env/.env
 PROD_ENV_FILE=config/env/.env.prod
+DEMO_ENV_FILE=config/env/.env.demo
 
 # Default target
 help:
@@ -14,9 +16,12 @@ help:
 	@echo "  stop        - Stop the development environment"
 	@echo "  restart     - Restart the development environment"
 	@echo "  clean       - Stop and remove all containers, networks, and volumes"
-	@echo "  start-prod  - Start the production compose stack"
+	@echo "  start-prod  - Start the production compose stack (builds from source)"
 	@echo "  start-prodd - Start production stack in detached mode"
 	@echo "  stop-prod   - Stop the production compose stack"
+	@echo "  start-demo  - Start the demo stack (pulls the published image, no build)"
+	@echo "  start-demod - Start the demo stack in detached mode"
+	@echo "  stop-demo   - Stop the demo stack"
 
 # Setup environment
 setup:
@@ -70,3 +75,18 @@ start-prodd:
 stop-prod:
 	@echo "Stopping Framily production stack..."
 	@docker-compose -f $(PROD_COMPOSE_FILE) --env-file $(PROD_ENV_FILE) down
+
+# Start demo environment (pulls the published image instead of building)
+start-demo:
+	@echo "Starting Framily demo stack..."
+	@docker-compose -f $(DEMO_COMPOSE_FILE) --env-file $(DEMO_ENV_FILE) up
+
+# Detached demo start
+start-demod:
+	@echo "Starting Framily demo stack in detached mode..."
+	@docker-compose -f $(DEMO_COMPOSE_FILE) --env-file $(DEMO_ENV_FILE) up -d
+
+# Stop demo environment
+stop-demo:
+	@echo "Stopping Framily demo stack..."
+	@docker-compose -f $(DEMO_COMPOSE_FILE) --env-file $(DEMO_ENV_FILE) down

@@ -2,6 +2,7 @@
 .env
 config/env/.env
 config/env/.env.prod
+config/env/.env.demo
 
 # Framily token files
 *.token

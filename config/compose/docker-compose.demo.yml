@@ -1,16 +1,19 @@
-name: framily
+name: framily-demo
+
+# Quickstart stack for trying Framily without building anything: pulls the published
+# image from GHCR instead of building from source. See config/env/demo.env.
 
 services:
   postgres:
     image: postgres:18-alpine
-    container_name: framily-postgres
+    container_name: framily-demo-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - postgres_prod_data:/var/lib/postgresql/18/docker
+      - postgres_demo_data:/var/lib/postgresql/18/docker
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
@@ -19,7 +22,7 @@ services:
 
   garage:
     image: dxflrs/garage:v2.3.0
-    container_name: framily-garage
+    container_name: framily-demo-garage
     restart: unless-stopped
     environment:
       GARAGE_DEFAULT_ACCESS_KEY: ${S3_ACCESS_KEY}
@@ -27,8 +30,8 @@ services:
       GARAGE_DEFAULT_BUCKET: ${S3_BUCKET}
     volumes:
       - ../garage/garage.toml:/etc/garage.toml:ro
-      - garage_prod_meta:/var/lib/garage/meta
-      - garage_prod_data:/var/lib/garage/data
+      - garage_demo_meta:/var/lib/garage/meta
+      - garage_demo_data:/var/lib/garage/data
     command: /garage server --single-node --default-bucket
     healthcheck:
       test: ["CMD", "/garage", "status"]
@@ -38,10 +41,8 @@ services:
 
   backend:
     image: ghcr.io/gdamms/framily:${VERSION:-latest}
-    build:
-      context: ../..
-      dockerfile: backend/Dockerfile.prod
-    container_name: framily-backend
+    pull_policy: always
+    container_name: framily-demo-backend
     restart: unless-stopped
     environment:
       ENVIRONMENT: production
@@ -73,6 +74,6 @@ services:
       - "${APP_PORT}:8000"
 
 volumes:
-  postgres_prod_data:
-  garage_prod_meta:
-  garage_prod_data:
+  postgres_demo_data:
+  garage_demo_meta:
+  garage_demo_data:
