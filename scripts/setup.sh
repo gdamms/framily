@@ -19,10 +19,11 @@ if [ $? -ne 0 ]; then
 fi
 
 # Set up environment variables
-ENV_EXAMPLE_FILE="$COLLABST_DIR/config/env/dev.env"
-ENV_FILE="$COLLABST_DIR/config/env/.env"
+ENV_DIR="$COLLABST_DIR/config/env"
+ENV_EXAMPLE_FILE="$ENV_DIR/dev.env"
+ENV_FILE="$ENV_DIR/.dev.env"
 
-mkdir -p "$COLLABST_DIR/config/env"
+mkdir -p "$ENV_DIR"
 
 cp "$ENV_EXAMPLE_FILE" "$ENV_FILE"
 

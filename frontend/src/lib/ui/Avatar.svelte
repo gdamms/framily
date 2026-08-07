@@ -1,5 +1,7 @@
 <script lang="ts">
   import { api } from "$lib/api";
+  import { overlay } from "$lib/overlay";
+  import CropAvatarPopup from "$lib/popups/CropAvatarPopup.svelte";
   import Pencil from "@lucide/svelte/icons/pencil";
 
   interface Props {
@@ -13,8 +15,6 @@
   let { kind, id, label, editable = false, size = 64 }: Props = $props();
 
   let fileInput: HTMLInputElement | undefined = $state();
-  let uploading = $state(false);
-  let error = $state("");
   let loaded = $state(false);
   // A cache-busting token. Must stay unique across page reloads, not just within
   // a session: the server sends a 24h Cache-Control on avatar responses, so a
@@ -44,30 +44,27 @@
   }
 
   function handleClick() {
-    if (!editable || uploading) return;
+    if (!editable) return;
     fileInput?.click();
   }
 
-  async function handleFileChange(event: Event) {
+  function handleFileChange(event: Event) {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = "";
     if (!file) return;
 
-    error = "";
-    uploading = true;
-    try {
-      if (kind === "user") {
-        await api.user.uploadAvatar(id, file);
-      } else {
-        await api.framily.uploadAvatar(id, file);
-      }
-      version = Date.now();
-    } catch (e: any) {
-      error = e.message || "Failed to upload avatar";
-    } finally {
-      uploading = false;
-    }
+    overlay.open(CropAvatarPopup, {
+      file,
+      onUpload: async (cropped: File) => {
+        if (kind === "user") {
+          await api.user.uploadAvatar(id, cropped);
+        } else {
+          await api.framily.uploadAvatar(id, cropped);
+        }
+        version = Date.now();
+      },
+    });
   }
 </script>
 
@@ -107,9 +104,6 @@
       onchange={handleFileChange}
       hidden
     />
-  {/if}
-  {#if error}
-    <p class="avatar-error">{error}</p>
   {/if}
 </div>
 
@@ -183,12 +177,5 @@
   .avatar.editable:hover .avatar-overlay,
   .avatar.editable:focus-visible .avatar-overlay {
     opacity: 1;
-  }
-
-  .avatar-error {
-    color: #dc3545;
-    font-size: 0.75rem;
-    margin: 0.25rem 0 0;
-    text-align: center;
   }
 </style>

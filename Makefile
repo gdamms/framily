@@ -3,9 +3,9 @@
 DEV_COMPOSE_FILE=config/compose/docker-compose.dev.yml
 PROD_COMPOSE_FILE=config/compose/docker-compose.prod.yml
 DEMO_COMPOSE_FILE=config/compose/docker-compose.demo.yml
-DEV_ENV_FILE=config/env/.env
-PROD_ENV_FILE=config/env/.env.prod
-DEMO_ENV_FILE=config/env/.env.demo
+DEV_ENV_FILE=config/env/.dev.env
+PROD_ENV_FILE=config/env/.prod.env
+DEMO_ENV_FILE=config/env/.demo.env
 
 # Default target
 help:

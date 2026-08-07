@@ -1,14 +1,21 @@
+# TODO
+
+- [ ] after doing an action, refetch the needed data to update the ui (like after adding a picture, refetch the pictures list, after adding a framily, refetch the framilies list, ...)
 - [ ] make the frame in deep sleep when not fetching images (to reduce power consumption) make it wake up when the next fetch is due, and go back to deep sleep after fetching the image and displaying it. make this feature optional in the frame settings (default to enabled)
-- [ ] progressive web app
   - [ ] include frame initialization in the pwa - seemless experience for the user, only in the app: manage the wifi-hotspot, web interface adapted, ...
+- [ ] progressive web app
 - [ ] when overviewing a picture, allow the user to draw a "focus area" on the picture: a rectangle (clamp to picture size) will be used to crop the picuture to the focus area (helps to manage horizontal pictures on vertical frames - and visversa). when croping, picture should be ALWAYS contain the focus area, if needed, add black bars to the picture. do not restric the size to the focus area, the crop should cover as much as possible of the picture while keeping the focus area in it
-- [ ] add a dark/light mode switch (default to light mode)
 - [ ] move the user settings to a burger on the top right: profile, settings, theme, logout (remove the settings tab from the user profile page)
+- [ ] add a dark/light mode switch (default to light mode)
 - [ ] in the settings page: change display name (even if can be change clicking on the name in the profile page), change password, change password, change theme (even if can be change clicking on the theme switch in the top right dropdown), delete account (danger zone)
-- [ ] public invite link to join a framily, an identified user that use this link will be added to the framily (the link should be unique to the framily, revokable and if remake, the old link should not work anymore)
 - [ ] disablable user registration (no idea what would be the good way to do this... should frames allow to create?)
 - [ ] add more data to the frame status endpoint (wifi strength, software version, ...) and hide some to the non-admin users (like the wifi strength, ip address, ...) concider non-admin users as external users that have nothing to know about tecnical details of the frame
+- [ ] public invite link to join a framily, an identified user that use this link will be added to the framily (the link should be unique to the framily, revokable and if remake, the old link should not work anymore)
 - [ ] add a way to manage framily random picture picking (rolling, random, queue, most recent more often, ...)
+
+## Done
+
+- [x] when uploading an avatar (framily or user), open a popup to crop the image to a square (with a cirlce indicator to show what will be the final avatar) and resize it to 256x256 before sending it to the server
 - [x] add descriptions to pictures (like a caption, with limited length) and display them on the frame (activable in the frame settings, default to enabled) DONT DISPLAY NO CAPTION IF NO CAPTION IS SET - might lead to a adaptation of the current Uploader name and date overlay that are displayed
 - [x] enhance picture overview: (bug: when closing gets back to the dashboard, use popup instead) add caption section
 - [x] enhance the ui (probably done by myself as I have a better idea of what I want)
