@@ -140,11 +140,14 @@ def _resize_crop_centered(image: Image.Image, crop_w: int, crop_h: int) -> Image
 
 def _resize_crop_to_focus(image: Image.Image, crop_w: int, crop_h: int, focus_area: dict) -> Image.Image:
     """Crop to a (crop_w, crop_h)-shaped box that always fully contains the
-    focus area, covering as much of the original picture as possible. If the
-    focus area's own shape can't fit inside the picture at the target aspect
-    ratio, the box is allowed to extend past the picture's edges - those
-    parts are filled with black bars rather than cutting into the focus
-    area."""
+    focus area, hugging it as tightly as possible (i.e. zooming in on it)
+    rather than showing extra surrounding picture. If the focus area's own
+    shape can't fit inside the picture at the target aspect ratio, the box
+    is allowed to extend past the picture's edges - those parts are filled
+    with black bars rather than cutting into the focus area - but only by
+    as much as is unavoidable: a bar is only ever added where the picture
+    itself has run out, never in place of picture content that could
+    otherwise have been shown."""
     img_w, img_h = image.size
     fx0 = focus_area["x"] * img_w
     fy0 = focus_area["y"] * img_h
@@ -154,14 +157,14 @@ def _resize_crop_to_focus(image: Image.Image, crop_w: int, crop_h: int, focus_ar
 
     target_ar = crop_w / crop_h
 
-    # Smallest box (at the target aspect ratio) that contains the focus rect,
-    # and the largest such box that still fits entirely inside the picture.
-    min_bw = max(fw, fh * target_ar)
-    max_bw = min(img_w, img_h * target_ar)
-    # Prefer the largest possible box - it covers the most of the original
-    # picture - but never smaller than what's needed to contain the focus
-    # area, even if that means the box extends past the picture's edges.
-    bw = max(min_bw, max_bw)
+    # Smallest box (at the target aspect ratio) that contains the focus
+    # rect - the tightest possible crop around it. This is >= the largest
+    # box that fits entirely inside the picture exactly when bars are
+    # unavoidable (the focus area's own shape doesn't fit the target aspect
+    # ratio within the picture's bounds); the position clamp below then
+    # pushes the box against the picture's edges wherever it has room to,
+    # so bars only ever appear where the picture has genuinely run out.
+    bw = max(fw, fh * target_ar)
     bh = bw / target_ar
 
     # Center the box on the focus area, then nudge it back so it still fully

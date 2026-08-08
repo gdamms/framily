@@ -262,11 +262,8 @@
 
   .viewport {
     position: relative;
-    border-radius: 8px;
     width: min(80vw, 420px);
     height: min(40vh, 320px);
-    background: var(--color-media-bg);
-    overflow: hidden;
   }
 
   .full-img {
@@ -274,13 +271,13 @@
     max-width: none;
     user-select: none;
     -webkit-user-drag: none;
+    border-radius: 8px;
   }
 
   .dim {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: var(--color-overlay-backdrop);
   }
 
   .crop-box {
