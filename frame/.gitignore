@@ -3,4 +3,5 @@ framily.log*
 agent.lock
 agent.recheck
 config.json
+framily.tar.gz
 

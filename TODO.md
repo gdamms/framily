@@ -1,6 +1,6 @@
 # TODO
 
-- [ ] after doing an action, refetch the needed data to update the ui (like after adding a picture, refetch the pictures list, after adding a framily, refetch the framilies list, ...)
+- [ ] when the frame fails the check framily (no frame uploaded yet, try more often than the next fetch delay, like every 10 seconds)
 - [ ] make the frame in deep sleep when not fetching images (to reduce power consumption) make it wake up when the next fetch is due, and go back to deep sleep after fetching the image and displaying it. make this feature optional in the frame settings (default to enabled)
 - [ ] progressive web app
   - [ ] include frame initialization in the pwa - seemless experience for the user, only in the app: manage the wifi-hotspot, web interface adapted, ...
@@ -12,6 +12,7 @@
 
 ## Done
 
+- [x] after doing an action, refetch the needed data to update the ui (like after adding a picture, refetch the pictures list, after adding a framily, refetch the framilies list, ...)
 - [x] move the user settings to a burger on the top right: profile, settings, theme, logout (remove the settings tab from the user profile page)
 - [x] in the settings page: change display name (even if can be change clicking on the name in the profile page), change password, change password, change theme (even if can be change clicking on the theme switch in the top right dropdown), delete account (danger zone)
 - [x] add a dark/light mode switch (default to light mode)

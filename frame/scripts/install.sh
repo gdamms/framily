@@ -2,8 +2,12 @@
 # Framily frame installer. Meant to be piped to sh, or run locally from a
 # folder that already has framily.tar.gz sitting next to it.
 #
-# Production install (fetches the latest tarball from main):
+# Production install (fetches the latest tagged release's tarball):
 #   curl -sL https://raw.githubusercontent.com/gdamms/framily/main/frame/scripts/install.sh | sh
+#
+# Pin to a specific release or track nightly by setting FRAMILY_VERSION:
+#   curl -sL https://raw.githubusercontent.com/gdamms/framily/main/frame/scripts/install.sh | FRAMILY_VERSION=v1.0.0 sh
+#   curl -sL https://raw.githubusercontent.com/gdamms/framily/main/frame/scripts/install.sh | FRAMILY_VERSION=nightly sh
 #
 # Local/dev install: copy this file and framily.tar.gz into the same folder
 # on the frame and run `sh install.sh` there. The local tarball is used as-is
@@ -12,7 +16,12 @@
 set -eu
 
 FRAMILY_OPT="/opt/framily"
-ARCHIVE_URL="https://raw.githubusercontent.com/gdamms/framily/main/frame/framily.tar.gz"
+FRAMILY_VERSION="${FRAMILY_VERSION:-latest}"
+if [ "$FRAMILY_VERSION" = "latest" ]; then
+    ARCHIVE_URL="https://github.com/gdamms/framily/releases/latest/download/framily.tar.gz"
+else
+    ARCHIVE_URL="https://github.com/gdamms/framily/releases/download/${FRAMILY_VERSION}/framily.tar.gz"
+fi
 ARCHIVE_PATH="$(pwd)/framily.tar.gz"
 
 log() {
@@ -81,8 +90,8 @@ else
         log "curl is not installed. Please install curl and try again."
         exit 1
     fi
-    log "Downloading Framily archive..."
-    curl -sL -o "$ARCHIVE_PATH" "$ARCHIVE_URL"
+    log "Downloading Framily archive (version: $FRAMILY_VERSION)..."
+    curl -sfL -o "$ARCHIVE_PATH" "$ARCHIVE_URL"
     downloaded=1
 fi
 

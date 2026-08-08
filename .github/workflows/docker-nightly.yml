@@ -1,9 +1,8 @@
-name: Publish Docker image
+name: Publish nightly Docker image
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
+  schedule:
+    - cron: "0 3 * * *" # 03:00 UTC daily
   workflow_dispatch:
 
 permissions:
@@ -40,9 +39,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,format=short,enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=raw,value=nightly
+            type=raw,value=nightly-{{date 'YYYYMMDD'}}
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -56,7 +54,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  frame-release:
+  frame-nightly:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -67,9 +65,14 @@ jobs:
       - name: Build frame archive
         run: sh frame/scripts/archive.sh
 
-      - name: Attach frame archive to the GitHub release
+      - name: Publish rolling nightly release with frame archive
         uses: softprops/action-gh-release@v2
         with:
-          draft: true
-          generate_release_notes: true
+          tag_name: nightly
+          name: Nightly build
+          prerelease: true
+          generate_release_notes: false
+          body: |
+            Automated nightly build from `main`. Not guaranteed to be stable.
+            Docker image: `ghcr.io/${{ github.repository }}:nightly`
           files: frame/framily.tar.gz
