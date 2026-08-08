@@ -124,6 +124,75 @@ def draw_caption(image: Image.Image, caption: str) -> tuple[Image.Image, int]:
     return Image.alpha_composite(image, bar), bar_height
 
 
+def _resize_crop_centered(image: Image.Image, crop_w: int, crop_h: int) -> Image.Image:
+    """Scale the image up to the smallest size that covers (crop_w, crop_h),
+    then center-crop the rest away. Used when a picture has no focus area -
+    this is the original, unbiased crop behavior."""
+    img_w, img_h = image.size
+    scale = max(crop_w / img_w, crop_h / img_h)
+    new_w, new_h = round(img_w * scale), round(img_h * scale)
+    image = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+    left = (new_w - crop_w) // 2
+    top = (new_h - crop_h) // 2
+    return image.crop((left, top, left + crop_w, top + crop_h))
+
+
+def _resize_crop_to_focus(image: Image.Image, crop_w: int, crop_h: int, focus_area: dict) -> Image.Image:
+    """Crop to a (crop_w, crop_h)-shaped box that always fully contains the
+    focus area, covering as much of the original picture as possible. If the
+    focus area's own shape can't fit inside the picture at the target aspect
+    ratio, the box is allowed to extend past the picture's edges - those
+    parts are filled with black bars rather than cutting into the focus
+    area."""
+    img_w, img_h = image.size
+    fx0 = focus_area["x"] * img_w
+    fy0 = focus_area["y"] * img_h
+    fw = focus_area["width"] * img_w
+    fh = focus_area["height"] * img_h
+    fx1, fy1 = fx0 + fw, fy0 + fh
+
+    target_ar = crop_w / crop_h
+
+    # Smallest box (at the target aspect ratio) that contains the focus rect,
+    # and the largest such box that still fits entirely inside the picture.
+    min_bw = max(fw, fh * target_ar)
+    max_bw = min(img_w, img_h * target_ar)
+    # Prefer the largest possible box - it covers the most of the original
+    # picture - but never smaller than what's needed to contain the focus
+    # area, even if that means the box extends past the picture's edges.
+    bw = max(min_bw, max_bw)
+    bh = bw / target_ar
+
+    # Center the box on the focus area, then nudge it back so it still fully
+    # contains the focus rect (and, when it's small enough to fit, back
+    # inside the picture's bounds too).
+    bx0 = fx0 + fw / 2 - bw / 2
+    by0 = fy0 + fh / 2 - bh / 2
+    bx0 = min(max(bx0, fx1 - bw), fx0)
+    by0 = min(max(by0, fy1 - bh), fy0)
+    if bw <= img_w:
+        bx0 = min(max(bx0, 0), img_w - bw)
+    if bh <= img_h:
+        by0 = min(max(by0, 0), img_h - bh)
+
+    bx0, by0 = round(bx0), round(by0)
+    bw_i, bh_i = max(round(bw), 1), max(round(bh), 1)
+
+    # Portion of the box that actually overlaps the picture; anything outside
+    # of that stays black.
+    ox0, oy0 = max(bx0, 0), max(by0, 0)
+    ox1, oy1 = min(bx0 + bw_i, img_w), min(by0 + bh_i, img_h)
+
+    fill = (0, 0, 0, 255) if image.mode == "RGBA" else "black"
+    canvas = Image.new(image.mode, (bw_i, bh_i), fill)
+    if ox0 < ox1 and oy0 < oy1:
+        region = image.crop((ox0, oy0, ox1, oy1))
+        canvas.paste(region, (ox0 - bx0, oy0 - by0))
+
+    return canvas.resize((crop_w, crop_h), Image.Resampling.LANCZOS)
+
+
 def get_framily_by_frame_auth(db: Session, framily_code: str, frame_token: str) -> Framily:
     """Look up a framily by code + frame token. Shared auth for all frame-device endpoints."""
     framily = db.query(Framily).filter(
@@ -304,14 +373,10 @@ def fetch_picture(request: FrameAuthRequest, db: Session = Depends(get_db)):
         else:
             crop_w, crop_h = target_w, target_h
 
-        img_w, img_h = image.size
-        scale = max(crop_w / img_w, crop_h / img_h)
-        new_w, new_h = round(img_w * scale), round(img_h * scale)
-        image = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
-
-        left = (new_w - crop_w) // 2
-        top = (new_h - crop_h) // 2
-        image = image.crop((left, top, left + crop_w, top + crop_h))
+        if picture.focus_area:
+            image = _resize_crop_to_focus(image, crop_w, crop_h, picture.focus_area)
+        else:
+            image = _resize_crop_centered(image, crop_w, crop_h)
 
     if needs_preprocess:
         # Run on the final (already resized/cropped) pixels so the adaptive

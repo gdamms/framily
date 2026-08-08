@@ -18,6 +18,16 @@ class PictureFramilyInfo(BaseModel):
     name: Optional[str] = None
 
 
+class FocusArea(BaseModel):
+    """A rectangle within the picture, normalized to fractions (0-1) of its
+    own width/height. Used to bias server-side cropping when the frame's
+    aspect ratio doesn't match the picture's - see api/v1/frame.py."""
+    x: float = Field(ge=0, le=1)
+    y: float = Field(ge=0, le=1)
+    width: float = Field(gt=0, le=1)
+    height: float = Field(gt=0, le=1)
+
+
 class PictureInfo(BaseModel):
     id: str
     framilies: list[PictureFramilyInfo]
@@ -26,6 +36,7 @@ class PictureInfo(BaseModel):
     upload_date: datetime
     metadata: Optional[PictureMetadata] = None
     description: Optional[str] = None
+    focus_area: Optional[FocusArea] = None
 
     class Config:
         from_attributes = True
@@ -67,3 +78,9 @@ class UpdateDescriptionRequest(BaseModel):
     picture_id: str
     # Empty string clears the caption; stored as NULL server-side either way.
     description: str = Field(default="", max_length=CAPTION_MAX_LENGTH)
+
+
+class UpdateFocusAreaRequest(BaseModel):
+    picture_id: str
+    # None clears the focus area, falling back to a plain center crop.
+    focus_area: Optional[FocusArea] = None

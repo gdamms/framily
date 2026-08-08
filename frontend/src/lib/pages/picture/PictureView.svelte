@@ -6,8 +6,10 @@
   import Trash2 from "@lucide/svelte/icons/trash-2";
   import Plus from "@lucide/svelte/icons/plus";
   import Pencil from "@lucide/svelte/icons/pencil";
+  import Crop from "@lucide/svelte/icons/crop";
   import { overlay } from "$lib/overlay";
   import ConfirmPopup from "$lib/popups/ConfirmPopup.svelte";
+  import FocusAreaPopup from "$lib/popups/FocusAreaPopup.svelte";
   import IconButton from "$lib/ui/IconButton.svelte";
   import { formatDate } from "$lib/date";
 
@@ -81,6 +83,13 @@
     });
   }
 
+  function openFocusAreaEditor() {
+    overlay.open(FocusAreaPopup, {
+      picture,
+      onChanged,
+    });
+  }
+
   let editingCaption = $state(false);
   let captionDraft = $state("");
   let captionInputEl: HTMLInputElement | undefined = $state();
@@ -151,6 +160,11 @@
       </div>
       <div class="meta-actions">
         {#if isUploader}
+          <IconButton
+            icon={Crop}
+            label={picture.focus_area ? "Edit focus area" : "Set focus area"}
+            onclick={openFocusAreaEditor}
+          />
           <IconButton icon={Trash2} variant="danger" label="Delete entirely" onclick={confirmDelete} />
         {/if}
         <IconButton icon={X} onclick={close} />
@@ -235,6 +249,14 @@
       src={api.pictures.getImageUrl(picture)}
       alt="Uploaded by {picture.uploader_display_name || picture.uploader_username}"
     />
+    {#if picture.focus_area}
+      <div
+        class="focus-indicator"
+        style="left: {picture.focus_area.x * 100}%; top: {picture.focus_area.y * 100}%; width: {picture
+          .focus_area.width * 100}%; height: {picture.focus_area.height * 100}%;"
+        title="Focus area"
+      ></div>
+    {/if}
   </div>
 </div>
 
@@ -259,6 +281,14 @@
     max-width: 100%;
     max-height: 60vh;
     object-fit: contain;
+  }
+
+  .focus-indicator {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px dashed rgba(255, 255, 255, 0.85);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
   }
 
   .details {

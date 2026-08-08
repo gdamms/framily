@@ -16,6 +16,7 @@ from schemas.picture import (
     AddVisibilityRequest,
     RemoveVisibilityRequest,
     UpdateDescriptionRequest,
+    UpdateFocusAreaRequest,
     PictureUploadResponse,
     PictureListResponse,
     PictureMutationResponse,
@@ -49,6 +50,7 @@ def get_picture_info(picture: Picture, db: Session) -> dict:
         "upload_date": picture.upload_date,
         "metadata": picture.metadata_ or {},
         "description": picture.description,
+        "focus_area": picture.focus_area,
     }
 
 
@@ -344,6 +346,48 @@ def update_picture_description(
 
     return {
         "message": "Caption updated",
+        "picture": get_picture_info(picture, db)
+    }
+
+
+@router.put("/focus-area", response_model=PictureMutationResponse, status_code=status.HTTP_200_OK)
+def update_picture_focus_area(
+    request: UpdateFocusAreaRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Set or clear a picture's focus area (a rectangle, normalized to the
+    picture's own dimensions, that server-side cropping in /frame/fetch must
+    always keep fully in view). Uploader only."""
+    picture = db.query(Picture).filter(Picture.id == request.picture_id).first()
+    if not picture:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Picture not found"
+        )
+
+    if picture.uploaded_by != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the uploader can edit the focus area"
+        )
+
+    if request.focus_area:
+        # Clamp defensively so a stored focus area is always fully within the
+        # picture, even if the client's own clamping was somehow off.
+        x = min(max(request.focus_area.x, 0.0), 1.0)
+        y = min(max(request.focus_area.y, 0.0), 1.0)
+        width = min(max(request.focus_area.width, 0.01), 1.0 - x)
+        height = min(max(request.focus_area.height, 0.01), 1.0 - y)
+        picture.focus_area = {"x": x, "y": y, "width": width, "height": height}
+    else:
+        picture.focus_area = None
+
+    db.commit()
+    db.refresh(picture)
+
+    return {
+        "message": "Focus area updated",
         "picture": get_picture_info(picture, db)
     }
 

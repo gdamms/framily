@@ -31,6 +31,12 @@ class Picture(Base):
     # for the enforced length limit). Empty/unset is stored as NULL, not "",
     # so overlay code and the frontend can treat "no caption" uniformly.
     description = Column(String(300), nullable=True)
+    # Optional focus rectangle, normalized to fractions (0-1) of the stored
+    # image's own width/height: {"x", "y", "width", "height"}. Framily- and
+    # orientation-agnostic by construction - it describes a region of the
+    # original picture, not of any particular frame's output. NULL means no
+    # focus area is set, and /frame/fetch falls back to a plain center crop.
+    focus_area = Column(JSON, nullable=True)
 
     # Relationships
     uploader = relationship("User", back_populates="pictures")

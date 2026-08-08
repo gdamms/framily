@@ -66,6 +66,13 @@ export interface PictureMetadata {
   original_filename?: string | null;
 }
 
+export interface FocusArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface PictureInfo {
   id: string;
   framilies: PictureFramilyInfo[];
@@ -74,6 +81,7 @@ export interface PictureInfo {
   upload_date: string;
   metadata: PictureMetadata | null;
   description?: string | null;
+  focus_area?: FocusArea | null;
 }
 
 export const CAPTION_MAX_LENGTH = 300;

@@ -9,6 +9,7 @@ export type {
   FramilyPictureInfo,
   PictureFramilyInfo,
   PictureInfo,
+  FocusArea,
   Role,
 } from "./types";
 

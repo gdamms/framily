@@ -1,5 +1,5 @@
 import { request, requestBlob, requestFormData, API_BASE_URL } from "./client";
-import type { PictureInfo } from "./types";
+import type { FocusArea, PictureInfo } from "./types";
 
 type PictureListOptions = { framily_code?: string; username?: string };
 
@@ -47,6 +47,15 @@ export const picturesApi = {
       {
         method: "PUT",
         body: JSON.stringify({ picture_id, description }),
+      },
+    ),
+
+  updateFocusArea: (picture_id: string, focus_area: FocusArea | null) =>
+    request<{ message: string; picture: PictureInfo }>(
+      "/pictures/focus-area",
+      {
+        method: "PUT",
+        body: JSON.stringify({ picture_id, focus_area }),
       },
     ),
 
