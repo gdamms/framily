@@ -60,6 +60,11 @@ MAX_CONSECUTIVE_FAILURES = 4
 # steady fetch loop (hotspot mode, waiting for framily members, transitions).
 UNSTEADY_POLL_SECONDS = 5
 
+# While the framily has no visible pictures yet, retry the fetch on this much
+# shorter cadence instead of waiting out the full (often multi-minute) fetch
+# interval - so the frame picks up the first uploaded photo promptly.
+NO_PICTURE_RETRY_SECONDS = 10
+
 # While parked in hotspot mode waiting for credentials, how often to retry
 # the already-saved Wi-Fi profile (if any). Handles a transient outage (e.g.
 # router reboot) recovering on its own without the user having to
@@ -579,7 +584,10 @@ def fetch_settings(config: dict) -> float:
     return clamped
 
 
-def fetch_image(config: dict, retries: int = MAX_CONSECUTIVE_FAILURES) -> None:
+def fetch_image(config: dict, retries: int = MAX_CONSECUTIVE_FAILURES) -> bool:
+    """Returns True if a picture was fetched and displayed, False if the
+    framily has no visible pictures yet (204). Callers use this to poll again
+    sooner than the normal fetch interval while there's nothing to show."""
     try:
         response = _post(config.get("server_url", ""), FRAME_FETCH_PATH, {
             "framily_code": config.get("framily_code", ""),
@@ -596,10 +604,13 @@ def fetch_image(config: dict, retries: int = MAX_CONSECUTIVE_FAILURES) -> None:
     if response.status_code == 204:
         logger.info("No pictures available for this framily.")
         display_upload_first_image(config)
-    else:
-        _write_epd_image(lambda p: p.write_bytes(response.content))
-        logger.info("Picture fetched and saved successfully.")
+        clear_message()
+        return False
+
+    _write_epd_image(lambda p: p.write_bytes(response.content))
+    logger.info("Picture fetched and saved successfully.")
     clear_message()
+    return True
 
 
 # --- Session / state machine ------------------------------------------------
@@ -609,14 +620,17 @@ def run_fetch_loop(config: dict) -> None:
     consecutive transient failures give up on the session."""
     while True:
         try:
-            fetch_image(config)
+            got_picture = fetch_image(config)
         except FrameApiError as e:
             save_message(_terminal_failure_message(f"Failed to fetch picture: {e}", e))
             return
 
         report_status(config)
-        interval_minutes = fetch_settings(config)
-        wait_for_recheck(interval_minutes * 60)
+        if got_picture:
+            interval_minutes = fetch_settings(config)
+            wait_for_recheck(interval_minutes * 60)
+        else:
+            wait_for_recheck(NO_PICTURE_RETRY_SECONDS)
         config = load_config()
 
 
