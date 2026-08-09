@@ -6,7 +6,10 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 FRAMILY_ARCHIVE_DIR="$SCRIPT_DIR/.."
 FRAMILY_ARCHIVE_FILE="$FRAMILY_ARCHIVE_DIR/framily.tar.gz"
 
-tar -czf "$FRAMILY_ARCHIVE_FILE" \
+TMP_ARCHIVE_FILE=$(mktemp)
+trap 'rm -f "$TMP_ARCHIVE_FILE"' EXIT
+
+tar -czf "$TMP_ARCHIVE_FILE" \
     -C "$FRAMILY_ARCHIVE_DIR" \
     --exclude="framily.tar.gz" \
     --exclude=".git" \
@@ -18,3 +21,5 @@ tar -czf "$FRAMILY_ARCHIVE_FILE" \
     --exclude="agent.lock" \
     --exclude="agent.recheck" \
     .
+
+mv "$TMP_ARCHIVE_FILE" "$FRAMILY_ARCHIVE_FILE"
