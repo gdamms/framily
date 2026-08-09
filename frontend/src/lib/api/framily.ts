@@ -1,4 +1,4 @@
-import { request, requestFormData, API_BASE_URL } from "./client";
+import { request, requestBlob, requestFormData, getApiBaseUrl } from "./client";
 import type { FramilyInfo, Role } from "./types";
 
 export const framilyApi = {
@@ -84,6 +84,9 @@ export const framilyApi = {
     ),
 
   getAvatarUrl: (framily_code: string): string => {
-    return `${API_BASE_URL}/avatars/framily?framily_code=${encodeURIComponent(framily_code)}`;
+    return `${getApiBaseUrl()}/avatars/framily?framily_code=${encodeURIComponent(framily_code)}`;
   },
+
+  getAvatarBlob: (framily_code: string) =>
+    requestBlob(`/avatars/framily?framily_code=${encodeURIComponent(framily_code)}`),
 };

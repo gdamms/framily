@@ -3,6 +3,7 @@
   import { overlay } from "$lib/overlay";
   import CropAvatarPopup from "$lib/popups/CropAvatarPopup.svelte";
   import Pencil from "@lucide/svelte/icons/pencil";
+  import { authImageSrc } from "$lib/actions/authImageSrc";
 
   interface Props {
     kind: "user" | "framily";
@@ -81,7 +82,11 @@
     title={editable ? "Change avatar" : undefined}
   >
     <img
-      {src}
+      use:authImageSrc={{
+        url: src,
+        fetchBlob: () =>
+          kind === "user" ? api.user.getAvatarBlob(id) : api.framily.getAvatarBlob(id),
+      }}
       alt="{label}'s avatar"
       class="avatar-img"
       class:visible={loaded}

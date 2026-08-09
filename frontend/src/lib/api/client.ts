@@ -1,9 +1,20 @@
+import { get } from "svelte/store";
+import { Capacitor } from "@capacitor/core";
 import { authStore } from "$lib/stores/auth";
+import { serverUrlStore, normalizeServerUrl } from "$lib/stores/serverUrl";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "/api/v1";
+// Native builds talk to whatever self-hosted server the user configured at
+// runtime (see stores/serverUrl.ts) rather than a build-time-fixed origin -
+// one shipped app has to work against any family's server.
+function getApiBaseUrl(): string {
+  if (Capacitor.isNativePlatform()) {
+    const serverUrl = normalizeServerUrl(get(serverUrlStore));
+    return serverUrl ? `${serverUrl}/api/v1` : "";
+  }
+  return import.meta.env.VITE_API_URL || "/api/v1";
+}
 
-export { API_BASE_URL };
+export { getApiBaseUrl };
 
 
 export class ApiError extends Error {
@@ -68,9 +79,18 @@ async function requestInternal<T>(
     headers["Content-Type"] = "application/json";
   }
 
+  // Cookies can't cross from the app's local origin to a remote self-hosted
+  // backend, so native builds authenticate with a Bearer header instead.
+  if (Capacitor.isNativePlatform()) {
+    const token = get(authStore).token;
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
+
   const requestUrl = endpoint.startsWith("http")
     ? endpoint
-    : `${API_BASE_URL}${endpoint}`;
+    : `${getApiBaseUrl()}${endpoint}`;
 
   const response = await fetch(requestUrl, {
     ...fetchOptions,

@@ -6,7 +6,9 @@
   import Avatar from "$lib/ui/Avatar.svelte";
   import PageLayout from "$lib/ui/PageLayout.svelte";
   import LoadingPage from "$lib/ui/LoadingPage.svelte";
+  import ErrorPage from "$lib/ui/ErrorPage.svelte";
   import UploadPopup from "$lib/popups/UploadPopup.svelte";
+  import { app } from "$lib/app";
   import { overlay } from "$lib/overlay";
   import Pencil from "@lucide/svelte/icons/pencil";
   import ImagePlus from "@lucide/svelte/icons/image-plus";
@@ -22,6 +24,7 @@
   let isOwnProfile = $derived(username === currentUsername);
 
   let user: UserInfo | undefined = $state();
+  let loadError: string | undefined = $state();
   let pictures = $derived(user?.pictures ?? []);
   let framilies = $derived(user?.framilies ?? []);
   type View = "pictures" | "framilies";
@@ -80,16 +83,26 @@
     // profile -> own profile again), so onMount alone would only fetch once.
     const targetUsername = username;
     user = undefined;
+    loadError = undefined;
     view = "pictures";
     api.user.getInfo(targetUsername).then((response) => {
       if (targetUsername === username) {
         user = response.user;
       }
+    }).catch((error: any) => {
+      if (targetUsername === username) {
+        loadError = error?.message || "Failed to load this profile";
+      }
     });
   });
 </script>
 
-{#if !user}
+{#if loadError}
+  <ErrorPage
+    message={loadError}
+    onBack={() => app.navigate({ page: "dashboard", section: "galery" })}
+  />
+{:else if !user}
   <LoadingPage />
 {:else}
   {#snippet header()}

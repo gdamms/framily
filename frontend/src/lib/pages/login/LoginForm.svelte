@@ -1,11 +1,16 @@
 <script lang="ts">
+  import { Capacitor } from "@capacitor/core";
   import Form from "$lib/ui/form/Form.svelte";
   import UsernameField from "$lib/ui/form/UsernameField.svelte";
   import PasswordField from "$lib/ui/form/PasswordField.svelte";
+  import ServerUrlField from "$lib/ui/form/ServerUrlField.svelte";
   import Button from "$lib/ui/Button.svelte";
   import { api } from "$lib/api/index";
   import { authStore } from "$lib/stores/auth";
+  import { serverUrlStore, normalizeServerUrl } from "$lib/stores/serverUrl";
   import { authView } from "$lib/app";
+
+  const isNative = Capacitor.isNativePlatform();
 
   let username: string = "";
   let password: string = "";
@@ -17,6 +22,11 @@
     errorMessage = "";
 
     // Validation
+    if (isNative && !normalizeServerUrl($serverUrlStore)) {
+      errorMessage = "Server URL is required";
+      return;
+    }
+
     if (!username || !password) {
       errorMessage = "Username/email and password are required";
       return;
@@ -36,6 +46,9 @@
 </script>
 
 <Form title="Login" {errorMessage} submitHandler={handleSubmit}>
+  {#if isNative}
+    <ServerUrlField bind:value={$serverUrlStore} />
+  {/if}
   <UsernameField bind:value={username} placeholder="Username or email" />
   <PasswordField bind:value={password} />
   <label class="remember-me">

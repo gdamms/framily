@@ -4,10 +4,22 @@
 - [ ] make the frame in deep sleep when not fetching images (to reduce power consumption) make it wake up when the next fetch is due, and go back to deep sleep after fetching the image and displaying it. make this feature optional in the frame settings (default to enabled) while the frame is not in cruse mode (everything is working fine, the frame is fetching and displaying images), the frame should not go to deep sleep, it should only go to deep sleep when it is in cruse mode (the frame is not fetching or displaying images, like when the framily has no pictures yet or there are errors with the framily or the server)
 - [ ] progressive web app
   - [ ] include frame initialization in the pwa - seemless experience for the user, only in the app: manage the wifi-hotspot, web interface adapted, ...
-- [ ] add more data to the frame status endpoint (wifi strength, software version, ...) and hide some to the non-admin users (like the wifi strength, ip address, ...) concider non-admin users as external users that have nothing to know about tecnical details of the frame
+- [ ] add more data to the frame status endpoint (wifi strength, software version, ...) and hide some to the non-admin users (like the wifi strength, ip address, ...) concider non-admin users as external users that have nothing to know about tecnical details of the frame, in the danger zone, add a "leave framily" button for all users, admins should see it as disabled when they are the last admin of the framily (with a tiny message to tell them to delete the framily instead)
 - [ ] disablable user registration (no idea what would be the good way to do this... should frames allow to create?)
 - [ ] add a way to manage framily random picture picking (rolling, random, queue, most recent more often, ...)
 - [ ] public invite link to join a framily, an identified user that use this link will be added to the framily (the link should be unique to the framily, revokable and if remake, the old link should not work anymore)
+- [ ] some comments in the code are too long, shorten them a lot keep them simple and clear
+- [ ] is it a good idea to cache some pictures? make it faster? or at least to the image end point, add a size argument: for example in the masonery, they should fetch with the right width. maybe when fetching for image overview, samething, tell which size is needed?
+- in the masonery images should displayed only the focus area if set, otherwise the whole image should be displayed (adapt it to the size fetch mechanism)
+- [ ] on picture overview, usernames should be clickable to go to the user profile page, and framily name should be clickable to go to the framily page
+- [ ] add navigation history to the app, when using back button, it should go back to the previous page, same with mobile app
+- [ ] combining the history and loading... fail, you should have the possibility to go back to the previous page or to the dashboard, and not stay on the loading... page
+- [ ] support for multi languages with a dictionary, and a way to change the language in the settings (default to the browser language, or english if not supported and a store like the theme)
+- [ ] after upload, close the upload popup few seconds after success
+- [ ] make crop handles easier to use, maybe bigger? also, when initializing the picture focus area, selects the whole picuture and the handles and boundaries are no that visible, find a way to make them more visible and understandable
+- [ ] add name editing to framily and user in the settings (keep the edition name )
+- [ ] when editing the names, the input field is too wide, and moves the other elements, make it smaller and keep the other elements in place
+- [ ] when selecting the focus area, there are limicases where the endpoint fails, probably because of values being slightly out of the picture, clamp the values to the picture size and make sure the focus area is always inside the picture
 
 ## Done
 

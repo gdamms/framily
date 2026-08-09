@@ -12,6 +12,7 @@
   import FocusAreaPopup from "$lib/popups/FocusAreaPopup.svelte";
   import IconButton from "$lib/ui/IconButton.svelte";
   import { formatDate } from "$lib/date";
+  import { authImageSrc } from "$lib/actions/authImageSrc";
 
   interface Props {
     picture: PictureInfo;
@@ -246,7 +247,10 @@
   <div class="image-wrapper">
     <img
       class="image"
-      src={api.pictures.getImageUrl(picture)}
+      use:authImageSrc={{
+        url: api.pictures.getImageUrl(picture),
+        fetchBlob: () => api.pictures.getImageBlob(picture.id),
+      }}
       alt="Uploaded by {picture.uploader_display_name || picture.uploader_username}"
     />
     {#if picture.focus_area}

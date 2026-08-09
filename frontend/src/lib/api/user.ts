@@ -1,4 +1,4 @@
-import { request, requestFormData, API_BASE_URL } from "./client";
+import { request, requestBlob, requestFormData, getApiBaseUrl } from "./client";
 import type { UserInfo } from "./types";
 
 export const userApi = {
@@ -38,6 +38,9 @@ export const userApi = {
     }),
 
   getAvatarUrl: (username: string): string => {
-    return `${API_BASE_URL}/avatars/user?username=${encodeURIComponent(username)}`;
+    return `${getApiBaseUrl()}/avatars/user?username=${encodeURIComponent(username)}`;
   },
+
+  getAvatarBlob: (username: string) =>
+    requestBlob(`/avatars/user?username=${encodeURIComponent(username)}`),
 };

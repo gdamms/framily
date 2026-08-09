@@ -12,6 +12,7 @@
   import LoginForm from "$lib/pages/login/LoginForm.svelte";
   import RegisterForm from "$lib/pages/register/RegisterForm.svelte";
   import LoadingPage from "$lib/ui/LoadingPage.svelte";
+  import ErrorPage from "$lib/ui/ErrorPage.svelte";
   import IconButton from "$lib/ui/IconButton.svelte";
   import BurgerMenu from "$lib/ui/BurgerMenu.svelte";
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
@@ -26,6 +27,7 @@
   let framilies: UserFramilyInfo[] = $derived(user?.framilies ?? []);
   let dashboardPictures: PictureInfo[] | undefined = $state();
   let hasLoaded = $state(false);
+  let loadError: string | undefined = $state();
 
   async function refreshUser() {
     if (!user) return;
@@ -39,27 +41,37 @@
   }
 
   async function loadApp() {
-    const me = await api.auth.me();
-    const response = await api.user.getInfo(me.username);
-    user = response.user;
+    loadError = undefined;
+    try {
+      const me = await api.auth.me();
+      const response = await api.user.getInfo(me.username);
+      user = response.user;
 
-    const picturesResponse = await api.pictures.listAll();
-    dashboardPictures = picturesResponse.pictures;
+      const picturesResponse = await api.pictures.listAll();
+      dashboardPictures = picturesResponse.pictures;
+    } catch (error: any) {
+      // A stale/invalid token 401s here; the api client already clears the
+      // auth store in that case, which flips us back to the login screen -
+      // only surface an error for failures that don't already self-resolve
+      // (network errors, 5xx, ...), instead of leaving the loading spinner
+      // spinning forever.
+      if (error?.status !== 401) {
+        loadError = error?.message || "Failed to load your data";
+      }
+    }
   }
 
   $effect(() => {
     if ($auth.isAuthenticated) {
       if (!hasLoaded) {
         hasLoaded = true;
-        // A stale/invalid cookie fails here with a 401; the api client already
-        // clears the auth store in that case, which flips us back to the
-        // login screen - just swallow the rejection so it doesn't surface.
-        loadApp().catch(() => {});
+        loadApp();
       }
     } else {
       hasLoaded = false;
       user = undefined;
       dashboardPictures = undefined;
+      loadError = undefined;
     }
   });
 </script>
@@ -70,6 +82,15 @@
   {:else}
     <LoginForm />
   {/if}
+{:else if loadError}
+  <div class="page">
+    <ErrorPage
+      message={loadError}
+      onRetry={loadApp}
+      onBack={() => authStore.clearToken()}
+      backLabel="Log out"
+    />
+  </div>
 {:else if dashboardPictures === undefined || user === undefined}
   <div class="page">
     <LoadingPage />

@@ -3,6 +3,7 @@
   import Button from "$lib/ui/Button.svelte";
   import StatusMessage from "$lib/ui/StatusMessage.svelte";
   import { createStatusMessage } from "$lib/ui/statusMessage.svelte";
+  import { authImageSrc } from "$lib/actions/authImageSrc";
 
   interface Props {
     picture: PictureInfo;
@@ -197,7 +198,10 @@
   <div class="viewport" bind:this={viewportEl} bind:clientWidth={viewportWidth} bind:clientHeight={viewportHeight}>
     <img
       bind:this={imgEl}
-      src={api.pictures.getImageUrl(picture)}
+      use:authImageSrc={{
+        url: api.pictures.getImageUrl(picture),
+        fetchBlob: () => api.pictures.getImageBlob(picture.id),
+      }}
       alt=""
       draggable="false"
       class="full-img"

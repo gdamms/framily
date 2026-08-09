@@ -3,6 +3,7 @@
   import Masonry from "$lib/ui/Masonry.svelte";
   import { overlay } from "$lib/overlay";
   import PictureView from "$lib/pages/picture/PictureView.svelte";
+  import { authImageSrc } from "$lib/actions/authImageSrc";
 
   interface Props {
     pictures: PictureInfo[];
@@ -38,7 +39,10 @@
       >
         <img
           class="picture"
-          src={api.pictures.getImageUrl(picture)}
+          use:authImageSrc={{
+            url: api.pictures.getImageUrl(picture),
+            fetchBlob: () => api.pictures.getImageBlob(picture.id),
+          }}
           alt={picture.id}
           style={getAspectRatio(picture)
             ? `aspect-ratio: ${getAspectRatio(picture)}`

@@ -7,6 +7,7 @@
   import Avatar from "$lib/ui/Avatar.svelte";
   import PageLayout from "$lib/ui/PageLayout.svelte";
   import LoadingPage from "$lib/ui/LoadingPage.svelte";
+  import ErrorPage from "$lib/ui/ErrorPage.svelte";
   import { app } from "$lib/app";
   import { overlay } from "$lib/overlay";
   import UploadPopup from "$lib/popups/UploadPopup.svelte";
@@ -26,6 +27,7 @@
 
   let framily: FramilyInfo | undefined = $state();
   let pictures: PictureInfo[] = $state([]);
+  let loadError: string | undefined = $state();
 
   let isAdmin = $derived(
     framily?.members.find((m) => m.username === currentUsername)?.role === "admin",
@@ -67,12 +69,20 @@
   }
 
   async function loadFramily() {
-    framily = await api.framily.info(code);
+    loadError = undefined;
+    try {
+      framily = await api.framily.info(code);
 
-    let picResponse = await api.pictures.list({
-      framily_code: framily.code,
-    });
-    pictures = picResponse.pictures;
+      let picResponse = await api.pictures.list({
+        framily_code: framily.code,
+      });
+      pictures = picResponse.pictures;
+    } catch (error: any) {
+      // Most commonly: not a member yet (e.g. still an invite), or the
+      // framily no longer exists - either way, don't leave the page stuck
+      // on the loading spinner forever.
+      loadError = error?.message || "Failed to load this framily";
+    }
   }
 
   function openUploadPopup() {
@@ -87,7 +97,12 @@
   onMount(loadFramily);
 </script>
 
-{#if framily === undefined}
+{#if loadError}
+  <ErrorPage
+    message={loadError}
+    onBack={() => app.navigate({ page: "dashboard", section: "framilies" })}
+  />
+{:else if framily === undefined}
   <LoadingPage />
 {:else if $appState.page.page !== "framily"}
   <div class="message">Framily not found</div>

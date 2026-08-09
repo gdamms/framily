@@ -1,6 +1,13 @@
 import { writable } from "svelte/store";
+import { Capacitor } from "@capacitor/core";
+import { Preferences } from "@capacitor/preferences";
 
 const AUTH_COOKIE_NAME = "auth_token";
+const AUTH_TOKEN_KEY = "auth_token";
+// Cookies are scoped to the app's own origin, which never matches a
+// self-hosted backend's origin in the packaged app - so native builds use
+// Preferences + a Bearer header (see api/client.ts) instead of a cookie.
+const isNative = Capacitor.isNativePlatform();
 
 export interface AuthState {
   token: string | null;
@@ -51,16 +58,34 @@ function clearAuthTokenCookie(): void {
 
 function createAuthStore() {
   const initialToken =
-    typeof window !== "undefined" ? getAuthTokenFromCookie() : null;
+    !isNative && typeof window !== "undefined" ? getAuthTokenFromCookie() : null;
 
   const authState = writable<AuthState>({
     token: initialToken,
     isAuthenticated: !!initialToken,
-    isLoading: !!initialToken,
+    // Native: token isn't known synchronously, Preferences.get resolves below.
+    isLoading: isNative || !!initialToken,
   });
 
+  // Awaited by +layout.ts before the app renders anything that could fetch -
+  // see the matching comment in stores/serverUrl.ts.
+  const ready: Promise<void> = isNative
+    ? Preferences.get({ key: AUTH_TOKEN_KEY }).then(({ value }) => {
+        authState.update((state) => ({
+          ...state,
+          token: value,
+          isAuthenticated: !!value,
+          isLoading: false,
+        }));
+      })
+    : Promise.resolve();
+
   const resetAuthState = () => {
-    clearAuthTokenCookie();
+    if (isNative) {
+      void Preferences.remove({ key: AUTH_TOKEN_KEY });
+    } else {
+      clearAuthTokenCookie();
+    }
     authState.set({
       token: null,
       isAuthenticated: false,
@@ -70,30 +95,27 @@ function createAuthStore() {
 
   return {
     subscribe: authState.subscribe,
+    ready,
     set: authState.set,
     update: authState.update,
     setToken: async (token: string, rememberMe: boolean = true) => {
-      setAuthTokenCookie(token, rememberMe);
+      if (isNative) {
+        await Preferences.set({ key: AUTH_TOKEN_KEY, value: token });
+      } else {
+        setAuthTokenCookie(token, rememberMe);
+      }
       authState.update((state) => ({
         ...state,
         token,
         isAuthenticated: true,
-        isLoading: true,
+        isLoading: false,
       }));
-
-      try {
-        authState.update((state) => ({ ...state, isLoading: false }));
-      } catch {
-        clearAuthTokenCookie();
-        resetAuthState();
-      }
     },
     clearToken: () => {
-      clearAuthTokenCookie();
       resetAuthState();
     },
     getToken: (): string | null => {
-      if (typeof window !== "undefined") {
+      if (!isNative && typeof window !== "undefined") {
         return getAuthTokenFromCookie();
       }
       return null;

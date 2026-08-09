@@ -1,4 +1,4 @@
-import { request, requestBlob, requestFormData, API_BASE_URL } from "./client";
+import { request, requestBlob, requestFormData, getApiBaseUrl } from "./client";
 import type { FocusArea, PictureInfo } from "./types";
 
 type PictureListOptions = { framily_code?: string; username?: string };
@@ -67,7 +67,7 @@ export const picturesApi = {
   },
 
   getImageUrl: (picture: PictureInfo): string => {
-    return `${API_BASE_URL}/pictures/${picture.id}`;
+    return `${getApiBaseUrl()}/pictures/${picture.id}`;
   },
 
   getImageBlob: (picture_id: string) => requestBlob(`/pictures/${picture_id}`),
