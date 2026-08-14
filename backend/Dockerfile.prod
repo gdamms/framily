@@ -1,6 +1,4 @@
-# Static output is platform-independent: build natively instead of under QEMU
-# (paraglide's inlang/lix WASM fails when emulated on arm64).
-FROM --platform=$BUILDPLATFORM node:25-slim AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:26-slim AS frontend-builder
 
 WORKDIR /frontend
 
