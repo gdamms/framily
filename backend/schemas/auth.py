@@ -28,3 +28,20 @@ class UserInfo(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AuthFeatures(BaseModel):
+    password_reset: bool
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str = Field(..., min_length=8)
+
+
+class MessageResponse(BaseModel):
+    message: str

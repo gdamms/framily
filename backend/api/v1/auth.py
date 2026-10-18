@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from urllib.parse import urlencode
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
@@ -6,9 +8,27 @@ from typing import Optional
 
 from core.database import get_db
 from core.config import settings
-from core.security import hash_password, verify_password, create_access_token
+from core.mail import send_email_safely
+from core.security import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    create_password_reset_token,
+    decode_password_reset_token,
+    password_fingerprint_matches,
+)
 from models import User
-from schemas.auth import RegisterRequest, RegisterResponse, LoginRequest, LoginResponse, UserInfo
+from schemas.auth import (
+    RegisterRequest,
+    RegisterResponse,
+    LoginRequest,
+    LoginResponse,
+    UserInfo,
+    AuthFeatures,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+    MessageResponse,
+)
 
 router = APIRouter(
     prefix="/auth",
@@ -39,6 +59,9 @@ def get_current_user(
 
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        # Purpose-scoped tokens (e.g. password reset) are not session tokens.
+        if payload.get("purpose"):
+            raise credentials_exception
         user_id_str = payload.get("sub")
         if not user_id_str:
             raise credentials_exception
@@ -129,3 +152,66 @@ def get_me(current_user: User = Depends(get_current_user)):
         email=current_user.email,
         display_name=current_user.display_name
     )
+
+
+@router.get("/features", response_model=AuthFeatures)
+def get_features():
+    """Optional auth features enabled on this server."""
+    return {"password_reset": settings.smtp_enabled}
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+def forgot_password(
+    request: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """Email a password reset link to the account with this address, if any.
+
+    Always returns the same response so it can't be used to probe which
+    emails are registered; the email is sent in the background for the same
+    reason (no timing difference) and so a slow SMTP server doesn't block.
+    """
+    if not settings.smtp_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Password reset is not available on this server",
+        )
+
+    db_user = db.query(User).filter(User.email == request.email).first()
+    if db_user:
+        token = create_password_reset_token(db_user.id, db_user.hashed_password)
+        link = f"{settings.public_url}/?{urlencode({'reset_token': token})}"
+        body = (
+            f"Hi {db_user.display_name},\n\n"
+            "Someone (hopefully you) asked to reset your Framily password.\n"
+            "Open this link to choose a new one:\n\n"
+            f"{link}\n\n"
+            f"The link expires in {settings.PASSWORD_RESET_EXPIRE_MINUTES} minutes and can only be used once.\n"
+            "If you didn't ask for this, you can ignore this email.\n"
+        )
+        background_tasks.add_task(send_email_safely, db_user.email, "Reset your Framily password", body)
+
+    return {"message": "If an account exists for this email, a reset link has been sent."}
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Set a new password using a token from a password reset email."""
+    invalid_token = HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="This reset link is invalid or has expired",
+    )
+
+    decoded = decode_password_reset_token(request.token)
+    if decoded is None:
+        raise invalid_token
+    user_id, fingerprint = decoded
+
+    db_user = db.query(User).filter(User.id == user_id).first()
+    if db_user is None or not password_fingerprint_matches(fingerprint, db_user.hashed_password):
+        raise invalid_token
+
+    db_user.hashed_password = hash_password(request.password)
+    db.commit()
+    return {"message": "Password has been reset"}

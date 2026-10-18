@@ -14,11 +14,17 @@
     errorMessage = "",
     submitHandler = () => {},
   }: Props = $props();
+
+  // Handle submission in JS only: a native submit would reload the SPA.
+  function onsubmit(event: SubmitEvent) {
+    event.preventDefault();
+    submitHandler();
+  }
 </script>
 
 <div class="form">
   <h2>{title}</h2>
-  <form onsubmit={submitHandler}>
+  <form {onsubmit}>
     {#if children}
       {@render children()}
     {/if}

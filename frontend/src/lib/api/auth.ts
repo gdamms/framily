@@ -1,5 +1,5 @@
 import { request } from "./client";
-import type { TokenResponse, UserInfo } from "./types";
+import type { AuthFeatures, MessageResponse, TokenResponse, UserInfo } from "./types";
 
 export const authApi = {
   register: (username: string, email: string, password: string) =>
@@ -19,4 +19,18 @@ export const authApi = {
     }),
 
   me: () => request<UserInfo>("/auth/me"),
+
+  features: () => request<AuthFeatures>("/auth/features"),
+
+  forgotPassword: (email: string) =>
+    request<MessageResponse>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (token: string, password: string) =>
+    request<MessageResponse>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    }),
 };

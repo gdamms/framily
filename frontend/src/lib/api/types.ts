@@ -2,6 +2,14 @@ export interface TokenResponse {
   token: string;
 }
 
+export interface MessageResponse {
+  message: string;
+}
+
+export interface AuthFeatures {
+  password_reset: boolean;
+}
+
 export type Role = "invited" | "member" | "admin";
 
 export interface UserInfo {

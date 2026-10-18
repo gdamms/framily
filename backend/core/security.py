@@ -1,7 +1,9 @@
+import hashlib
+import hmac
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from passlib.context import CryptContext
-from jose import jwt
+from jose import JWTError, jwt
 from core.config import settings
 
 
@@ -35,3 +37,44 @@ def create_access_token(
 
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
+
+
+PASSWORD_RESET_PURPOSE = "password_reset"
+
+
+def _password_fingerprint(hashed_password: str) -> str:
+    """Short digest of the stored password hash, embedded in reset tokens so
+    that a token stops working as soon as the password changes (single use)."""
+    return hashlib.sha256(hashed_password.encode()).hexdigest()[:16]
+
+
+def create_password_reset_token(user_id: int, hashed_password: str) -> str:
+    """Create a short-lived JWT allowing its holder to reset one user's password."""
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES)
+    to_encode = {
+        "sub": str(user_id),
+        "purpose": PASSWORD_RESET_PURPOSE,
+        "pwd": _password_fingerprint(hashed_password),
+        "exp": expire,
+    }
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def decode_password_reset_token(token: str) -> Optional[tuple[int, str]]:
+    """Return (user_id, password_fingerprint) for a valid, unexpired reset
+    token, or None. The caller must still compare the fingerprint against the
+    user's current hash with password_fingerprint_matches()."""
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except JWTError:
+        return None
+    if payload.get("purpose") != PASSWORD_RESET_PURPOSE or "exp" not in payload:
+        return None
+    try:
+        return int(payload["sub"]), str(payload["pwd"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def password_fingerprint_matches(fingerprint: str, hashed_password: str) -> bool:
+    return hmac.compare_digest(fingerprint, _password_fingerprint(hashed_password))

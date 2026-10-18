@@ -11,6 +11,8 @@
   import Settings from "$lib/pages/settings/Settings.svelte";
   import LoginForm from "$lib/pages/login/LoginForm.svelte";
   import RegisterForm from "$lib/pages/register/RegisterForm.svelte";
+  import ForgotPasswordForm from "$lib/pages/forgot-password/ForgotPasswordForm.svelte";
+  import ResetPasswordForm from "$lib/pages/reset-password/ResetPasswordForm.svelte";
   import LoadingPage from "$lib/ui/LoadingPage.svelte";
   import IconButton from "$lib/ui/IconButton.svelte";
   import BurgerMenu from "$lib/ui/BurgerMenu.svelte";
@@ -64,9 +66,14 @@
   });
 </script>
 
-{#if !$auth.isAuthenticated}
+{#if $authView === "reset-password"}
+  <!-- Shown even when logged in, so opening a reset link always works. -->
+  <ResetPasswordForm />
+{:else if !$auth.isAuthenticated}
   {#if $authView === "register"}
     <RegisterForm />
+  {:else if $authView === "forgot-password"}
+    <ForgotPasswordForm />
   {:else}
     <LoginForm />
   {/if}

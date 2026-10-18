@@ -1,6 +1,8 @@
 // Re-export types
 export type {
   TokenResponse,
+  MessageResponse,
+  AuthFeatures,
   UserInfo,
   UserFramilyInfo,
   FramilyMember,

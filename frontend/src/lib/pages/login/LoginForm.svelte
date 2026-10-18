@@ -6,12 +6,23 @@
   import { api } from "$lib/api/index";
   import { authStore } from "$lib/stores/auth";
   import { authView } from "$lib/app";
+  import { onMount } from "svelte";
 
   let username: string = "";
   let password: string = "";
   let rememberMe: boolean = true;
   let errorMessage: string = "";
   let isLoading: boolean = false;
+  // Only offered when the server has SMTP configured.
+  let passwordResetEnabled: boolean = false;
+
+  onMount(async () => {
+    try {
+      passwordResetEnabled = (await api.auth.features()).password_reset;
+    } catch {
+      passwordResetEnabled = false;
+    }
+  });
 
   const handleSubmit = async () => {
     errorMessage = "";
@@ -38,10 +49,17 @@
 <Form title="Login" {errorMessage} submitHandler={handleSubmit}>
   <UsernameField bind:value={username} placeholder="Username or email" />
   <PasswordField bind:value={password} />
-  <label class="remember-me">
-    <input type="checkbox" bind:checked={rememberMe} />
-    Stay logged in
-  </label>
+  <div class="options">
+    <label class="remember-me">
+      <input type="checkbox" bind:checked={rememberMe} />
+      Stay logged in
+    </label>
+    {#if passwordResetEnabled}
+      <button type="button" class="link-button" onclick={() => authView.set("forgot-password")}>
+        Forgot password?
+      </button>
+    {/if}
+  </div>
   <Button type="submit" disabled={isLoading}>{isLoading ? "Logging in..." : "Login"}</Button>
   <p class="register-link">
     Don't have an account?
@@ -52,6 +70,15 @@
 </Form>
 
 <style>
+  .options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+  }
+
   .remember-me {
     display: flex;
     align-items: center;

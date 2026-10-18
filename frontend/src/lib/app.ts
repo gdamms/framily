@@ -1,4 +1,4 @@
-import { writable, type Writable } from "svelte/store";
+import { get, writable, type Writable } from "svelte/store";
 
 export type DashboardPage = {
   page: "dashboard";
@@ -23,7 +23,7 @@ export type SettingsPage = {
 
 export type Page = DashboardPage | ProfilePage | FramilyPage | SettingsPage;
 
-export type AuthView = "login" | "register";
+export type AuthView = "login" | "register" | "forgot-password" | "reset-password";
 
 interface AppState {
   page: Page;
@@ -34,9 +34,29 @@ interface App {
   navigate: (page: Page) => void;
 }
 
+// Token from a password reset email link (`/?reset_token=...`). Read once on
+// load and stripped from the URL so it doesn't linger in history/bookmarks.
+function takeResetTokenFromUrl(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const url = new URL(window.location.href);
+  const token = url.searchParams.get("reset_token");
+  if (token) {
+    url.searchParams.delete("reset_token");
+    window.history.replaceState(window.history.state, "", url);
+  }
+  return token;
+}
+
+export const resetToken: Writable<string | null> = writable(takeResetTokenFromUrl());
+
 // Which unauthenticated screen to show. Not persisted: on every load we want
-// to start from the login form, and it's reset once the user is authenticated.
-export const authView: Writable<AuthView> = writable("login");
+// to start from the login form (or the reset form when opened from a reset
+// email link), and it's reset once the user is authenticated.
+export const authView: Writable<AuthView> = writable(
+  get(resetToken) ? "reset-password" : "login",
+);
 
 const STORAGE_KEY = "framily:page";
 const DEFAULT_PAGE: Page = { page: "dashboard", section: "galery" };

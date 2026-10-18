@@ -60,6 +60,13 @@ services:
       TITLE: ${TITLE}
       VERSION: ${VERSION}
       CORS_ORIGINS: ${CORS_ORIGINS}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_SECURITY: ${SMTP_SECURITY:-starttls}
+      PUBLIC_URL: ${PUBLIC_URL:-}
     ports:
       - "${BACKEND_PORT}:8000"
     depends_on:
