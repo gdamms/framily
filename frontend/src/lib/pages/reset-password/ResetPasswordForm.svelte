@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import Form from "$lib/ui/form/Form.svelte";
   import PasswordField from "$lib/ui/form/PasswordField.svelte";
   import ConfirmPasswordField from "$lib/ui/form/ConfirmPasswordField.svelte";
@@ -17,22 +18,22 @@
 
     const token = $resetToken;
     if (!token) {
-      errorMessage = "This reset link is invalid or has expired";
+      errorMessage = m.reset_invalid_link();
       return;
     }
 
     if (!password || !confirmPassword) {
-      errorMessage = "All fields are required";
+      errorMessage = m.common_all_fields_required();
       return;
     }
 
     if (password !== confirmPassword) {
-      errorMessage = "Passwords do not match";
+      errorMessage = m.common_passwords_mismatch();
       return;
     }
 
     if (password.length < 8) {
-      errorMessage = "Password must be at least 8 characters";
+      errorMessage = m.common_password_too_short();
       return;
     }
 
@@ -43,7 +44,7 @@
       resetToken.set(null);
       isDone = true;
     } catch (error: any) {
-      errorMessage = error.message || "Password reset failed";
+      errorMessage = error.message || m.reset_failed();
     } finally {
       isLoading = false;
     }
@@ -55,17 +56,17 @@
   };
 </script>
 
-<Form title="Reset password" {errorMessage} submitHandler={handleSubmit}>
+<Form title={m.reset_title()} {errorMessage} submitHandler={handleSubmit}>
   {#if isDone}
-    <p class="success">Your password has been reset. You can now log in with it.</p>
-    <Button type="button" onclick={backToLogin}>Go to login</Button>
+    <p class="success">{m.reset_done()}</p>
+    <Button type="button" onclick={backToLogin}>{m.reset_go_to_login()}</Button>
   {:else}
-    <PasswordField bind:value={password} placeholder="New password" />
+    <PasswordField bind:value={password} placeholder={m.common_new_password()} />
     <ConfirmPasswordField bind:value={confirmPassword} />
-    <Button type="submit" disabled={isLoading}>{isLoading ? "Saving..." : "Set new password"}</Button>
+    <Button type="submit" disabled={isLoading}>{isLoading ? m.common_saving() : m.reset_submit()}</Button>
     <p class="login-link">
       <button type="button" class="link-button" onclick={backToLogin}>
-        Back to login
+        {m.auth_back_to_login()}
       </button>
     </p>
   {/if}

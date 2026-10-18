@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import Button from "$lib/ui/Button.svelte";
   import StatusMessage from "$lib/ui/StatusMessage.svelte";
   import { createStatusMessage } from "$lib/ui/statusMessage.svelte";
@@ -19,33 +20,33 @@
 
     const codePattern = /^[A-Z0-9]{8}$/;
     if (!codePattern.test(code)) {
-      status.show("Invalid code format. Code should be 8 alphanumeric characters.", "error");
+      status.show(m.connect_invalid_code(), "error");
       return;
     }
 
-    status.show("Connecting...", "info", null);
+    status.show(m.common_connecting(), "info", null);
 
     try {
       await api.framily.connect(code);
-      status.show("Connected successfully!", "success");
+      status.show(m.connect_success(), "success");
       setTimeout(() => {
         onSuccess?.();
         close();
       }, 1000);
     } catch (error: any) {
-      status.show(error?.response?.data?.message || "Failed to connect to framily", "error");
+      status.show(error?.response?.data?.message || m.connect_failed(), "error");
     }
   }
 </script>
 
 <div class="content">
   <StatusMessage text={status.text} type={status.type} />
-  <h2>Connect to a Framily</h2>
-  <p>Enter the Framily code for the first connection:</p>
-  <input type="text" bind:value={code} placeholder="Framily code" />
+  <h2>{m.connect_title()}</h2>
+  <p>{m.connect_prompt()}</p>
+  <input type="text" bind:value={code} placeholder={m.connect_placeholder()} />
   <div class="buttons">
-    <Button variant="secondary" onclick={close}>Cancel</Button>
-    <Button variant="primary" onclick={handleConnect}>Connect</Button>
+    <Button variant="secondary" onclick={close}>{m.common_cancel()}</Button>
+    <Button variant="primary" onclick={handleConnect}>{m.connect_submit()}</Button>
   </div>
 </div>
 

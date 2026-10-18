@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import { type UserFramilyInfo, type PictureInfo } from "$lib/api";
   import { app } from "$lib/app";
   import { overlay } from "$lib/overlay";
@@ -20,10 +21,10 @@
 
   let { framilies, pictures, section, currentUsername, onPicturesChanged, onFramiliesChanged }: Props = $props();
 
-  const TABS = [
-    { id: "galery" as const, label: "Galery" },
-    { id: "framilies" as const, label: "My framilies" },
-  ];
+  let tabs = $derived([
+    { id: "galery" as const, label: m.dashboard_tab_galery() },
+    { id: "framilies" as const, label: m.dashboard_tab_framilies() },
+  ]);
 
   function openUploadPopup() {
     overlay.open(UploadPopup, {
@@ -42,7 +43,7 @@
   {#if section === "galery"}
     <button class="add-picture" onclick={openUploadPopup}>
       <ImagePlus size={16} />
-      Add picture
+      {m.common_add_picture()}
     </button>
     <Galery {pictures} {currentUsername} myFramilies={framilies} onPictureChanged={onPicturesChanged} />
   {:else if section === "framilies"}
@@ -56,7 +57,7 @@
 
 <PageLayout
   {header}
-  tabs={TABS}
+  {tabs}
   selected={section}
   onSelect={(id) => app.navigate({ page: "dashboard", section: id })}
   {content}

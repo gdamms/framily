@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import { api, type FramilyInfo } from "$lib/api";
   import { overlay } from "$lib/overlay";
   import ConfirmPopup from "$lib/popups/ConfirmPopup.svelte";
@@ -44,14 +45,13 @@
       await api.framily.delete(framily.code);
       onDeleted?.();
     } catch (e: any) {
-      deleteError = e.message || "Failed to delete framily";
+      deleteError = e.message || m.framily_settings_delete_failed();
     }
   }
 
   function confirmDeleteFramily() {
     overlay.open(ConfirmPopup, {
-      prompt:
-        "Delete this framily? This disbands it for every member and cannot be undone. Uploaded pictures are kept in members' own galleries, but will no longer be visible to this framily.",
+      prompt: m.framily_settings_confirm_delete(),
       onConfirm: deleteFramily,
     });
   }
@@ -82,7 +82,7 @@
       onChanged();
     } catch (e: any) {
       rotationDeg -= delta;
-      error = e.message || "Failed to update orientation";
+      error = e.message || m.framily_settings_orientation_failed();
     } finally {
       savingOrientation = false;
     }
@@ -95,7 +95,7 @@
       await api.framily.updateSettings(framily.code, { show_uploader_name });
       onChanged();
     } catch (e: any) {
-      error = e.message || "Failed to update setting";
+      error = e.message || m.framily_settings_setting_failed();
     }
   }
 
@@ -106,7 +106,7 @@
       await api.framily.updateSettings(framily.code, { show_date });
       onChanged();
     } catch (e: any) {
-      error = e.message || "Failed to update setting";
+      error = e.message || m.framily_settings_setting_failed();
     }
   }
 
@@ -117,7 +117,7 @@
       await api.framily.updateSettings(framily.code, { show_caption });
       onChanged();
     } catch (e: any) {
-      error = e.message || "Failed to update setting";
+      error = e.message || m.framily_settings_setting_failed();
     }
   }
 
@@ -125,7 +125,7 @@
     error = "";
     const minutes = Math.round(Number(intervalDraft));
     if (!Number.isFinite(minutes) || minutes < 1 || minutes > 1440) {
-      error = "Interval must be between 1 and 1440 minutes";
+      error = m.framily_settings_interval_range();
       return;
     }
     if (minutes === framily.settings.interval_minutes) return;
@@ -136,7 +136,7 @@
       });
       onChanged();
     } catch (e: any) {
-      error = e.message || "Failed to update interval";
+      error = e.message || m.framily_settings_interval_failed();
     } finally {
       savingInterval = false;
     }
@@ -153,7 +153,7 @@
       });
       onChanged();
     } catch (e: any) {
-      error = e.message || "Failed to update image enhancement";
+      error = e.message || m.framily_settings_enhancement_failed();
     } finally {
       savingPreprocess = false;
     }
@@ -166,10 +166,10 @@
   {/if}
 
   <section class="section">
-    <h3 class="section-title">Display</h3>
+    <h3 class="section-title">{m.framily_settings_section_display()}</h3>
 
     <div class="setting">
-      <div class="setting-label">Display interval</div>
+      <div class="setting-label">{m.framily_settings_interval()}</div>
       {#if isAdmin}
         <div class="interval-row">
           <input
@@ -180,24 +180,24 @@
             disabled={savingInterval}
             onchange={saveInterval}
           />
-          <span class="unit">minutes</span>
+          <span class="unit">{m.framily_settings_minutes_unit()}</span>
         </div>
       {:else}
         <div class="setting-value">
-          {framily.settings.interval_minutes} minutes
+          {m.framily_settings_minutes_value({ minutes: framily.settings.interval_minutes })}
         </div>
       {/if}
     </div>
 
     <div class="setting">
-      <div class="setting-label">Orientation</div>
+      <div class="setting-label">{m.framily_settings_orientation()}</div>
       {#if isAdmin}
         <div class="orientation-row">
           <button
             class="rotate-button"
             disabled={savingOrientation}
             onclick={() => rotateOrientation(-1)}
-            aria-label="Rotate counter-clockwise"
+            aria-label={m.framily_settings_rotate_ccw()}
           >
             <RotateCcwSquare size={20} />
           </button>
@@ -211,7 +211,7 @@
             class="rotate-button"
             disabled={savingOrientation}
             onclick={() => rotateOrientation(1)}
-            aria-label="Rotate clockwise"
+            aria-label={m.framily_settings_rotate_cw()}
           >
             <RotateCwSquare size={20} />
           </button>
@@ -223,9 +223,9 @@
     </div>
 
     <div class="setting">
-      <div class="setting-label">Show uploader name</div>
+      <div class="setting-label">{m.framily_settings_show_uploader()}</div>
       <div class="setting-description">
-        Displays the uploader's name in the corner of each picture on the frame.
+        {m.framily_settings_show_uploader_description()}
       </div>
       {#if isAdmin}
         <label class="toggle-row">
@@ -234,20 +234,19 @@
             checked={framily.settings.show_uploader_name}
             onchange={toggleShowUploaderName}
           />
-          <span>{framily.settings.show_uploader_name ? "On" : "Off"}</span>
+          <span>{framily.settings.show_uploader_name ? m.common_on() : m.common_off()}</span>
         </label>
       {:else}
         <div class="setting-value">
-          {framily.settings.show_uploader_name ? "On" : "Off"}
+          {framily.settings.show_uploader_name ? m.common_on() : m.common_off()}
         </div>
       {/if}
     </div>
 
     <div class="setting">
-      <div class="setting-label">Show date</div>
+      <div class="setting-label">{m.framily_settings_show_date()}</div>
       <div class="setting-description">
-        Displays the picture's upload date in the corner of each picture on the
-        frame.
+        {m.framily_settings_show_date_description()}
       </div>
       {#if isAdmin}
         <label class="toggle-row">
@@ -256,20 +255,19 @@
             checked={framily.settings.show_date}
             onchange={toggleShowDate}
           />
-          <span>{framily.settings.show_date ? "On" : "Off"}</span>
+          <span>{framily.settings.show_date ? m.common_on() : m.common_off()}</span>
         </label>
       {:else}
         <div class="setting-value">
-          {framily.settings.show_date ? "On" : "Off"}
+          {framily.settings.show_date ? m.common_on() : m.common_off()}
         </div>
       {/if}
     </div>
 
     <div class="setting">
-      <div class="setting-label">Show caption</div>
+      <div class="setting-label">{m.framily_settings_show_caption()}</div>
       <div class="setting-description">
-        Displays a picture's caption at the bottom of the frame, when it has
-        one set.
+        {m.framily_settings_show_caption_description()}
       </div>
       {#if isAdmin}
         <label class="toggle-row">
@@ -278,24 +276,23 @@
             checked={framily.settings.show_caption}
             onchange={toggleShowCaption}
           />
-          <span>{framily.settings.show_caption ? "On" : "Off"}</span>
+          <span>{framily.settings.show_caption ? m.common_on() : m.common_off()}</span>
         </label>
       {:else}
         <div class="setting-value">
-          {framily.settings.show_caption ? "On" : "Off"}
+          {framily.settings.show_caption ? m.common_on() : m.common_off()}
         </div>
       {/if}
     </div>
 
     <div class="setting">
-      <div class="setting-label">Image enhancement</div>
+      <div class="setting-label">{m.framily_settings_enhancement()}</div>
       <div class="setting-description">
-        Automatically adjusts contrast and color so photos look punchier on the
-        frame's e-ink display.
+        {m.framily_settings_enhancement_description()}
       </div>
       {#if isAdmin}
         <div class="slider-row">
-          <span class="slider-end">Natural</span>
+          <span class="slider-end">{m.framily_settings_enhancement_natural()}</span>
           <input
             type="range"
             min="0"
@@ -304,7 +301,7 @@
             disabled={savingPreprocess}
             onchange={savePreprocessLevel}
           />
-          <span class="slider-end">Vivid</span>
+          <span class="slider-end">{m.framily_settings_enhancement_vivid()}</span>
         </div>
       {:else}
         <div class="setting-value">{framily.settings.preprocess_level}%</div>
@@ -313,21 +310,21 @@
   </section>
 
   <section class="section">
-    <h3 class="section-title">Frame status</h3>
+    <h3 class="section-title">{m.framily_settings_section_status()}</h3>
 
     <div class="setting">
-      <div class="setting-label">Resolution</div>
+      <div class="setting-label">{m.framily_settings_resolution()}</div>
       <div class="setting-value">
         {#if framily.resolution_width && framily.resolution_height}
           {framily.resolution_width} × {framily.resolution_height}
         {:else}
-          Not reported yet
+          {m.common_not_reported()}
         {/if}
       </div>
     </div>
 
     <div class="setting">
-      <div class="setting-label">IP address</div>
+      <div class="setting-label">{m.framily_settings_ip_address()}</div>
       <div class="setting-value">
         {#if framily.ip_address}
           <a
@@ -336,7 +333,7 @@
             rel="noreferrer">{framily.ip_address}</a
           >
         {:else}
-          Not reported yet
+          {m.common_not_reported()}
         {/if}
       </div>
     </div>
@@ -344,20 +341,19 @@
 
   {#if isAdmin}
     <section class="section danger-zone">
-      <h3 class="section-title">Danger zone</h3>
+      <h3 class="section-title">{m.common_danger_zone()}</h3>
 
       {#if deleteError}
         <p class="error">{deleteError}</p>
       {/if}
 
       <div class="setting">
-        <div class="setting-label">Delete framily</div>
+        <div class="setting-label">{m.framily_settings_delete()}</div>
         <div class="setting-description">
-          Permanently disbands this framily for all members. This cannot be
-          undone.
+          {m.framily_settings_delete_description()}
         </div>
         <button class="delete-button" onclick={confirmDeleteFramily}>
-          Delete framily
+          {m.framily_settings_delete()}
         </button>
       </div>
     </section>

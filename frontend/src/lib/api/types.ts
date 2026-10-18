@@ -1,3 +1,5 @@
+import type { Locale } from "$lib/paraglide/runtime";
+
 export interface TokenResponse {
   token: string;
 }
@@ -12,10 +14,14 @@ export interface AuthFeatures {
 
 export type Role = "invited" | "member" | "admin";
 
+export type Language = Locale;
+
 export interface UserInfo {
   username: string;
   email?: string;
   display_name: string;
+  // Only returned for your own profile.
+  language?: Language;
   created_at?: string;
   framilies?: UserFramilyInfo[];
   pictures?: PictureInfo[];

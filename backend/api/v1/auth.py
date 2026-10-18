@@ -9,6 +9,7 @@ from typing import Optional
 from core.database import get_db
 from core.config import settings
 from core.mail import send_email_safely
+from core.i18n import t
 from core.security import (
     hash_password,
     verify_password,
@@ -100,7 +101,8 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
         username=request.username,
         email=request.email,
         hashed_password=hashed_password,
-        display_name=request.username  # Default display name is username
+        display_name=request.username,  # Default display name is username
+        language=request.language,
     )
     db.add(db_user)
     db.commit()
@@ -182,15 +184,14 @@ def forgot_password(
     if db_user:
         token = create_password_reset_token(db_user.id, db_user.hashed_password)
         link = f"{settings.public_url}/?{urlencode({'reset_token': token})}"
-        body = (
-            f"Hi {db_user.display_name},\n\n"
-            "Someone (hopefully you) asked to reset your Framily password.\n"
-            "Open this link to choose a new one:\n\n"
-            f"{link}\n\n"
-            f"The link expires in {settings.PASSWORD_RESET_EXPIRE_MINUTES} minutes and can only be used once.\n"
-            "If you didn't ask for this, you can ignore this email.\n"
+        body = t(
+            db_user.language, "reset_email_body",
+            name=db_user.display_name,
+            link=link,
+            minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES,
         )
-        background_tasks.add_task(send_email_safely, db_user.email, "Reset your Framily password", body)
+        subject = t(db_user.language, "reset_email_subject")
+        background_tasks.add_task(send_email_safely, db_user.email, subject, body)
 
     return {"message": "If an account exists for this email, a reset link has been sent."}
 

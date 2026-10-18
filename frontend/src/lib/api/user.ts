@@ -1,11 +1,11 @@
 import { request, requestFormData, API_BASE_URL } from "./client";
-import type { UserInfo } from "./types";
+import type { Language, UserInfo } from "./types";
 
 export const userApi = {
   getInfo: (username: string) =>
     request<{ user: UserInfo }>(`/user/info?username=${encodeURIComponent(username)}`),
 
-  updateProfile: (data: { display_name?: string; email?: string }) =>
+  updateProfile: (data: { display_name?: string; email?: string; language?: Language }) =>
     request<{ user: UserInfo }>("/user/profile", {
       method: "PUT",
       body: JSON.stringify(data),

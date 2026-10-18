@@ -1,11 +1,11 @@
 import { request } from "./client";
-import type { AuthFeatures, MessageResponse, TokenResponse, UserInfo } from "./types";
+import type { AuthFeatures, Language, MessageResponse, TokenResponse, UserInfo } from "./types";
 
 export const authApi = {
-  register: (username: string, email: string, password: string) =>
+  register: (username: string, email: string, password: string, language?: Language) =>
     request<TokenResponse>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({ username, email, password, language }),
     }),
 
   login: (usernameOrEmail: string, password: string, rememberMe: boolean = true) =>

@@ -13,6 +13,7 @@ class User(Base):
     email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     display_name = Column(String(100), nullable=False)
+    language = Column(String(8), nullable=False, default="en", server_default="en")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relationships

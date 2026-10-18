@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import { api } from "$lib/api";
   import { app } from "$lib/app";
   import { overlay } from "$lib/overlay";
@@ -23,7 +24,7 @@
       await api.framily.join(code, true);
       onChanged?.();
     } catch (e: any) {
-      error = e.message || "Failed to accept invite";
+      error = e.message || m.framilies_accept_failed();
     }
   }
 
@@ -33,7 +34,7 @@
       await api.framily.join(code, false);
       onChanged?.();
     } catch (e: any) {
-      error = e.message || "Failed to decline invite";
+      error = e.message || m.framilies_decline_failed();
     }
   }
 
@@ -43,20 +44,20 @@
       await api.framily.leave(code);
       onChanged?.();
     } catch (e: any) {
-      error = e.message || "Failed to leave framily";
+      error = e.message || m.framilies_leave_failed();
     }
   }
 
   function confirmLeave(code: string) {
     overlay.open(ConfirmPopup, {
-      prompt: "Leave this framily?",
+      prompt: m.framilies_confirm_leave(),
       onConfirm: () => leave(code),
     });
   }
 
   function confirmDecline(code: string) {
     overlay.open(ConfirmPopup, {
-      prompt: "Decline this invite?",
+      prompt: m.framilies_confirm_decline(),
       onConfirm: () => declineInvite(code),
     });
   }

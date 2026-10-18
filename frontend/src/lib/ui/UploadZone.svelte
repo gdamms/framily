@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import { onDestroy } from "svelte";
 
   interface Props {
@@ -7,9 +8,7 @@
 
   let { fileInput = $bindable() }: Props = $props();
 
-  const INITIAL_TEXT = "Drag and drop your file here or click to select";
-
-  let text = $state(INITIAL_TEXT);
+  let fileName: string | null = $state(null);
   let previewUrl: string | null = $state(null);
 
   function handleSelect() {
@@ -20,10 +19,10 @@
 
     if (fileInput && fileInput.files && fileInput.files.length > 0) {
       const file = fileInput.files[0];
-      text = `${file.name}`;
+      fileName = file.name;
       previewUrl = URL.createObjectURL(file);
     } else {
-      text = INITIAL_TEXT;
+      fileName = null;
     }
   }
 
@@ -45,10 +44,10 @@
   <div class="box">
     <div class="inner">
       {#if previewUrl}
-        <img class="preview" src={previewUrl} alt="Selected file preview" />
+        <img class="preview" src={previewUrl} alt={m.upload_zone_preview_alt()} />
       {:else}
         <div class="text">
-          {text}
+          {fileName ?? m.upload_zone_hint()}
         </div>
       {/if}
     </div>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import { onDestroy, untrack } from "svelte";
   import Button from "$lib/ui/Button.svelte";
   import StatusMessage from "$lib/ui/StatusMessage.svelte";
@@ -149,19 +150,19 @@
       canvas.toBlob(resolve, "image/jpeg", 0.92),
     );
     if (!blob) {
-      status.show("Failed to process image", "error");
+      status.show(m.crop_process_failed(), "error");
       return;
     }
 
     const cropped = new File([blob], "avatar.jpg", { type: "image/jpeg" });
 
     uploading = true;
-    status.show("Uploading...", "info", null);
+    status.show(m.common_uploading(), "info", null);
     try {
       await onUpload(cropped);
       close();
     } catch (e: any) {
-      status.show(e.message || "Failed to upload", "error");
+      status.show(e.message || m.common_upload_failed(), "error");
     } finally {
       uploading = false;
     }
@@ -216,8 +217,8 @@
   </div>
 
   <div class="buttons">
-    <Button variant="secondary" onclick={close} disabled={uploading}>Cancel</Button>
-    <Button variant="primary" onclick={handleUpload} disabled={uploading}>Upload</Button>
+    <Button variant="secondary" onclick={close} disabled={uploading}>{m.common_cancel()}</Button>
+    <Button variant="primary" onclick={handleUpload} disabled={uploading}>{m.common_upload()}</Button>
   </div>
 </div>
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import { themeStore } from "$lib/stores/theme";
   import Sun from "@lucide/svelte/icons/sun";
   import Moon from "@lucide/svelte/icons/moon";
@@ -11,19 +12,21 @@
 
   const preference = themeStore.preference;
 
-  const LABEL = {
-    system: "Theme: system",
-    light: "Theme: light",
-    dark: "Theme: dark",
+  const THEME_NAMES = {
+    system: m.theme_system,
+    light: m.theme_light,
+    dark: m.theme_dark,
   } as const;
+
+  let label = $derived(m.theme_toggle_label({ theme: THEME_NAMES[$preference]() }));
 </script>
 
 <button
   class="theme-toggle"
   type="button"
   onclick={() => themeStore.cycle()}
-  title={LABEL[$preference]}
-  aria-label={LABEL[$preference]}
+  title={label}
+  aria-label={label}
 >
   {#if $preference === "system"}
     <span class="split-icon" style="width: {size}px; height: {size}px;">

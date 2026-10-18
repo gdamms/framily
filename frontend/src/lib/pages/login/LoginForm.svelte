@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import Form from "$lib/ui/form/Form.svelte";
   import UsernameField from "$lib/ui/form/UsernameField.svelte";
   import PasswordField from "$lib/ui/form/PasswordField.svelte";
@@ -29,7 +30,7 @@
 
     // Validation
     if (!username || !password) {
-      errorMessage = "Username/email and password are required";
+      errorMessage = m.login_missing_fields();
       return;
     }
 
@@ -39,32 +40,32 @@
       const response = await api.auth.login(username, password, rememberMe);
       await authStore.setToken(response.token, rememberMe);
     } catch (error: any) {
-      errorMessage = error.message || "Login failed";
+      errorMessage = error.message || m.login_failed();
     } finally {
       isLoading = false;
     }
   };
 </script>
 
-<Form title="Login" {errorMessage} submitHandler={handleSubmit}>
-  <UsernameField bind:value={username} placeholder="Username or email" />
+<Form title={m.login_title()} {errorMessage} submitHandler={handleSubmit}>
+  <UsernameField bind:value={username} placeholder={m.login_username_or_email()} />
   <PasswordField bind:value={password} />
   <div class="options">
     <label class="remember-me">
       <input type="checkbox" bind:checked={rememberMe} />
-      Stay logged in
+      {m.login_stay_logged_in()}
     </label>
     {#if passwordResetEnabled}
       <button type="button" class="link-button" onclick={() => authView.set("forgot-password")}>
-        Forgot password?
+        {m.login_forgot_password()}
       </button>
     {/if}
   </div>
-  <Button type="submit" disabled={isLoading}>{isLoading ? "Logging in..." : "Login"}</Button>
+  <Button type="submit" disabled={isLoading}>{isLoading ? m.login_submitting() : m.login_submit()}</Button>
   <p class="register-link">
-    Don't have an account?
+    {m.login_no_account()}
     <button type="button" class="link-button" onclick={() => authView.set("register")}>
-      Register
+      {m.login_register_link()}
     </button>
   </p>
 </Form>

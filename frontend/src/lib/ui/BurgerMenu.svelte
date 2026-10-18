@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import { app } from "$lib/app";
   import { authStore } from "$lib/stores/auth";
   import { authView } from "$lib/app";
@@ -62,7 +63,7 @@
 <svelte:window onclick={handleWindowClick} onkeydown={handleKeydown} />
 
 <div class="burger-menu" bind:this={containerEl}>
-  <button class="trigger" type="button" onclick={toggle} aria-label="Menu" aria-expanded={open}>
+  <button class="trigger" type="button" onclick={toggle} aria-label={m.menu_label()} aria-expanded={open}>
     <Menu size={22} />
   </button>
 
@@ -70,21 +71,21 @@
     <div class="dropdown" role="menu">
       <button class="item" role="menuitem" onclick={goProfile}>
         <UserRound size={18} />
-        Profile
+        {m.common_profile()}
       </button>
       <button class="item" role="menuitem" onclick={goSettings}>
         <Settings size={18} />
-        Settings
+        {m.common_settings()}
       </button>
       <button class="item theme-item" onclick={cycleTheme} role="menuitem">
         <div class="theme-toggle-container">
           <ThemeToggle size={18} />
         </div>
-        <span class="theme-label">Theme</span>
+        <span class="theme-label">{m.menu_theme()}</span>
       </button>
       <button class="item danger" role="menuitem" onclick={logout}>
         <LogOut size={18} />
-        Logout
+        {m.menu_logout()}
       </button>
     </div>
   {/if}

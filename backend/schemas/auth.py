@@ -1,10 +1,14 @@
 from pydantic import BaseModel, EmailStr, Field
 
+from core.i18n import Language, DEFAULT_LANGUAGE
+
 
 class RegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=32, pattern=r'^[a-zA-Z0-9_.-]+$')
     email: EmailStr
     password: str = Field(..., min_length=8)
+    # The UI language the user registered with, so emails match it from the start.
+    language: Language = DEFAULT_LANGUAGE
 
 
 class RegisterResponse(BaseModel):

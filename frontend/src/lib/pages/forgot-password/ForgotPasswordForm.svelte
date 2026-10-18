@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import Form from "$lib/ui/form/Form.svelte";
   import EmailField from "$lib/ui/form/EmailField.svelte";
   import Button from "$lib/ui/Button.svelte";
@@ -15,33 +16,33 @@
     successMessage = "";
 
     if (!email) {
-      errorMessage = "Email is required";
+      errorMessage = m.forgot_email_required();
       return;
     }
 
     isLoading = true;
 
     try {
-      const response = await api.auth.forgotPassword(email);
-      successMessage = response.message;
+      await api.auth.forgotPassword(email);
+      successMessage = m.forgot_sent();
     } catch (error: any) {
-      errorMessage = error.message || "Could not send reset email";
+      errorMessage = error.message || m.forgot_failed();
     } finally {
       isLoading = false;
     }
   };
 </script>
 
-<Form title="Forgot password" {errorMessage} submitHandler={handleSubmit}>
-  <p class="hint">Enter your account's email and we'll send you a link to reset your password.</p>
+<Form title={m.forgot_title()} {errorMessage} submitHandler={handleSubmit}>
+  <p class="hint">{m.forgot_hint()}</p>
   <EmailField bind:value={email} />
-  <Button type="submit" disabled={isLoading}>{isLoading ? "Sending..." : "Send reset link"}</Button>
+  <Button type="submit" disabled={isLoading}>{isLoading ? m.forgot_submitting() : m.forgot_submit()}</Button>
   {#if successMessage}
     <p class="success">{successMessage}</p>
   {/if}
   <p class="login-link">
     <button type="button" class="link-button" onclick={() => authView.set("login")}>
-      Back to login
+      {m.auth_back_to_login()}
     </button>
   </p>
 </Form>

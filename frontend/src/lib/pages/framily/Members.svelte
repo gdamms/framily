@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import { api, type FramilyMember, type Role } from "$lib/api";
   import { app } from "$lib/app";
   import { overlay } from "$lib/overlay";
@@ -25,13 +26,13 @@
   function roleName(role: Role): string {
     switch (role) {
       case "invited":
-        return "Invited";
+        return m.role_invited();
       case "member":
-        return "Member";
+        return m.role_member();
       case "admin":
-        return "Admin";
+        return m.role_admin();
       default:
-        return "Unknown";
+        return m.role_unknown();
     }
   }
 
@@ -41,13 +42,13 @@
       await api.framily.kick(framilyCode, username);
       onChanged();
     } catch (e: any) {
-      error = e.message || "Failed to kick member";
+      error = e.message || m.members_kick_failed();
     }
   }
 
   function confirmKick(username: string) {
     overlay.open(ConfirmPopup, {
-      prompt: "Remove this member from the framily?",
+      prompt: m.members_confirm_kick(),
       onConfirm: () => kick(username),
     });
   }
@@ -58,7 +59,7 @@
       await api.framily.promote(framilyCode, username, newRole);
       onChanged();
     } catch (e: any) {
-      error = e.message || "Failed to change role";
+      error = e.message || m.members_role_failed();
     }
   }
 </script>
@@ -67,7 +68,7 @@
   {#if isAdmin}
     <button class="invite" onclick={() => overlay.open(InvitePopup, { framilyCode, onSuccess: onChanged })}>
       <UserPlus size={16} />
-      Invite member
+      {m.members_invite()}
     </button>
   {/if}
 
@@ -97,12 +98,12 @@
         {#if isAdmin && member.username !== currentUsername}
           <div class="member-actions">
             {#if member.role === "member"}
-              <button onclick={() => setRole(member.username, "admin")}>Make admin</button>
+              <button onclick={() => setRole(member.username, "admin")}>{m.members_make_admin()}</button>
             {:else if member.role === "admin"}
-              <button onclick={() => setRole(member.username, "member")}>Demote</button>
+              <button onclick={() => setRole(member.username, "member")}>{m.members_demote()}</button>
             {/if}
             <button class="kick" onclick={() => confirmKick(member.username)}>
-              {member.role === "invited" ? "Cancel invite" : "Kick"}
+              {member.role === "invited" ? m.members_cancel_invite() : m.members_kick()}
             </button>
           </div>
         {/if}

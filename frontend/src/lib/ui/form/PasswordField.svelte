@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import TextField from "./TextField.svelte";
 
   interface Props {
@@ -6,7 +7,7 @@
     placeholder?: string;
   }
 
-  let { value = $bindable(""), placeholder = "Enter your password" }: Props = $props();
+  let { value = $bindable(""), placeholder }: Props = $props();
 </script>
 
-<TextField type="password" {placeholder} bind:value required />
+<TextField type="password" placeholder={placeholder ?? m.field_password_placeholder()} bind:value required />

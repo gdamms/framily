@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import Button from "$lib/ui/Button.svelte";
 
   interface Props {
@@ -9,7 +10,7 @@
   }
 
   let {
-    prompt = "Are you sure?",
+    prompt,
     onCancel,
     onConfirm,
     close = () => {},
@@ -27,10 +28,10 @@
 </script>
 
 <div class="confirm-popup">
-  <p>{prompt}</p>
+  <p>{prompt ?? m.common_are_you_sure()}</p>
   <div class="buttons">
-    <Button variant="secondary" onclick={cancel}>Cancel</Button>
-    <Button variant="primary" onclick={confirm}>Confirm</Button>
+    <Button variant="secondary" onclick={cancel}>{m.common_cancel()}</Button>
+    <Button variant="primary" onclick={confirm}>{m.common_confirm()}</Button>
   </div>
 </div>
 

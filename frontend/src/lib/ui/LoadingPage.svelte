@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import type { Snippet } from "svelte";
 
   interface Props {
@@ -12,7 +13,7 @@
   {#if children}
     {@render children()}
   {:else}
-    Loading...
+    {m.common_loading()}
   {/if}
 </div>
 

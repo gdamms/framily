@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import { tick } from "svelte";
   import { api, type UserInfo, type UserFramilyInfo } from "$lib/api";
   import Galery from "$lib/components/Galery.svelte";
@@ -27,10 +28,10 @@
   type View = "pictures" | "framilies";
   let view: View = $state("pictures");
 
-  const TABS = [
-    { id: "pictures" as const, label: "Pictures" },
-    { id: "framilies" as const, label: "Framilies" },
-  ];
+  let tabs = $derived([
+    { id: "pictures" as const, label: m.common_pictures() },
+    { id: "framilies" as const, label: m.common_framilies() },
+  ]);
 
   function openUploadPopup() {
     overlay.open(UploadPopup, {
@@ -122,7 +123,7 @@
       {#if isOwnProfile}
         <button class="add-picture" onclick={openUploadPopup}>
           <ImagePlus size={16} />
-          Add picture
+          {m.common_add_picture()}
         </button>
       {/if}
       <Galery {pictures} {currentUsername} {myFramilies} onPictureChanged={loadUser} />
@@ -131,7 +132,7 @@
     {/if}
   {/snippet}
 
-  <PageLayout {header} tabs={TABS} selected={view} onSelect={(id) => (view = id)} {content} />
+  <PageLayout {header} {tabs} selected={view} onSelect={(id) => (view = id)} {content} />
 {/if}
 
 <style>

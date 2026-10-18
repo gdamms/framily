@@ -4,11 +4,13 @@ from datetime import datetime
 
 from schemas.picture import PictureInfo
 from schemas.framily import Role
+from core.i18n import Language
 
 
 class ProfileUpdate(BaseModel):
     display_name: Optional[str] = None
     email: Optional[str] = None
+    language: Optional[Language] = None
 
 
 class DeleteAccountRequest(BaseModel):
@@ -33,6 +35,7 @@ class UserInfo(BaseModel):
     username: str
     email: Optional[str] = None
     display_name: str
+    language: Optional[Language] = None
     created_at: Optional[datetime] = None
     framilies: list[UserFramilyInfo] = Field(default_factory=list)
     pictures: list[PictureInfo] = Field(default_factory=list)

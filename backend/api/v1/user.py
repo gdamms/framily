@@ -94,6 +94,7 @@ def build_user_info(target_user: User, current_user: User, db: Session) -> UserI
         username=target_user.username,
         email=target_user.email if is_self else None,
         display_name=target_user.display_name,
+        language=target_user.language if is_self else None,
         created_at=target_user.created_at if is_self else None,
         framilies=framilies,
         pictures=pictures,
@@ -126,6 +127,8 @@ def update_profile(
     """Update current user's profile."""
     if profile.display_name is not None:
         current_user.display_name = profile.display_name
+    if profile.language is not None:
+        current_user.language = profile.language
     if profile.email is not None:
         # Check email uniqueness
         existing = db.query(User).filter(

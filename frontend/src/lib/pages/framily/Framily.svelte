@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import { onMount, tick } from "svelte";
   import { api, type FramilyInfo, type PictureInfo, type UserFramilyInfo } from "$lib/api";
   import Galery from "$lib/components/Galery.svelte";
@@ -35,11 +36,11 @@
   let nameDraft = $state("");
   let nameInputEl: HTMLInputElement | undefined = $state();
 
-  const TABS = [
-    { id: "pictures" as const, label: "Pictures" },
-    { id: "members" as const, label: "Members" },
-    { id: "settings" as const, label: "Settings" },
-  ];
+  let tabs = $derived([
+    { id: "pictures" as const, label: m.common_pictures() },
+    { id: "members" as const, label: m.common_members() },
+    { id: "settings" as const, label: m.common_settings() },
+  ]);
 
   function startEditingName() {
     if (!isAdmin || !framily) return;
@@ -90,7 +91,7 @@
 {#if framily === undefined}
   <LoadingPage />
 {:else if $appState.page.page !== "framily"}
-  <div class="message">Framily not found</div>
+  <div class="message">{m.framily_not_found()}</div>
 {:else}
   {@const framilyPage = $appState.page}
   {#snippet header()}
@@ -122,7 +123,7 @@
     {#if framilyPage.section === "pictures"}
       <button class="add-picture" onclick={openUploadPopup}>
         <ImagePlus size={16} />
-        Add picture
+        {m.common_add_picture()}
       </button>
       <Galery {pictures} {currentUsername} myFramilies={framilies} onPictureChanged={loadFramily} />
     {:else if framilyPage.section === "members"}
@@ -147,7 +148,7 @@
 
   <PageLayout
     {header}
-    tabs={TABS}
+    {tabs}
     selected={framilyPage.section}
     onSelect={(section) => app.navigate({ page: "framily", code: framily!.code, section })}
     {content}

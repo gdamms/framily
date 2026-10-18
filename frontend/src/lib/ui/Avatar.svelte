@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import { api } from "$lib/api";
   import { overlay } from "$lib/overlay";
   import CropAvatarPopup from "$lib/popups/CropAvatarPopup.svelte";
@@ -78,11 +79,11 @@
     onkeydown={editable ? (e) => e.key === "Enter" && handleClick() : undefined}
     role={editable ? "button" : undefined}
     tabindex={editable ? 0 : undefined}
-    title={editable ? "Change avatar" : undefined}
+    title={editable ? m.avatar_change() : undefined}
   >
     <img
       {src}
-      alt="{label}'s avatar"
+      alt={m.avatar_alt({ name: label })}
       class="avatar-img"
       class:visible={loaded}
       crossorigin="use-credentials"

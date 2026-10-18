@@ -160,6 +160,16 @@ render logic rather than adding a SvelteKit route.
   (`api.auth`, `api.user`, `api.framily`, `api.pictures`) plus individual named exports.
 - `frontend/src/lib/stores/auth.ts` — reads/writes the `auth_token` cookie directly (not an
   httpOnly cookie set by the backend); this is the source of truth for `isAuthenticated`.
+- **i18n** uses [Paraglide JS](https://inlang.com/m/gerre34r/library-inlang-paraglideJs) (en/fr).
+  Every UI string is a key in `frontend/messages/en.json` + `fr.json` (flat `area_name` keys,
+  `{param}` placeholders), compiled by the Vite plugin into `src/lib/paraglide/` (generated,
+  git-ignored; `npm run check` compiles it too). Components use `m.some_key()` from
+  `$lib/i18n.svelte`, which also makes the locale reactive (no page reload) via
+  `getLanguage()`/`setLanguage()`. Locale resolution: localStorage → browser language → `en`,
+  then overridden by the account's `users.language` once logged in. Strings built in `<script>`
+  (tab labels, option lists) must be `$derived` or they won't follow a language switch. The
+  backend has its own small vocabulary for emails in `backend/core/i18n.py`. Backend API error
+  `detail`s are still English-only.
 - `API_BASE_URL` defaults to `/api/v1` (relative, works when backend serves the frontend) but can
   be overridden with `VITE_API_URL` for split dev containers.
 

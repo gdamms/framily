@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import { tick, onDestroy } from "svelte";
   import { api, type PictureInfo, type UserFramilyInfo } from "$lib/api";
   import { CAPTION_MAX_LENGTH } from "$lib/api/types";
@@ -49,7 +50,7 @@
       framilies = framilies.filter((f) => f.code !== code);
       onChanged?.();
     } catch (e: any) {
-      error = e.message || "Failed to remove from framily";
+      error = e.message || m.picture_remove_failed();
     }
   }
 
@@ -61,7 +62,7 @@
       showAddPicker = false;
       onChanged?.();
     } catch (e: any) {
-      error = e.message || "Failed to add to framily";
+      error = e.message || m.picture_add_failed();
     }
   }
 
@@ -72,13 +73,13 @@
       onChanged?.();
       close();
     } catch (e: any) {
-      error = e.message || "Failed to delete picture";
+      error = e.message || m.picture_delete_failed();
     }
   }
 
   function confirmDelete() {
     overlay.open(ConfirmPopup, {
-      prompt: "Delete this picture entirely? This cannot be undone.",
+      prompt: m.picture_confirm_delete(),
       onConfirm: deleteEntirely,
     });
   }
@@ -122,7 +123,7 @@
       // picture object - otherwise reopening it later shows the stale value.
       picture.description = response.picture.description ?? null;
     } catch (e: any) {
-      error = e.message || "Failed to update caption";
+      error = e.message || m.picture_caption_failed();
     }
   }
 
@@ -162,10 +163,10 @@
         {#if isUploader}
           <IconButton
             icon={Crop}
-            label={picture.focus_area ? "Edit focus area" : "Set focus area"}
+            label={picture.focus_area ? m.picture_edit_focus_area() : m.picture_set_focus_area()}
             onclick={openFocusAreaEditor}
           />
-          <IconButton icon={Trash2} variant="danger" label="Delete entirely" onclick={confirmDelete} />
+          <IconButton icon={Trash2} variant="danger" label={m.picture_delete_entirely()} onclick={confirmDelete} />
         {/if}
         <IconButton icon={X} onclick={close} />
       </div>
@@ -183,7 +184,7 @@
             bind:value={captionDraft}
             bind:this={captionInputEl}
             maxlength={CAPTION_MAX_LENGTH}
-            placeholder="Add a caption"
+            placeholder={m.picture_add_caption()}
             oninput={scheduleCaptionSave}
             onblur={finishEditingCaption}
             onkeydown={handleCaptionKeydown}
@@ -203,7 +204,7 @@
         {:else}
           <button class="caption-add" onclick={startEditingCaption}>
             <Pencil size={14} />
-            Add a caption
+            {m.picture_add_caption()}
           </button>
         {/if}
       </div>
@@ -213,7 +214,7 @@
       {#if isUploader && addableFramilies.length > 0}
         <button class="chip chip-add" onclick={() => (showAddPicker = !showAddPicker)}>
           <Plus size={14} />
-          Add to framily
+          {m.picture_add_to_framily()}
         </button>
       {/if}
       {#each framilies as framily}
@@ -222,7 +223,7 @@
           {#if canRemoveFrom(framily.code)}
             <button
               class="chip-remove"
-              title="Remove from {framily.name}"
+              title={m.picture_remove_from({ name: framily.name })}
               onclick={() => removeFrom(framily.code)}
             >
               <X size={14} />
@@ -247,14 +248,14 @@
     <img
       class="image"
       src={api.pictures.getImageUrl(picture)}
-      alt="Uploaded by {picture.uploader_display_name || picture.uploader_username}"
+      alt={m.picture_uploaded_by({ name: picture.uploader_display_name || picture.uploader_username })}
     />
     {#if picture.focus_area}
       <div
         class="focus-indicator"
         style="left: {picture.focus_area.x * 100}%; top: {picture.focus_area.y * 100}%; width: {picture
           .focus_area.width * 100}%; height: {picture.focus_area.height * 100}%;"
-        title="Focus area"
+        title={m.picture_focus_area()}
       ></div>
     {/if}
   </div>

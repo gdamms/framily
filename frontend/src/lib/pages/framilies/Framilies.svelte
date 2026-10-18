@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import { type UserFramilyInfo } from "$lib/api";
   import FramiliesItem from "./FramiliesItem.svelte";
   import ListPlus from "@lucide/svelte/icons/list-plus";
@@ -16,7 +17,7 @@
   {#if onAddFramily}
     <button class="add-framily" onclick={onAddFramily}>
       <ListPlus size={16} />
-      Add framily
+      {m.common_add_framily()}
     </button>
   {/if}
   {#each framilies as framily}

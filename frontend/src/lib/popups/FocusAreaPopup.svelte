@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from "$lib/i18n.svelte";
   import { api, type FocusArea, type PictureInfo } from "$lib/api";
   import Button from "$lib/ui/Button.svelte";
   import StatusMessage from "$lib/ui/StatusMessage.svelte";
@@ -157,14 +158,14 @@
 
   async function persist(focus_area: FocusArea | null) {
     saving = true;
-    status.show("Saving...", "info", null);
+    status.show(m.common_saving(), "info", null);
     try {
       const response = await api.pictures.updateFocusArea(picture.id, focus_area);
       picture.focus_area = response.picture.focus_area ?? null;
       onChanged?.();
       close();
     } catch (e: any) {
-      status.show(e.message || "Failed to save focus area", "error");
+      status.show(e.message || m.focus_save_failed(), "error");
     } finally {
       saving = false;
     }
@@ -187,9 +188,7 @@
 
 <div class="content">
   <p class="hint">
-    Drag a rectangle over the part of the picture that should always stay in frame. When the
-    frame's shape doesn't match the picture, it crops around this area instead of the center -
-    adding black bars if needed to keep it fully visible.
+    {m.focus_hint()}
   </p>
 
   <StatusMessage text={status.text} type={status.type} />
@@ -230,12 +229,12 @@
 
   <div class="buttons">
     <Button class="small" variant="secondary" onclick={useWholePicture} disabled={saving}
-      >Whole picture</Button
+      >{m.focus_whole_picture()}</Button
     >
-    <Button class="small" variant="secondary" onclick={handleClear} disabled={saving}>Clear</Button>
+    <Button class="small" variant="secondary" onclick={handleClear} disabled={saving}>{m.focus_clear()}</Button>
     <div class="spacer"></div>
-    <Button class="small" variant="secondary" onclick={close} disabled={saving}>Cancel</Button>
-    <Button class="small" variant="primary" onclick={handleSave} disabled={saving}>Save</Button>
+    <Button class="small" variant="secondary" onclick={close} disabled={saving}>{m.common_cancel()}</Button>
+    <Button class="small" variant="primary" onclick={handleSave} disabled={saving}>{m.common_save()}</Button>
   </div>
 </div>
 

@@ -13,6 +13,7 @@ export type {
   PictureInfo,
   FocusArea,
   Role,
+  Language,
 } from "./types";
 
 // Re-export error class

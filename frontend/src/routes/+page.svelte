@@ -20,6 +20,7 @@
   import User from "@lucide/svelte/icons/user";
   import { app, authView } from "$lib/app";
   import { authStore } from "$lib/stores/auth";
+  import { setLanguage } from "$lib/i18n.svelte";
 
   const appState = app.state;
   const auth = authStore;
@@ -44,6 +45,9 @@
     const me = await api.auth.me();
     const response = await api.user.getInfo(me.username);
     user = response.user;
+    // The account's language wins over this browser's stored/detected one,
+    // so the choice follows the user across devices.
+    setLanguage(user.language);
 
     const picturesResponse = await api.pictures.listAll();
     dashboardPictures = picturesResponse.pictures;

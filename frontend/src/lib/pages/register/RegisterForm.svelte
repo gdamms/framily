@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m, getLanguage } from "$lib/i18n.svelte";
   import Form from "$lib/ui/form/Form.svelte";
   import UsernameField from "$lib/ui/form/UsernameField.svelte";
   import EmailField from "$lib/ui/form/EmailField.svelte";
@@ -21,53 +22,53 @@
 
     // Validation
     if (!username || !email || !password || !confirmPassword) {
-      errorMessage = "All fields are required";
+      errorMessage = m.common_all_fields_required();
       return;
     }
 
     if (password !== confirmPassword) {
-      errorMessage = "Passwords do not match";
+      errorMessage = m.common_passwords_mismatch();
       return;
     }
 
     if (password.length < 8) {
-      errorMessage = "Password must be at least 8 characters";
+      errorMessage = m.common_password_too_short();
       return;
     }
 
     if (username.length < 3 || username.length > 32) {
-      errorMessage = "Username must be 3-32 characters";
+      errorMessage = m.register_username_length();
       return;
     }
 
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      errorMessage = "Username can only contain letters, numbers, and underscores";
+      errorMessage = m.register_username_chars();
       return;
     }
 
     isLoading = true;
 
     try {
-      const response = await api.auth.register(username, email, password);
+      const response = await api.auth.register(username, email, password, getLanguage());
       await authStore.setToken(response.token);
     } catch (error: any) {
-      errorMessage = error.message || "Registration failed";
+      errorMessage = error.message || m.register_failed();
     } finally {
       isLoading = false;
     }
   };
 </script>
 
-<Form title="Register" {errorMessage} submitHandler={handleSubmit}>
+<Form title={m.register_title()} {errorMessage} submitHandler={handleSubmit}>
   <UsernameField bind:value={username} />
   <EmailField bind:value={email} />
   <PasswordField bind:value={password} />
   <ConfirmPasswordField bind:value={confirmPassword} />
-  <Button type="submit" disabled={isLoading}>{isLoading ? "Registering..." : "Register"}</Button>
+  <Button type="submit" disabled={isLoading}>{isLoading ? m.register_submitting() : m.register_submit()}</Button>
   <p class="login-link">
-    Already have an account?
+    {m.register_have_account()}
     <button type="button" class="link-button" onclick={() => authView.set("login")}>
-      Login
+      {m.register_login_link()}
     </button>
   </p>
 </Form>
