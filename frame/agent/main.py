@@ -17,24 +17,17 @@ from logging_setup import get_logger
 from utils import (
     AGENT_LOCK_PATH,
     AGENT_RECHECK_PATH,
-    CON_HOTSPOT,
     CON_WIFI,
     EPD_IMAGE_PATH,
     EPD_INFO_PATH,
-    HOTSPOT_DOMAIN,
-    WEB_PORT,
     clear_message,
     get_active_connection,
-    get_hotspot,
+    get_ble_local_name,
     get_ip_address,
-    get_wifi,
     load_config,
-    make_qr,
     save_config,
     save_message,
     set_wifi,
-    start_hotspot,
-    start_wifi,
 )
 
 logger = get_logger("agent")
@@ -52,12 +45,13 @@ MIN_INTERVAL_MINUTES = 1
 MAX_INTERVAL_MINUTES = 60
 
 # How many consecutive transient failures (network errors, 5xx) we tolerate
-# before giving up on the current Wi-Fi session and falling back to hotspot
-# mode. A single blip should never be enough to kick the frame out of Wi-Fi.
+# before giving up on the current Wi-Fi session and reporting it as failed.
+# A single blip should never be enough to kick the frame off Wi-Fi.
 MAX_CONSECUTIVE_FAILURES = 4
 
 # How often we re-check network state / pending config while not in a
-# steady fetch loop (hotspot mode, waiting for framily members, transitions).
+# steady fetch loop (unprovisioned/BLE-setup mode, waiting for framily
+# members, transitions).
 UNSTEADY_POLL_SECONDS = 5
 
 # While the framily has no visible pictures yet, retry the fetch on this much
@@ -65,11 +59,12 @@ UNSTEADY_POLL_SECONDS = 5
 # interval - so the frame picks up the first uploaded photo promptly.
 NO_PICTURE_RETRY_SECONDS = 10
 
-# While parked in hotspot mode waiting for credentials, how often to retry
-# the already-saved Wi-Fi profile (if any). Handles a transient outage (e.g.
-# router reboot) recovering on its own without the user having to
-# re-provision through the setup UI.
-HOTSPOT_WIFI_RETRY_SECONDS = 5 * 60
+# How long to wait for a Wi-Fi network submitted over BLE/the web UI to
+# actually come up before reporting failure back to the app - generous
+# enough for a real association + DHCP lease, bounded so a bad password
+# doesn't hang the provisioning UI indefinitely.
+WIFI_JOIN_TIMEOUT_SECONDS = 20
+WIFI_JOIN_POLL_SECONDS = 1
 
 # Set by the recheck watcher whenever config.json or agent.recheck changes,
 # so the agent can react to a Wi-Fi credentials submission or a NetworkManager
@@ -187,20 +182,6 @@ def _draw_top(draw, text, font, y, cx, fill=BLACK):
     return _text_height(draw, text, font)
 
 
-def _fitted_lines_height(draw, lines, weight, max_width, max_size, gap=6, min_size=14):
-    """Each line gets its own shrink-to-fit font, so e.g. a long password
-    doesn't force a short SSID line down to the same tiny size."""
-    fonts = [_fit_font(draw, line, weight, max_width, max_size, min_size) for line in lines]
-    heights = [_text_height(draw, line, font) for line, font in zip(lines, fonts)]
-    return fonts, sum(heights) + gap * (len(lines) - 1)
-
-
-def _draw_fitted_lines(draw, lines, fonts, y, cx, gap=6):
-    for line, font in zip(lines, fonts):
-        y += _draw_top(draw, line, font, y, cx) + gap
-    return y
-
-
 def _wifi_icon(draw, cx, cy, size=100, fill=BLACK, width=7):
     dot_r = size * 0.09
     draw.ellipse((cx - dot_r, cy - dot_r, cx + dot_r, cy + dot_r), fill=fill)
@@ -250,77 +231,45 @@ def _write_epd_image(write: Callable[[Path], object]) -> None:
         raise
 
 
-def display_hotspot():
-    ssid, password = get_hotspot()
-
-    if WEB_PORT == 80:
-        server_url = f"http://{HOTSPOT_DOMAIN}/"
-    elif WEB_PORT == 443:
-        server_url = f"https://{HOTSPOT_DOMAIN}/"
-    else:
-        server_url = f"http://{HOTSPOT_DOMAIN}:{WEB_PORT}/"
+def display_ble_setup():
+    ble_name = get_ble_local_name()
 
     img, draw = _new_canvas()
     width, height = img.size
-    cx = width // 2
-    margin = 60
-    col_w = (width - margin * 2) / 2
-    left_cx = margin + col_w / 2
-    right_cx = margin + col_w + col_w / 2
-    detail_max_width = col_w - 40
+    cx, cy = width // 2, height // 2
 
-    title_font = _font("bold", 34)
-    sub_font = _font("bold", 22)
-    title = "Set Up Your Frame"
-    left_sub = "1. Scan to join Wi-Fi"
-    right_sub = "2. Scan to finish setup"
-    left_lines = [f"SSID: {ssid}", f"Password: {password}"]
-    right_lines = [server_url]
+    label = "SET UP YOUR FRAME"
+    hint = "Open the Framily app and tap \"Set up a frame\""
+    status = "Waiting for Bluetooth connection..."
 
-    qr_size = 190
-    gap_after_title = 16
-    gap_after_rule = 22
-    gap_after_sub = 16
-    gap_after_qr = 20
-    detail_gap = 6
+    label_font = _font("bold", 22)
+    name_font = _fit_font(draw, ble_name, "bold", width - 240, 80, min_size=40)
+    hint_font = _font("regular", 24)
+    status_font = _font("regular", 20)
 
-    title_h = _text_height(draw, title, title_font)
-    sub_h = _text_height(draw, left_sub, sub_font)
-    left_fonts, left_detail_h = _fitted_lines_height(draw, left_lines, "regular", detail_max_width, 22, gap=detail_gap)
-    right_fonts, right_detail_h = _fitted_lines_height(draw, right_lines, "regular", detail_max_width, 22, gap=detail_gap)
-    detail_h = max(left_detail_h, right_detail_h)
+    label_h = _text_height(draw, label, label_font)
+    name_bbox = draw.textbbox((0, 0), ble_name, font=name_font)
+    name_w, name_h = name_bbox[2] - name_bbox[0], name_bbox[3] - name_bbox[1]
+    pad_x, pad_y = 45, 28
+    box_w, box_h = name_w + pad_x * 2, name_h + pad_y * 2
+    hint_h = _text_height(draw, hint, hint_font)
+    status_h = _text_height(draw, status, status_font)
 
-    total_h = (
-        title_h + gap_after_title + 2 + gap_after_rule
-        + sub_h + gap_after_sub + qr_size + gap_after_qr + detail_h
+    gap1, gap2, gap3 = 22, 34, 14
+    total_h = label_h + gap1 + box_h + gap2 + hint_h + gap3 + status_h
+    y = cy - total_h / 2
+
+    y += _draw_top(draw, label, label_font, y, cx) + gap1
+
+    box_top = y
+    draw.rounded_rectangle(
+        (cx - box_w / 2, box_top, cx + box_w / 2, box_top + box_h), radius=18, outline=BLUE, width=4
     )
-    y = (height - total_h) / 2
+    draw.text((cx, box_top + box_h / 2), ble_name, font=name_font, fill=BLACK, anchor="mm")
+    y += box_h + gap2
 
-    y += _draw_top(draw, title, title_font, y, cx) + gap_after_title
-    draw.line((margin + 20, y, width - margin - 20, y), fill=BLUE, width=3)
-    y += 2 + gap_after_rule
-
-    sub_y = y
-    _draw_top(draw, left_sub, sub_font, sub_y, left_cx)
-    _draw_top(draw, right_sub, sub_font, sub_y, right_cx)
-    y += sub_h + gap_after_sub
-
-    qr_y = y
-    wifi_qr = make_qr(f"WIFI:T:WPA;S:{ssid};P:{password};;", qr_size)
-    url_qr = make_qr(server_url, qr_size)
-    img.paste(wifi_qr, (int(left_cx - qr_size / 2), int(qr_y)))
-    img.paste(url_qr, (int(right_cx - qr_size / 2), int(qr_y)))
-    for col_cx in (left_cx, right_cx):
-        draw.rectangle(
-            (col_cx - qr_size / 2 - 1, qr_y - 1, col_cx + qr_size / 2 + 1, qr_y + qr_size + 1),
-            outline=BLACK, width=1,
-        )
-    y += qr_size + gap_after_qr
-
-    _draw_fitted_lines(draw, left_lines, left_fonts, y, left_cx, gap=detail_gap)
-    _draw_fitted_lines(draw, right_lines, right_fonts, y, right_cx, gap=detail_gap)
-
-    draw.line((width / 2, sub_y - 4, width / 2, y + detail_h + 4), fill=BLACK, width=1)
+    y += _draw_top(draw, hint, hint_font, y, cx) + gap3
+    _draw_top(draw, status, status_font, y, cx)
 
     _write_epd_image(img.save)
 
@@ -634,10 +583,24 @@ def run_fetch_loop(config: dict) -> None:
         config = load_config()
 
 
+def set_provisioning_status(config: dict, status: str, message: str = "", created_new: bool = False) -> dict:
+    """Record provisioning progress in config.json. frame/ble/main.py (a
+    separate process) watches the file and relays these fields over its
+    `status` GATT characteristic, so this is the sole channel the app learns
+    "Wi-Fi failed" / "server unreachable" / "success" through."""
+    config["provisioning_status"] = status
+    config["provisioning_message"] = message
+    config["provisioning_created_new"] = created_new
+    save_config(config)
+    return config
+
+
 def apply_wifi_update(config: dict) -> dict:
-    """Push wifi_ssid/wifi_password to NetworkManager if the web UI flagged
-    them as changed. Unlike the old pending_wifi_* fields, the credentials
-    stay in the config after being applied - only the flag is cleared."""
+    """Push wifi_ssid/wifi_password to NetworkManager if BLE or the web UI
+    flagged them as changed, then wait for the join to actually succeed
+    before returning - a bad password otherwise silently fails at the nmcli
+    layer with nothing to tell the app. The credentials stay in the config
+    after being applied - only the flag is cleared."""
     if not config.get("wifi_should_update"):
         return config
 
@@ -649,14 +612,26 @@ def apply_wifi_update(config: dict) -> dict:
         return config
 
     logger.info(f"Applying updated Wi-Fi credentials for SSID '{ssid}'.")
+    config = set_provisioning_status(config, "connecting_wifi")
     set_wifi(ssid, password)
-    return config
+
+    deadline = time.monotonic() + WIFI_JOIN_TIMEOUT_SECONDS
+    while time.monotonic() < deadline:
+        if determine_mode() == "wifi":
+            return config
+        time.sleep(WIFI_JOIN_POLL_SECONDS)
+
+    logger.warning(f"Failed to join Wi-Fi network '{ssid}' within {WIFI_JOIN_TIMEOUT_SECONDS}s.")
+    return set_provisioning_status(
+        config, "wifi_failed",
+        f"Could not join Wi-Fi network '{ssid}'. Check the password and try again.",
+    )
 
 
 def apply_pending_delete(config: dict) -> dict:
     """Act on a Reset Framily request from the web UI. Retries on the next
     tick (via the caller's normal poll cadence) if the server can't be
-    reached right now, e.g. while still in hotspot mode."""
+    reached right now, e.g. before the frame has Wi-Fi at all."""
     if not config.get("pending_delete"):
         return config
 
@@ -671,31 +646,44 @@ def run_wifi_session(config: dict) -> None:
     display_connecting_wifi()
 
     if not config.get("server_url"):
-        save_message("Server URL not configured, please set it up.")
-        start_hotspot()
+        message = "Server URL not configured, please set it up."
+        save_message(message)
+        set_provisioning_status(config, "server_failed", message)
         return
 
-    if not config.get("framily_code") or not config.get("frame_token"):
+    is_new_framily = not config.get("framily_code") or not config.get("frame_token")
+    server_confirmed = False
+
+    if is_new_framily:
+        config = set_provisioning_status(config, "registering")
         try:
             config = retry_transient(create_framily, config)
         except FrameApiError as e:
             logger.error(f"Failed to create framily: {e}")
-            save_message(f"Failed to create framily: {e}")
-            start_hotspot()
+            message = f"Failed to create framily: {e}"
+            save_message(message)
+            set_provisioning_status(config, "server_failed", message)
             return
         display_framily_info(config)
+        server_confirmed = True
+        set_provisioning_status(config, "success", created_new=True)
 
     consecutive_check_failures = 0
     while True:
         try:
             initiated = check_framily(config)
             consecutive_check_failures = 0
+            if not server_confirmed:
+                server_confirmed = True
+                set_provisioning_status(config, "success", created_new=False)
         except FrameApiError as e:
             consecutive_check_failures += 1
             logger.warning(f"check_framily failed ({consecutive_check_failures}/{MAX_CONSECUTIVE_FAILURES}): {e}")
             if not e.transient or consecutive_check_failures >= MAX_CONSECUTIVE_FAILURES:
-                save_message(_terminal_failure_message(f"Framily does not exist or token is invalid: {e}", e))
-                start_hotspot()
+                message = _terminal_failure_message(f"Framily does not exist or token is invalid: {e}", e)
+                save_message(message)
+                if not server_confirmed:
+                    set_provisioning_status(config, "server_failed", message)
                 return
             initiated = False
 
@@ -706,72 +694,50 @@ def run_wifi_session(config: dict) -> None:
 
     report_status(config)
     # run_fetch_loop() only returns once it has given up (persistent or
-    # exhausted-retries failure) - fall back to hotspot so the frame can be
-    # reprovisioned instead of going dark with no path back.
+    # exhausted-retries failure). The BLE peripheral is always running (it's
+    # on a separate radio from Wi-Fi, unlike the old hotspot), so there's
+    # nothing to restart here to make the frame reprovisionable again.
     run_fetch_loop(config)
-    start_hotspot()
 
 
 def determine_mode() -> str | None:
     active = get_active_connection()
-    if active == CON_HOTSPOT:
-        return "hotspot"
     if active == CON_WIFI:
         return "wifi"
     return None
 
 
-def retry_saved_wifi() -> None:
-    """Called periodically while parked in hotspot mode. If the Wi-Fi profile
-    already has credentials saved from a previous setup, try bringing it up -
-    the outage that pushed us into hotspot mode might have been transient
-    (e.g. the router rebooting) and Wi-Fi could be back even though nobody
-    submitted new credentials. Falls straight back to hotspot if it doesn't
-    pan out, so the setup UI never goes dark."""
-    ssid, _ = get_wifi()
-    if not ssid:
-        return
-    logger.info(f"Hotspot mode: retrying saved Wi-Fi network '{ssid}'.")
-    start_wifi()
-    if determine_mode() != "wifi":
-        logger.info("Retry failed, staying in hotspot mode.")
-        start_hotspot()
-
-
 def main_loop() -> None:
-    last_mode = None
-    next_wifi_retry = 0.0
+    # Sentinel distinct from both determine_mode()'s return values ("wifi"
+    # and None), so the very first iteration is always treated as a mode
+    # change - guaranteeing display_ble_setup() is drawn on a fresh boot
+    # that has no Wi-Fi connection yet.
+    last_mode = "startup"
     while True:
         try:
             config = load_config()
             mode = determine_mode()
+            mode_changed = mode != last_mode
 
-            if mode != last_mode:
+            if mode_changed:
                 logger.info(f"Network mode: {last_mode} -> {mode}")
 
-            if mode == "hotspot":
-                if last_mode != "hotspot":
-                    display_hotspot()
-                    next_wifi_retry = time.monotonic() + HOTSPOT_WIFI_RETRY_SECONDS
+            if mode is None:
+                if mode_changed:
+                    display_ble_setup()
                 last_mode = mode
                 config = apply_wifi_update(config)
                 config = apply_pending_delete(config)
-                if time.monotonic() >= next_wifi_retry:
-                    next_wifi_retry = time.monotonic() + HOTSPOT_WIFI_RETRY_SECONDS
-                    retry_saved_wifi()
                 wait_for_recheck(UNSTEADY_POLL_SECONDS)
                 continue
 
-            if mode == "wifi":
-                last_mode = mode
-                config = apply_wifi_update(config)
-                config = apply_pending_delete(config)
-                run_wifi_session(config)
-                last_mode = None  # force a re-render / re-check next tick
-                continue
-
+            # mode == "wifi"
             last_mode = mode
-            wait_for_recheck(UNSTEADY_POLL_SECONDS)
+            config = apply_wifi_update(config)
+            config = apply_pending_delete(config)
+            run_wifi_session(config)
+            last_mode = "startup"  # force a re-render / re-check next tick
+            continue
         except Exception:
             # Belt-and-suspenders: nothing above should raise outside of
             # FrameApiError, but if it does, log it and keep the agent alive

@@ -7,6 +7,7 @@
   import PageLayout from "$lib/ui/PageLayout.svelte";
   import UploadPopup from "$lib/popups/UploadPopup.svelte";
   import ConnectFramilyPopup from "$lib/popups/ConnectFramilyPopup.svelte";
+  import SetupFramePopup from "$lib/popups/SetupFramePopup.svelte";
   import ImagePlus from "@lucide/svelte/icons/image-plus";
 
   interface Props {
@@ -49,6 +50,7 @@
     <Framilies
       {framilies}
       onAddFramily={() => overlay.open(ConnectFramilyPopup, { onSuccess: onFramiliesChanged })}
+      onSetupFrame={() => overlay.open(SetupFramePopup, { onSuccess: onFramiliesChanged })}
       onFramilyChanged={onFramiliesChanged}
     />
   {/if}

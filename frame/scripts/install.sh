@@ -40,7 +40,7 @@ command_exists() {
 }
 
 stop_services() {
-    for svc in framily-epd.service framily-web.service framily-agent.service; do
+    for svc in framily-epd.service framily-web.service framily-agent.service framily-ble.service; do
         if systemctl is-active --quiet "$svc" 2>/dev/null; then
             log "Stopping $svc..."
             systemctl stop "$svc"

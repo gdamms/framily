@@ -1,3 +1,6 @@
+> [!WARNING]
+> Branch in progress. Nothing have been tested yet on the actual frame.
+
 # Framily
 
 A self-hosted digital photo frame system that connects families together. Family members upload

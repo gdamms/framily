@@ -1,9 +1,8 @@
 import subprocess
 from pathlib import Path
 import json
-import qrcode
-from PIL import Image
 import os
+import uuid
 
 from logging_setup import get_logger
 
@@ -18,10 +17,7 @@ try:
     EPD_INFO_PATH = Path(os.environ["FRAMILY_EPD_INFO_PATH"])
     EPD_IMAGE_PATH = Path(os.environ["FRAMILY_EPD_IMAGE_PATH"])
     CON_WIFI = os.environ["FRAMILY_WIFI"]
-    CON_HOTSPOT = os.environ["FRAMILY_HOTSPOT"]
     WLAN_IF = os.environ["FRAMILY_IFACE"]
-    HOTSPOT_DOMAIN = os.environ["FRAMILY_DOMAIN"]
-    DNS_CONFIG_PATH = Path(os.environ["FRAMILY_DNSMASQ_PATH"])
 except KeyError as e:
     raise RuntimeError(f"Missing required environment variable: {e}") from e
 
@@ -35,6 +31,15 @@ DEFAULT_CONFIG = {
     "wifi_password": "",
     "wifi_should_update": False,
     "pending_delete": False,
+    # Machine-readable mirror of the BLE provisioning flow's progress,
+    # relayed to the app by frame/ble/main.py's `status` characteristic -
+    # kept separate from "message" (free text meant for the web UI/e-ink).
+    "provisioning_status": "idle",
+    "provisioning_message": "",
+    # True only for the session that actually called create_framily() (i.e.
+    # framily_code/frame_token were empty beforehand) - lets the app tell a
+    # brand-new frame from one that was just reprovisioned onto new Wi-Fi.
+    "provisioning_created_new": False,
 }
 
 # Default timeout for subprocess calls (mostly nmcli). Generous enough to
@@ -78,41 +83,8 @@ def set_wifi(ssid: str, password: str, start: bool = True) -> None:
         start_wifi()
 
 
-def get_wifi() -> tuple[str, str]:
-    # Short timeout: this is a pure read called from web request threads and
-    # should never take more than a moment.
-    ssid = run(['nmcli', '-g', '802-11-wireless.ssid', 'connection', 'show', CON_WIFI], timeout=5)
-    password = run(['nmcli', '-s', '-g', '802-11-wireless-security.psk', 'connection', 'show', CON_WIFI], timeout=5)
-    return ssid, password
-
-
 def start_wifi():
     run(['nmcli', 'connection', 'up', CON_WIFI])
-
-
-def set_hotspot(ssid: str, password: str, start: bool = True) -> None:
-    run(['nmcli', 'connection', 'modify', CON_HOTSPOT, 'wifi.ssid', ssid])
-    run(['nmcli', 'connection', 'modify', CON_HOTSPOT, 'wifi-sec.psk', password])
-    if start:
-        start_hotspot()
-
-
-def get_hotspot() -> tuple[str, str]:
-    ssid = run(['nmcli', '-g', '802-11-wireless.ssid', 'connection', 'show', CON_HOTSPOT], timeout=5)
-    password = run(['nmcli', '-s', '-g', '802-11-wireless-security.psk', 'connection', 'show', CON_HOTSPOT], timeout=5)
-    address = run(['ip', '-br', 'addr', 'show', WLAN_IF], timeout=5)
-    address = address.split()[2].split('/')[0]  # Extract the IP address
-
-    # Set DNS to resolve the hotspot domain to the local IP address
-    resolv_conf = f"address=/{HOTSPOT_DOMAIN}/{address}\n"
-    DNS_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    DNS_CONFIG_PATH.write_text(resolv_conf)
-
-    return ssid, password
-
-
-def start_hotspot():
-    run(['nmcli', 'connection', 'up', CON_HOTSPOT])
 
 
 def get_ip_address() -> str:
@@ -148,6 +120,9 @@ def load_config() -> dict:
         "wifi_password": config.get("wifi_password", ""),
         "wifi_should_update": config.get("wifi_should_update", False),
         "pending_delete": config.get("pending_delete", False),
+        "provisioning_status": config.get("provisioning_status", "idle"),
+        "provisioning_message": config.get("provisioning_message", ""),
+        "provisioning_created_new": config.get("provisioning_created_new", False),
     }
 
 def save_config(config: dict) -> None:
@@ -155,12 +130,22 @@ def save_config(config: dict) -> None:
         json.dump(config, f, indent=2)
 
 
-def make_qr(data: str, size: int = 190) -> Image.Image:
-    # A small quiet-zone border (not 0) keeps the code reliably scannable by
-    # phone cameras. NEAREST resize keeps module edges crisp - any blurring
-    # would get dithered into speckles by the e-ink panel's 6-color quantizer.
-    qr = qrcode.make(data, border=2)
-    return qr.resize((size, size), Image.NEAREST)
+BLUETOOTH_ADDRESS_PATH = Path("/sys/class/bluetooth/hci0/address")
+
+
+def get_ble_local_name() -> str:
+    """Short, stable per-device BLE advertising name (`Framily-XXXX`),
+    derived from the Bluetooth adapter's MAC address so it needs no
+    persisted state and stays the same across reboots. Also drawn on the
+    e-ink screen, so a user with several unprovisioned frames nearby can
+    match the app's scan result to the physical device in front of them."""
+    try:
+        address = BLUETOOTH_ADDRESS_PATH.read_text().strip()
+        suffix = address.replace(":", "")[-4:].upper()
+    except OSError:
+        suffix = f"{uuid.getnode():012X}"[-4:]
+    return f"Framily-{suffix}"
+
 
 def save_message(message: str) -> None:
     config = load_config()

@@ -36,6 +36,12 @@
             margin: 0 0 0.5rem;
         }
 
+        .hint {
+            margin: 0 0 0.25rem;
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
         form {
             display: flex;
             flex-direction: column;
@@ -125,6 +131,10 @@
 <body>
     <main>
         <h1>Framily Setup</h1>
+        <p class="hint">Setting up a brand-new frame? Use the "Set up a frame" option in the
+            Framily app instead - this page is only reachable once the frame already has
+            network, so it's for changing Wi-Fi/server settings on a frame you've already
+            provisioned.</p>
         {% if message %}
         <div id="initial-message" class="message message-error">{{ message }}</div>
         {% endif %}

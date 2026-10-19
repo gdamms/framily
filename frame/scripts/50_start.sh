@@ -12,7 +12,10 @@ systemctl daemon-reload
 systemctl enable framily-epd.service
 systemctl enable framily-web.service
 systemctl enable framily-agent.service
+systemctl enable framily-ble.service
 systemctl restart framily-epd.service
 systemctl restart framily-web.service
 systemctl restart framily-agent.service
+systemctl restart framily-ble.service
 systemctl restart NetworkManager.service
+systemctl restart bluetooth.service
